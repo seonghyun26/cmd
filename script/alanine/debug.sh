@@ -1,3 +1,4 @@
 cd ../../
 
-python main.py ++defaults.data=debug
+python main.py \
+  ++logging.wandb=False 

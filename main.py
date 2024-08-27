@@ -49,10 +49,12 @@ def main(cfg):
     for epoch in pbar:
         loss = 0
         for i, data in enumerate(train_loader):
-            # Load data and predict next state
+            # Load data
             current_state, next_state = data
             current_state, next_state = current_state.to(device), next_state.to(device)
             
+            # Predict next state
+            goal_state = current_state
             step = 1
             temperature = 300
             predicition_next_state = model(
@@ -64,10 +66,12 @@ def main(cfg):
             
             # Compute loss
             loss += loss_func(predicition_next_state, next_state)
-        loss /= data_num
+        loss /= data_num / 100
         loss.backward()
         
-        wandb.log({"loss": loss.item()})
+        # Logging
+        if cfg.logging.wandb:
+            wandb.log({"loss": loss.item()})
         if epoch % 100 == 0:
             # logger.info(f"Epoch: {epoch}, Loss: {batch_loss.item():4f}")
             pbar.set_description(f"Loss: {loss.item():4f}")
