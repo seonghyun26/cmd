@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+        "name": "CMD",
+        "type": "debugpy",
+        "request": "launch",
+        "env": {
+            "CUDA_VISIBLE_DEVICES": "1"
+        },
+        "cwd": "/home/shpark/prj-cmd/cmd/",
+        "program": "main.py",
+        "args": [],
+        "console": "integratedTerminal"
+    }
+  ]
+}

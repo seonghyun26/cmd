@@ -1,0 +1,5 @@
+name: MLP
+layers: 8
+input_dim: 66
+output_dim: 66
+hidden_dim: 128

@@ -1,0 +1,3 @@
+name: MLP
+layers: 2
+hidden_dim: 128
