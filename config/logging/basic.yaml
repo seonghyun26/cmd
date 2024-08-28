@@ -1,4 +1,4 @@
-wandb: False
+wandb: True
 tags:
 - debug
 project: cmd

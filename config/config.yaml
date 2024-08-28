@@ -1,5 +1,0 @@
-defaults:
-- model: mlp-debug
-- data: alanine
-- training: debug
-- logging: debug

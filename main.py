@@ -45,7 +45,7 @@ def main(cfg):
     
     data_num = len(train_loader.dataset)
     batch_size = cfg.training.batch_size
-    loss_lambda = 1000
+    loss_lambda = 100
     
     logger.info(f"Model: {cfg.model.name}")
     logger.info(f"MD Dataset size: {data_num}")
@@ -92,7 +92,7 @@ def main(cfg):
         torch.save(model.state_dict(), model_save_path)
         logger.info(f"Model weights saved at: {model_save_path}")
 
-    # Test model (generation)
+    # Test model on downstream task (generation)
     logger.info("Evaluating...")
     evaluate(cfg, model, device, logger)
     logger.info("Evaluation complete!!!")

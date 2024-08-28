@@ -28,7 +28,7 @@ def load_loss(cfg):
 def load_data(cfg):
     # data_path = f"/home/shpark/prj-cmd/simulation/dataset/alanine/273.0/c5.pt"
     # data_path = f"/home/shpark/prj-cmd/simulation/dataset/alanine/300.0/alpha_P.pt"
-    data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}.pt"
+    data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
     
     train_dataset = torch.load(f"{data_path}")
     train_loader = DataLoader(
