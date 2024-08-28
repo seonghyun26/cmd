@@ -39,3 +39,33 @@ def load_data(cfg):
     )
     
     return train_loader
+
+def load_process_data(cfg):
+    def process_data(current_state, goal_state, step, temperature):    
+        batch_size = current_state.shape[0]
+        
+        current_state = current_state.reshape(batch_size, -1)
+        goal_state = goal_state.reshape(batch_size, -1)
+        step = torch.tensor(step).to(current_state.device).repeat(batch_size, 1)
+        temperature = torch.tensor(temperature).to(current_state.device).repeat(batch_size, 1)
+        
+        processed_state = torch.cat([
+            current_state,
+            goal_state,
+            step,
+            temperature
+        ], dim=1)
+        
+        del current_state, goal_state, step, temperature
+        return processed_state
+    
+    return process_data
+
+def load_process_prediction(cfg):
+    atom_num = cfg.data.atom
+    
+    def process_prediction(prediction, shape):
+        prediction = prediction.reshape(shape[0], atom_num, 3)
+        return prediction
+    
+    return process_prediction

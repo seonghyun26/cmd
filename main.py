@@ -40,14 +40,25 @@ def main(cfg):
     model = load_model(cfg, device)
     loss_func = load_loss(cfg)
     train_loader = load_data(cfg)
+    data_process_func = load_process_data(cfg)
+    pred_process_func = load_process_prediction(cfg)
+    
     data_num = len(train_loader.dataset)
+    batch_size = cfg.training.batch_size
+    loss_lambda = 1000
+    
     logger.info(f"Model: {cfg.model.name}")
     logger.info(f"MD Dataset size: {data_num}")
     
+    
     # Train model
+    logger.info("Training...")
     pbar = trange(cfg.training.epoch)
     for epoch in pbar:
-        loss = 0
+        total_loss = 0
+        step = 1
+        temperature = 300
+        
         for i, data in enumerate(train_loader):
             # Load data
             current_state, next_state = data
@@ -55,31 +66,36 @@ def main(cfg):
             
             # Predict next state
             goal_state = current_state
-            step = 1
-            temperature = 300
-            predicition_next_state = model(
-                current_state,
-                goal_state,
-                step,
-                temperature
-            )
+            x_processed = data_process_func(current_state, goal_state, step, temperature)
+            predicted_state = model(x_processed)
+            predicted_state = pred_process_func(predicted_state, current_state.shape)
             
             # Compute loss
-            loss += loss_func(predicition_next_state, next_state)
-        loss /= data_num / 100
-        loss.backward()
+            loss = loss_func(next_state, predicted_state) * loss_lambda
+            total_loss += loss.item()
+            loss.backward()
         
         # Logging
+        total_loss /= data_num / loss_lambda
         if cfg.logging.wandb:
-            wandb.log({"loss": loss.item()})
+            wandb.log({"loss": total_loss})
         if epoch % 100 == 0:
-            # logger.info(f"Epoch: {epoch}, Loss: {batch_loss.item():4f}")
-            pbar.set_description(f"Loss: {loss.item():4f}")
+            pbar.set_description(f"Loss: {total_loss:4f}")
             pbar.refresh()
     
-    # Finish training, save model, evaluate
+    # Finish training, save model
+    logger.info("Traiing complete!!!")
     if cfg.logging.wandb:
         wandb.finish()
+        output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+        model_save_path = os.path.join(output_dir, "model_weights.pt")
+        torch.save(model.state_dict(), model_save_path)
+        logger.info(f"Model weights saved at: {model_save_path}")
+
+    # Test model (generation)
+    logger.info("Evaluating...")
+    evaluate(cfg, model, device, logger)
+    logger.info("Evaluation complete!!!")
         
     
 if __name__ == "__main__":

@@ -18,17 +18,8 @@ class MLP(nn.Module):
             self.layers.append(nn.ReLU())
         self.layers.append(nn.Linear(cfg.model.hidden_dim, self.output_dim))
     
-    def forward(self, x, goal_state, step, temperature):
-        org_shape = x.shape
-        x = x.reshape(x.shape[0], -1)
-        goal_state = goal_state.reshape(x.shape[0], -1)
-        step = torch.tensor(step).to(x.device).repeat(x.shape[0], 1)
-        temperature = torch.tensor(temperature).to(x.device).repeat(x.shape[0], 1)
-        
-        x = torch.cat([x, goal_state, step, temperature], dim=1)
-        
+    def forward(self, x):
         for layer in self.layers:
             x = layer(x)
         
-        x = x.reshape(org_shape)
         return x
