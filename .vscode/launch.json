@@ -11,10 +11,11 @@
         "cwd": "/home/shpark/prj-cmd/cmd/",
         "program": "main.py",
         "args": [
-          "++data.temperature=300.0",
-          "++data.state=c5",
-          // "++model.layers=8",
-          "++logging.wandb=False"
+          // "++data.temperature=300.0",
+          // "++data.state=c5",
+          // "++logging.wandb=False"
+          "--config-name",
+          "debug"
         ],
         "console": "integratedTerminal"
     }

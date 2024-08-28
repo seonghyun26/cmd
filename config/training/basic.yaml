@@ -1,5 +1,13 @@
 batch_size: 4096
 epoch: 100
-lr: 1e-4
-optimizer: Adam
 loss: MSE
+optimizer:
+  name: Adam
+  params: {
+    lr: 1e-4
+  }
+scheduler:
+  name: ExponentialLR
+  params: {
+    gamma: 0.9
+  }

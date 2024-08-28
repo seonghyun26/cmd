@@ -1,2 +1,4 @@
 name: simluation
 time_horizon: 100_000_00
+molecule: alanine
+initial_frame: c5

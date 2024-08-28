@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 @hydra.main(
     version_base=None,
     config_path="config",
-    config_name="debug"
+    config_name="basic"
 )
 def main(cfg):
     # Load configs
@@ -38,6 +38,8 @@ def main(cfg):
         )
     logger = logging.getLogger("CMD")
     model = load_model(cfg, device)
+    optimizer = load_optimizer(cfg, model)
+    scheduler = load_scheduler(cfg, optimizer)
     loss_func = load_loss(cfg)
     train_loader = load_data(cfg)
     data_process_func = load_process_data(cfg)
@@ -63,6 +65,7 @@ def main(cfg):
             # Load data
             current_state, next_state = data
             current_state, next_state = current_state.to(device), next_state.to(device)
+            optimizer.zero_grad()
             
             # Predict next state
             goal_state = current_state
@@ -74,29 +77,44 @@ def main(cfg):
             loss = loss_func(next_state, predicted_state) * loss_lambda
             total_loss += loss.item()
             loss.backward()
+            optimizer.step()
         
-        # Logging
+        # Save information and logg
+        scheduler.step()
         total_loss /= data_num / loss_lambda
+        information = {
+            "lr": optimizer.param_groups[0]["lr"],
+            "loss": total_loss
+        }
+        
         if cfg.logging.wandb:
-            wandb.log({"loss": total_loss})
-        if epoch % 100 == 0:
+            wandb.log(
+                information,
+                step=epoch
+            )
+        if epoch % cfg.logging.update_freq == 0:
             pbar.set_description(f"Loss: {total_loss:4f}")
             pbar.refresh()
     
-    # Finish training, save model
-    logger.info("Traiing complete!!!")
-    if cfg.logging.wandb:
-        wandb.finish()
+    
+    # Save model
+    logger.info("Training complete!!!")
+    if cfg.logging.checkpoint:
         output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
         model_save_path = os.path.join(output_dir, "model_weights.pt")
         torch.save(model.state_dict(), model_save_path)
         logger.info(f"Model weights saved at: {model_save_path}")
+
 
     # Test model on downstream task (generation)
     logger.info("Evaluating...")
     evaluate(cfg, model, device, logger)
     logger.info("Evaluation complete!!!")
         
+        
+    # Finish and exit
+    if cfg.logging.wandb:
+        wandb.finish()
     
 if __name__ == "__main__":
     main()
