@@ -7,7 +7,7 @@ import numpy as np
 import mdtraj as md
 
 from tqdm import tqdm
-
+from .load import load_state_file
 
 def generate(cfg, model_wrapper, device, logger):
     # Load configs for generation
@@ -15,7 +15,7 @@ def generate(cfg, model_wrapper, device, logger):
     atom_num = cfg.data.atom
     time_horizon = cfg.job.time_horizon
     temperature = cfg.job.temperature
-    current_states = load_state(cfg, cfg.job.start_state, device)
+    current_states = load_state_file(cfg, cfg.job.start_state, device)
     state_list = [current_states]
     
     
@@ -23,9 +23,9 @@ def generate(cfg, model_wrapper, device, logger):
     task = cfg.job.name
     if task == "simulation":
         pass
-        # goal_states = load_state(cfg, cfg.job.goal_state, device)
+        # goal_states = load_state_file(cfg, cfg.job.goal_state, device)
     elif task == "tps":
-        goal_states = load_state(cfg, cfg.job.goal_state, device)
+        goal_states = load_state_file(cfg, cfg.job.goal_state, device)
     else:
         raise ValueError(f"Task {task} not found")
     temperature = torch.tensor(temperature).to(current_states.device).repeat(sample_num, 1)
@@ -61,14 +61,7 @@ def generate(cfg, model_wrapper, device, logger):
     
     return trajectory_list
     
-    
-def load_state(cfg, state, device):
-    state_dir = f"./data/{cfg.job.molecule}/{state}.pdb"
-    state = md.load(state_dir).xyz
-    state = torch.tensor(state).to(device)
-    states = state.repeat(cfg.job.sample_num, 1, 1)
-    
-    return states
+
     
     
 def save_trajectory(cfg, trajectory_list, logger):

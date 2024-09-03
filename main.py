@@ -91,6 +91,11 @@ def main(cfg):
         if epoch % cfg.logging.update_freq == 0:
             pbar.set_description(f"Training (loss: {total_loss:4f})")
             pbar.refresh()
+            
+        if epoch % cfg.logging.ckpt_freq == 0:
+            output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+            model_wrapper.save_model(output_dir)
+            logger.info(f"Model weights saved at: {output_dir}")
     
     
     # Save model

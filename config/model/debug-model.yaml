@@ -5,10 +5,13 @@ encoder:
   hidden_dim: [128, 128, 64]
   input_dim: 200
   output_dim: 16
+  init: xavier
+
 decoder:
   name: MLP
   layers: 3
   hidden_dim: [128, 128, 128]
   input_dim: 150
   output_dim: 66
+  init: xavier
 transform: internal_coordinates

@@ -117,6 +117,9 @@ class ModelWrapper(nn.Module):
         else:
             raise ValueError(f"Model {cfg_model.name} not found")
         
+        if "inii" in cfg_model:
+            model.apply(init(cfg_model.init))
+        
         return model
     
     def save_model(self, path):
@@ -124,12 +127,23 @@ class ModelWrapper(nn.Module):
         torch.save(self.decoder.state_dict(), f"{path}/decoder.pt")
     
     def forward(self, next_state, current_state, goal_state, step, temperature):
+        # Encode
         x = self.process_data(next_state, current_state, goal_state, step, temperature)
         shape = x.shape
         encoded = self.encoder(x)
+        
+        # Reparameterize
         mu = self.mu(encoded)
         logvar = self.logvar(encoded)
+        # Check if mu and logvar are not nan and inf
+        # assert torch.isnan(mu).sum() == 0, f"mu has nan"
+        # assert torch.isnan(logvar).sum() == 0, f"logvar has nan"
+        # assert torch.isinf(mu).sum() == 0, f"mu has inf"
+        # assert torch.isinf(logvar).sum() == 0, f"logvar has inf"
+        logvar = torch.clamp(logvar, max=10)
         z = self.reparameterize(mu, logvar)
+        
+        # Decode
         decoded = self.decoder(self.process_latent(z, current_state, goal_state, step, temperature))
         decoded = self.process_prediction(decoded, shape)
         
@@ -260,3 +274,11 @@ def load_data(cfg):
     
     return train_loader
 
+    
+def load_state_file(cfg, state, device):
+    state_dir = f"./data/{cfg.job.molecule}/{state}.pdb"
+    state = md.load(state_dir).xyz
+    state = torch.tensor(state).to(device)
+    states = state.repeat(cfg.job.sample_num, 1, 1)
+    
+    return states
