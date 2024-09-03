@@ -2,7 +2,7 @@ name: tps
 molecule: alanine
 start_state: c5
 goal_state: c7ax
-sample_num: 16
+sample_num: 4
 temperature: 300
 save: True
-time_horizon: 500
+time_horizon: 10

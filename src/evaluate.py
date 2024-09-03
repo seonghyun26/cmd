@@ -1,19 +1,39 @@
+import os
 import torch
+import hydra
+import wandb
 
-def evaluate(cfg, model, device, logger):
-    task = cfg.evaluation.task
+import numpy as np
+import mdtraj as md
+
+from tqdm import tqdm
+
+
+def evaluate(cfg, trajectory_list, logger):
+    task = cfg.job.name
     
     if task == "simulation":
-        simulation(cfg, model, device, logger)
+        evaluate_sim(cfg, trajectory_list, logger)
     elif task == "tps":
-        tps(cfg, model, device, logger)
+        evaluate_tps(cfg, trajectory_list, logger)
     else:
         raise ValueError(f"Task {task} not found")
     
     return
+
+
+def evaluate_sim(cfg, trajectory_list, logger):
+    # Load ground truth simulation results
     
-def simulation(cfg, model, device, logger):
+    # Compare the results
+    
+    
     return
 
-def tps(cfg, model, device, logger):
+
+def evaluate_tps(cfg, trajectory_list, logger):
+    # Load goal state
+    
+    # Compute metrics related to TPS
+    
     return

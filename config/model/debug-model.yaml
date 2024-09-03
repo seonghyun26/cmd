@@ -1,14 +1,14 @@
 name: cvae
 encoder:
   name: MLP
-  layers: 4
-  hidden_dim: [128, 128, 128, 128]
+  layers: 3
+  hidden_dim: [128, 128, 64]
   input_dim: 200
   output_dim: 16
 decoder:
   name: MLP
-  layers: 4
-  hidden_dim: [128, 128, 128, 128]
+  layers: 3
+  hidden_dim: [128, 128, 128]
   input_dim: 150
   output_dim: 66
 transform: internal_coordinates

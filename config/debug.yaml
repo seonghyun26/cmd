@@ -1,6 +1,6 @@
 defaults:
-- model: debug
-- data: debug
-- logging: debug
-- training: debug
-- job: simulation
+- model: debug-model
+- data: debug-data
+- logging: debug-log
+- training: debug-training
+- job: debug-goal

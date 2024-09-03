@@ -1,4 +1,0 @@
-name: MLP
-layers: 2
-hidden_dim: 128
-transform: internal_coordinates

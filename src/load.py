@@ -5,22 +5,197 @@ import torch.nn as nn
 from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR
 from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 
 from .model import *
 from .data import *
 
 
-def load_model(cfg, device):
-    if cfg.model.name == "MLP":
-        model = MLP(cfg)
-    else:
-        raise ValueError(f"Model {cfg.model.name} not found")
+class MD_Dataset(Dataset):
+    def __init__(
+        self,
+        loaded_traj,
+        config,
+        args,
+        sanity_check=False
+    ):
+        super(MD_Dataset, self).__init__()
+        
+        self.molecule = config['molecule']
+        self.state = config['state']
+        self.temperature = config['temperature']
+        self.time = config['time']
+        self.force_field = config['force_field']
+        self.solvent = config['solvent']
+        self.platform = config['platform']
+        self.precision = config['precision']
+        self.device = "cuda"
+        
+        data_x_list = []
+        data_y_list = []
+        data_interval_list = []
+        data_goal_list = []
+        
+        if args.index == "random":
+            random_indices = random.sample(range(0, self.time - 1), self.time // args.percent)
+            for t in tqdm(
+                random_indices,
+                desc="Loading data by random idx"
+            ):
+                current_state = torch.tensor(loaded_traj[t].xyz.squeeze()).to(self.device)
+                next_state = torch.tensor(loaded_traj[t+1].xyz.squeeze()).to(self.device)
+                random_interval = random.sample(range(1, self.time - t), 1)[0]
+                goal_state = torch.tensor(loaded_traj[t+random_interval].xyz.squeeze()).to(self.device)
+                
+                data_x_list.append(current_state)
+                data_y_list.append(next_state)
+                data_goal_list.append(goal_state)
+                data_interval_list.append(torch.tensor(random_interval).to(self.device).unsqueeze(0))
+        else:
+            for t in tqdm(
+                range((self.time -1) // args.percent),
+                desc=f"Loading {args.precent} precent of dataset from initial frame"
+            ):
+                current_state = torch.tensor(loaded_traj[t].xyz.squeeze()).to(self.device)
+                next_state = torch.tensor(loaded_traj[t+1].xyz.squeeze()).to(self.device)
+                data_x_list.append(current_state)
+                data_y_list.append(next_state)
+                data_interval_list.append(1)
+                
+        self.x = torch.stack(data_x_list).to(self.device)
+        self.y = torch.stack(data_y_list).to(self.device)
+        self.goal = torch.stack(data_goal_list).to(self.device)
+        self.delta_time = torch.stack(data_interval_list).to(self.device)
+        
+        # if sanity_check:
+        #     self.sanity_check(loaded_traj)
+        
+    def sanity_check(self, loaded_traj):
+        assert torch.equal(self.x.shape, self.y.shape), f"Shape of x and y not equal"
+        
+        for t in tqdm(
+            range(self.time -1),
+            desc="Sanity check"
+        ):
+            x = self.x[t]
+            y = self.y[t]
+            x_frame = torch.tensor(loaded_traj[t].xyz.squeeze()).to(self.device)
+            y_frame = torch.tensor(loaded_traj[t+1].xyz.squeeze()).to(self.device)
+            
+            assert torch.equal(x, x_frame), f"Frame {t}, x not equal"
+            assert torch.equal(y, y_frame), f"Frame {t+1}, y not equal"        
+        
+    def __getitem__(self, index):
+	    return self.x[index], self.y[index], self.goal[index], self.delta_time[index]
+ 
+    def __len__(self):
+	    return self.x.shape[0]
+
+class ModelWrapper(nn.Module):
+    def __init__(self, cfg, device):
+        super(ModelWrapper, self).__init__()
+        
+        self.atom_num = cfg.data.atom
+        self.batch_size = cfg.training.batch_size
+        self.latent_dim = cfg.model.encoder.output_dim
+        
+        self.encoder = self.load_model(cfg.model.encoder).to(device)
+        self.decoder = self.load_model(cfg.model.decoder).to(device)
+        self.mu = nn.Linear(self.latent_dim, self.latent_dim).to(device)
+        self.logvar = nn.Linear(self.latent_dim, self.latent_dim).to(device)
+
+    def __parameters__(self):
+        return self.encoder.parameters(), self.decoder.parameters()
     
-    model = model.to(device)
-    return model
+    def load_model(self, cfg_model):
+        model_dict = {
+            "MLP": MLP,
+        }
+        
+        if cfg_model.name in model_dict.keys():
+            model = model_dict[cfg_model.name](cfg=cfg_model)
+        else:
+            raise ValueError(f"Model {cfg_model.name} not found")
+        
+        return model
+    
+    def save_model(self, path):
+        torch.save(self.encoder.state_dict(), f"{path}/encoder.pt")
+        torch.save(self.decoder.state_dict(), f"{path}/decoder.pt")
+    
+    def forward(self, next_state, current_state, goal_state, step, temperature):
+        x = self.process_data(next_state, current_state, goal_state, step, temperature)
+        shape = x.shape
+        encoded = self.encoder(x)
+        mu = self.mu(encoded)
+        logvar = self.logvar(encoded)
+        z = self.reparameterize(mu, logvar)
+        decoded = self.decoder(self.process_latent(z, current_state, goal_state, step, temperature))
+        decoded = self.process_prediction(decoded, shape)
+        
+        return encoded, decoded, mu, logvar
+    
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(std)
+        
+        return mu + eps * std
+    
+    def generate(self, condition):
+        # Condition: current_state, goal_state, step, temperature
+        sample_num = condition.shape[0]
+        gaussian_noise = torch.randn(sample_num, self.latent_dim).to(condition.device)
+        generated_values = self.decoder(torch.cat((gaussian_noise, condition), dim=1))
+        
+        return generated_values
+    
+    def process_data(self, next_state, current_state, goal_state, step, temperature):   
+        batch_size = next_state.shape[0]     
+        temperature = torch.tensor(temperature).to(current_state.device).repeat(batch_size, 1)
+        
+        processed_state = torch.cat([
+            next_state.reshape(batch_size, -1), 
+            current_state.reshape(batch_size, -1),
+            goal_state.reshape(batch_size, -1),
+            step.reshape(batch_size, -1),
+            temperature
+        ], dim=1)
+        
+        return processed_state
+    
+    def process_latent(self, latent, current_state, goal_state, step, temperature):
+        batch_size = latent.shape[0]
+        temperature = torch.tensor(temperature).to(latent.device).repeat(batch_size, 1)
+        
+        processed_latent = torch.cat((
+            latent,
+            current_state.reshape(batch_size, -1),
+            goal_state.reshape(batch_size, -1),
+            step.reshape(batch_size, -1),
+            temperature
+        ), dim=1)
+        
+        return processed_latent
+    
+    def process_prediction(self, prediction, shape):
+        processed_prediction = prediction.reshape(
+            shape[0],
+            self.atom_num,
+            3
+        )
+        return processed_prediction
 
 
-def load_optimizer(cfg, model):
+
+def load_model_wrapper(cfg, device):
+    model_wrapper = ModelWrapper(cfg, device)
+    optimizer = load_optimizer(cfg, model_wrapper.parameters())
+    scheduler = load_scheduler(cfg, optimizer)
+    
+    return model_wrapper, optimizer, scheduler
+
+
+def load_optimizer(cfg, model_param):
     optimizer_dict = {
         "Adam": Adam,
         "SGD": SGD,
@@ -28,7 +203,7 @@ def load_optimizer(cfg, model):
     
     if cfg.training.optimizer.name in optimizer_dict.keys():
         optimizer = optimizer_dict[cfg.training.optimizer.name](
-            model.parameters(),
+            model_param,
             **cfg.training.optimizer.params
         )
     else:
@@ -60,6 +235,12 @@ def load_scheduler(cfg, optimizer):
 def load_loss(cfg):
     if cfg.training.loss == "MSE":
         loss = nn.MSELoss()
+    elif cfg.training.loss == "cvae":
+        def cvae_loss(x, decoded, mu, logvar):
+            recon_loss = nn.MSELoss()(x, decoded)
+            kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+            return recon_loss, kl_div
+        loss = cvae_loss
     else:
         raise ValueError(f"Loss {cfg.training.loss} not found")
     
@@ -67,48 +248,15 @@ def load_loss(cfg):
 
 
 def load_data(cfg):
-    # data_path = f"/home/shpark/prj-cmd/simulation/dataset/alanine/273.0/c5.pt"
-    # data_path = f"/home/shpark/prj-cmd/simulation/dataset/alanine/300.0/alpha_P.pt"
     data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
     
     train_dataset = torch.load(f"{data_path}")
     train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=cfg.training.batch_size,
-        shuffle=True,
+        shuffle=cfg.training.shuffle,
         # num_workers=-1,
     )
     
     return train_loader
 
-
-def load_process_data(cfg):
-    def process_data(current_state, goal_state, step, temperature):    
-        batch_size = current_state.shape[0]
-        
-        current_state = current_state.reshape(batch_size, -1)
-        goal_state = goal_state.reshape(batch_size, -1)
-        step = torch.tensor(step).to(current_state.device).repeat(batch_size, 1)
-        temperature = torch.tensor(temperature).to(current_state.device).repeat(batch_size, 1)
-        
-        processed_state = torch.cat([
-            current_state,
-            goal_state,
-            step,
-            temperature
-        ], dim=1)
-        
-        del current_state, goal_state, step, temperature
-        return processed_state
-    
-    return process_data
-
-
-def load_process_prediction(cfg):
-    atom_num = cfg.data.atom
-    
-    def process_prediction(prediction, shape):
-        prediction = prediction.reshape(shape[0], atom_num, 3)
-        return prediction
-    
-    return process_prediction

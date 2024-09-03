@@ -37,17 +37,16 @@ def main(cfg):
             )
         )
     logger = logging.getLogger("CMD")
-    model = load_model(cfg, device)
-    optimizer = load_optimizer(cfg, model)
-    scheduler = load_scheduler(cfg, optimizer)
+    model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
+    # optimizer = load_optimizer(cfg, model_wrapper.get_model())
+    # scheduler = load_scheduler(cfg, optimizer)
     loss_func = load_loss(cfg)
     train_loader = load_data(cfg)
-    data_process_func = load_process_data(cfg)
-    pred_process_func = load_process_prediction(cfg)
     
+    temperature = train_loader.dataset.temperature
     data_num = len(train_loader.dataset)
     batch_size = cfg.training.batch_size
-    loss_lambda = 100
+    loss_lambda = 1
     
     logger.info(f"Model: {cfg.model.name}")
     logger.info(f"MD Dataset size: {data_num}")
@@ -58,23 +57,18 @@ def main(cfg):
     pbar = trange(cfg.training.epoch)
     for epoch in pbar:
         total_loss = 0
-        step = 1
-        temperature = 300
         
-        for i, data in enumerate(train_loader):
+        for data in train_loader:
             # Load data
-            current_state, next_state = data
-            current_state, next_state = current_state.to(device), next_state.to(device)
+            current_state, next_state, goal_state, step = data
             optimizer.zero_grad()
             
             # Predict next state
-            goal_state = current_state
-            x_processed = data_process_func(current_state, goal_state, step, temperature)
-            predicted_state = model(x_processed)
-            predicted_state = pred_process_func(predicted_state, current_state.shape)
+            encoded, decoded, mu, logvar = model_wrapper(next_state, current_state, goal_state, step, temperature)
             
             # Compute loss
-            loss = loss_func(next_state, predicted_state) * loss_lambda
+            recon_loss, kl_div = loss_func(next_state, decoded, mu, logvar)
+            loss = recon_loss + kl_div
             total_loss += loss.item()
             loss.backward()
             optimizer.step()
@@ -84,7 +78,9 @@ def main(cfg):
         total_loss /= data_num / loss_lambda
         information = {
             "lr": optimizer.param_groups[0]["lr"],
-            "loss": total_loss
+            "loss/recon": recon_loss,
+            "loss/kl": kl_div,
+            "loss/total": total_loss
         }
         
         if cfg.logging.wandb:
@@ -93,7 +89,7 @@ def main(cfg):
                 step=epoch
             )
         if epoch % cfg.logging.update_freq == 0:
-            pbar.set_description(f"Loss: {total_loss:4f}")
+            pbar.set_description(f"Training (loss: {total_loss:4f})")
             pbar.refresh()
     
     
@@ -101,14 +97,14 @@ def main(cfg):
     logger.info("Training complete!!!")
     if cfg.logging.checkpoint:
         output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-        model_save_path = os.path.join(output_dir, "model_weights.pt")
-        torch.save(model.state_dict(), model_save_path)
-        logger.info(f"Model weights saved at: {model_save_path}")
+        model_wrapper.save_model(output_dir)
+        logger.info(f"Model weights saved at: {output_dir}")
 
 
     # Test model on downstream task (generation)
     logger.info("Evaluating...")
-    evaluate(cfg, model, device, logger)
+    trajectory_list = generate(cfg, model_wrapper, device, logger)
+    evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger)
     logger.info("Evaluation complete!!!")
         
         

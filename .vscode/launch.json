@@ -6,16 +6,17 @@
         "type": "debugpy",
         "request": "launch",
         "env": {
-            "CUDA_VISIBLE_DEVICES": "0"
+            "CUDA_VISIBLE_DEVICES": "1"
         },
         "cwd": "/home/shpark/prj-cmd/cmd/",
         "program": "main.py",
         "args": [
-          // "++data.temperature=300.0",
+          "--config-name",
+          "basic",
+          "++logging.wandb=False",
+          // "++training.batch_size=4",
           // "++data.state=c5",
           // "++logging.wandb=False"
-          "--config-name",
-          "debug"
         ],
         "console": "integratedTerminal"
     }

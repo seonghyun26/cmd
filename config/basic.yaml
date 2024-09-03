@@ -3,4 +3,4 @@ defaults:
 - data: alanine
 - training: basic
 - logging: basic
-- job: simulation
+- job: goal

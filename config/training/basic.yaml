@@ -1,6 +1,7 @@
 batch_size: 4096
+shuffle: True
 epoch: 100
-loss: MSE
+loss: cvae
 optimizer:
   name: Adam
   params: {
