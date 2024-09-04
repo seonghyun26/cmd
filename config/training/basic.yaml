@@ -1,6 +1,6 @@
 batch_size: 4096
 shuffle: True
-epoch: 100
+epoch: 200
 loss: cvae
 optimizer:
   name: Adam
@@ -10,5 +10,6 @@ optimizer:
 scheduler:
   name: ExponentialLR
   params: {
-    gamma: 0.9
+    gamma: 0.99
   }
+num_workers: 8

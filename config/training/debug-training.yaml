@@ -1,6 +1,6 @@
 batch_size: 4096
 shuffle: True
-epoch: 100
+epoch: 3
 loss: cvae
 optimizer:
   name: Adam
@@ -12,3 +12,6 @@ scheduler:
   params: {
     gamma: 0.9
   }
+num_workers: 8
+train: True
+ckpt_name: test

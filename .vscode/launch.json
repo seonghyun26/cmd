@@ -6,7 +6,7 @@
         "type": "debugpy",
         "request": "launch",
         "env": {
-            "CUDA_VISIBLE_DEVICES": "1"
+            "CUDA_VISIBLE_DEVICES": "0"
         },
         "cwd": "/home/shpark/prj-cmd/cmd/",
         "program": "main.py",
@@ -14,9 +14,11 @@
           "--config-name",
           "debug",
           "++logging.wandb=False",
+          "++data.temperature=273.0",
+          // "hydra.output_subdir=null",
+          // "hydra/job_logging=disabled",
+          // "hydra/hydra_logging=disabled",
           // "++training.batch_size=4",
-          // "++data.state=c5",
-          // "++logging.wandb=False"
         ],
         "console": "integratedTerminal"
     }
