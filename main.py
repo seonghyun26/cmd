@@ -26,6 +26,9 @@ def main(cfg):
     device = torch.device(cfg.logging.device if "device" in cfg.logging else "cpu")
     
     # Load logger, model, data
+    logger = logging.getLogger("CMD")
+    model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
+    logger.info(f"Model: {cfg.model.name}")
     if cfg.logging.wandb:
         wandb.init(
             project=cfg.logging.project,
@@ -35,9 +38,6 @@ def main(cfg):
                 cfg, resolve=True, throw_on_missing=True
             )
         )
-    logger = logging.getLogger("CMD")
-    model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
-    logger.info(f"Model: {cfg.model.name}")
     
     # Train or load model from checkpoint
     if cfg.training.train:
@@ -72,7 +72,7 @@ def main(cfg):
                 
                 # Compute loss
                 recon_loss, kl_div = loss_func(next_state, decoded, mu, logvar)
-                loss = recon_loss + kl_div
+                loss = cfg.training.loss_recon_lambda * recon_loss + kl_div
                 total_loss += loss.item()
                 loss.backward()
                 optimizer.step()

@@ -10,6 +10,7 @@ import mdtraj as md
 
 from tqdm import tqdm
 from .load import load_simulation
+from .plot import plot_ad_potential
 from mdtraj.geometry import indices_phi, indices_psi
 
 pairwise_distance = torch.cdist
@@ -72,6 +73,19 @@ def compute_dihedral(positions):
     return angles
     
 
+def compute_phi_psi(cfg, state):
+    if cfg.data.molecule == "alanine":
+        phi_angle = [1, 6, 8, 14]
+        psi_angle = [6, 8, 14, 16]
+        phi = compute_dihedral(state[phi_angle])
+        psi = compute_dihedral(state[psi_angle])
+        phi_psi = torch.stack([phi, psi], dim=1)
+    else:
+        raise ValueError(f"Phi, Psi for molecule {molecule} TBA...")
+    
+    return phi_psi
+
+
 def compute_energy(cfg, trajectory_list, goal_state):
     sample_num = trajectory_list.shape[0]
     path_length = trajectory_list.shape[1]
@@ -105,3 +119,107 @@ def potential_energy(cfg, trajectory):
     return energy_list
 
 
+def compute_ram(cfg, trajectory_list):
+    if cfg.job.molecule == "alanine":
+        landscape_path = f"./data/{cfg.job.molecule}/final_frame.dat"
+        ad_potential = AlaninePotential(landscape_path)
+        phi_angle = [1, 6, 8, 14]
+        psi_angle = [6, 8, 14, 16]
+        
+        # Load start, goal state and compute phi, psi
+        start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
+        goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz
+        start_state = torch.tensor(start_state_xyz)
+        goal_state = torch.tensor(goal_state_xyz)
+        phi_start = compute_dihedral(start_state[:, phi_angle])
+        psi_start = compute_dihedral(start_state[:, psi_angle])
+        phi_goal = compute_dihedral(goal_state[:, phi_angle])
+        psi_goal = compute_dihedral(goal_state[:, psi_angle])
+    
+        # Compute phi, psi from trajectory_list
+        phi_traj_list = np.array([compute_dihedral(trajectory[:, phi_angle]) for trajectory in trajectory_list])
+        psi_traj_list = np.array([compute_dihedral(trajectory[:, psi_angle]) for trajectory in trajectory_list])
+        
+        ram_plot = plot_ad_potential(
+            potential = ad_potential,
+            traj_dihedral = (phi_traj_list, psi_traj_list),
+            start_dihedral = (phi_start, psi_start),
+            goal_dihedral = (phi_goal, psi_goal),
+        )
+    else:
+        raise ValueError(f"Ramachandran plot for molecule {molecule} TBA...")
+    
+    return wandb.Image(ram_plot)
+
+
+class AlaninePotential():
+    def __init__(self, landscape_path):
+        super().__init__()
+        self.open_file(landscape_path)
+
+    def open_file(self, landscape_path):
+        with open(landscape_path) as f:
+            lines = f.readlines()
+
+        dims = [90, 90]
+
+        self.locations = torch.zeros((int(dims[0]), int(dims[1]), 2))
+        self.data = torch.zeros((int(dims[0]), int(dims[1])))
+
+        i = 0
+        for line in lines[1:]:
+            splits = line[0:-1].split(" ")
+            vals = [y for y in splits if y != '']
+
+            x = float(vals[0])
+            y = float(vals[1])
+            val = float(vals[-1])
+
+            self.locations[i // 90, i % 90, :] = torch.tensor(np.array([x, y]))
+            self.data[i // 90, i % 90] = (val)  # / 503.)
+            i = i + 1
+
+    def potential(self, inp):
+        loc = self.locations.view(-1, 2)
+        distances = torch.cdist(inp, loc.double(), p=2)
+        index = distances.argmin(dim=1)
+
+        x = torch.div(index, self.locations.shape[0], rounding_mode='trunc')  # index // self.locations.shape[0]
+        y = index % self.locations.shape[0]
+
+        z = self.data[x, y]
+        return z
+
+    def drift(self, inp):
+        loc = self.locations.view(-1, 2)
+        distances = torch.cdist(inp[:, :2].double(), loc.double(), p=2)
+        index = distances.argsort(dim=1)[:, :3]
+
+        x = index // self.locations.shape[0]
+        y = index % self.locations.shape[0]
+
+        dims = torch.stack([x, y], 2)
+
+        min = dims.argmin(dim=1)
+        max = dims.argmax(dim=1)
+
+        min_x = min[:, 0]
+        min_y = min[:, 1]
+        max_x = max[:, 0]
+        max_y = max[:, 1]
+
+        min_x_dim = dims[range(dims.shape[0]), min_x, :]
+        min_y_dim = dims[range(dims.shape[0]), min_y, :]
+        max_x_dim = dims[range(dims.shape[0]), max_x, :]
+        max_y_dim = dims[range(dims.shape[0]), max_y, :]
+
+        min_x_val = self.data[min_x_dim[:, 0], min_x_dim[:, 1]]
+        min_y_val = self.data[min_y_dim[:, 0], min_y_dim[:, 1]]
+        max_x_val = self.data[max_x_dim[:, 0], max_x_dim[:, 1]]
+        max_y_val = self.data[max_y_dim[:, 0], max_y_dim[:, 1]]
+
+        grad = -1 * torch.stack([max_y_val - min_y_val, max_x_val - min_x_val], dim=1)
+
+        return grad
+    
+    

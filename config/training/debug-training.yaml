@@ -2,6 +2,7 @@ batch_size: 4096
 shuffle: True
 epoch: 3
 loss: cvae
+loss_recon_lambda: 1000
 optimizer:
   name: Adam
   params: {
@@ -14,4 +15,3 @@ scheduler:
   }
 num_workers: 8
 train: True
-ckpt_name: test

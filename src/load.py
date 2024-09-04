@@ -14,7 +14,7 @@ from openmm.app import *
 from openmm.unit import *
 
 from .model import *
-from .data import *
+# from .data import *
 
 
 class MD_Dataset(Dataset):
