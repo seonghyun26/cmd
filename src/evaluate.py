@@ -48,7 +48,7 @@ def evaluate_tps(cfg, trajectory_list, logger):
         eval_result["eval/max_energy"], eval_result["eval/final_energy_err"] = compute_energy(cfg, trajectory_list, goal_state)
     
     for key in eval_result.keys():
-        logger.info(f"{key}: {eval_result}")
+        logger.info(f"{key}: {eval_result[key]}")
     
     if cfg.logging.wandb:
         wandb.log(eval_result)

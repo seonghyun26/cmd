@@ -142,9 +142,9 @@ class ModelWrapper(nn.Module):
         
         return model
     
-    def save_model(self, path):
-        torch.save(self.encoder.state_dict(), f"{path}/encoder.pt")
-        torch.save(self.decoder.state_dict(), f"{path}/decoder.pt")
+    def save_model(self, path, epoch):
+        torch.save(self.encoder.state_dict(), f"{path}/encoder-{epoch}.pt")
+        torch.save(self.decoder.state_dict(), f"{path}/decoder-{epoch}.pt")
         
     def load_from_checkpoint(self, path):
         self.encoder.load_state_dict(torch.load(f"{path}/encoder.pt"))

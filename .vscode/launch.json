@@ -21,6 +21,28 @@
           // "++training.batch_size=4",
         ],
         "console": "integratedTerminal"
-    }
+    },
+    {
+      "name": "CMD evaluation",
+      "type": "debugpy",
+      "request": "launch",
+      "env": {
+          "CUDA_VISIBLE_DEVICES": "0"
+      },
+      "cwd": "/home/shpark/prj-cmd/cmd/",
+      "program": "main.py",
+      "args": [
+        "--config-name",
+        "debug",
+        "++logging.wandb=False",
+        "++training.train=False",
+        "++training.ckpt_name=3-layer",
+        // "hydra.output_subdir=null",
+        // "hydra/job_logging=disabled",
+        // "hydra/hydra_logging=disabled",
+        // "++training.batch_size=4",
+      ],
+      "console": "integratedTerminal"
+  }
   ]
 }

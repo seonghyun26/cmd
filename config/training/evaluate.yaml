@@ -1,0 +1,17 @@
+batch_size: 4096
+shuffle: True
+epoch: 3
+loss: cvae
+optimizer:
+  name: Adam
+  params: {
+    lr: 1e-4
+  }
+scheduler:
+  name: ExponentialLR
+  params: {
+    gamma: 0.9
+  }
+num_workers: 8
+train: False
+ckpt_name: test

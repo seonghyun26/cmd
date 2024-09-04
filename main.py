@@ -37,12 +37,13 @@ def main(cfg):
         )
     logger = logging.getLogger("CMD")
     model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
-    loss_func = load_loss(cfg)
-    train_loader = load_data(cfg)
     logger.info(f"Model: {cfg.model.name}")
     
+    # Train or load model from checkpoint
     if cfg.training.train:
         # Load dataset
+        train_loader = load_data(cfg)
+        loss_func = load_loss(cfg)
         temperature = train_loader.dataset.temperature
         data_num = len(train_loader.dataset)
         batch_size = cfg.training.batch_size
@@ -96,20 +97,21 @@ def main(cfg):
                 pbar.refresh()  
             if cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-                model_wrapper.save_model(output_dir)
-                logger.info(f"Model weights saved at: {output_dir}")
+                model_wrapper.save_model(output_dir, epoch)
+                logger.info(f"Epcoh {epoch}, model weights saved at: {output_dir}")
+        
+        # Save model
+        logger.info("Training complete!!!")
+        if cfg.logging.checkpoint:
+            output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+            model_wrapper.save_model(output_dir, "final")
+            logger.info(f"Final model weights saved at: {output_dir}")
+        
     else:
         # Load trainined model from checkpoint
         ckpt_path = f"model/{cfg.data.molecule}/{cfg.training.ckpt_name}"
         logger.info(f"Loading checkpoint from {ckpt_path}")
-        mode_wrapper.load_from_checkpoint(ckpt_path)
-    
-    # Save model
-    logger.info("Training complete!!!")
-    if cfg.logging.checkpoint:
-        output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-        model_wrapper.save_model(output_dir)
-        logger.info(f"Model weights saved at: {output_dir}")
+        model_wrapper.load_from_checkpoint(ckpt_path)
 
 
     # Test model on downstream task (generation)
