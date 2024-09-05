@@ -187,12 +187,12 @@ class ModelWrapper(nn.Module):
         
         return generated_values
     
-    def process_data(self, next_state, current_state, goal_state, step, temperature):   
-        batch_size = next_state.shape[0]     
+    def process_data(self, latent_var, current_state, goal_state, step, temperature):   
+        batch_size = latent_var.shape[0]     
         temperature = torch.tensor(temperature).to(current_state.device).repeat(batch_size, 1)
         
         processed_state = torch.cat([
-            next_state.reshape(batch_size, -1), 
+            latent_var.reshape(batch_size, -1), 
             current_state.reshape(batch_size, -1),
             goal_state.reshape(batch_size, -1),
             step.reshape(batch_size, -1),
@@ -222,6 +222,15 @@ class ModelWrapper(nn.Module):
             3
         )
         return processed_prediction
+    
+    def train(self):
+        self.encoder.train()
+        self.decoder.train()
+        
+    def eval(self):
+        self.encoder.eval()
+        self.decoder.eval()
+
 
 def load_model_wrapper(cfg, device):
     model_wrapper = ModelWrapper(cfg, device)

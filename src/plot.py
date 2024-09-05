@@ -36,14 +36,15 @@ def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral):
             linestyle="None",
             markersize=4,
             alpha=1.0,
+            zorder=101
         )
 
     # Plot start and goal states
     ax.scatter(
-        start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=100, s=400, marker="*"
+        start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=100, s=100
     )
     ax.scatter(
-        goal_dihedral[0], goal_dihedral[1], edgecolors="w", c="w", zorder=100, s=100
+        goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=100, s=400, marker="*"
     )
     
     # Plot the Ramachandran plot
@@ -57,7 +58,8 @@ def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral):
     output_dir = hydra.core.hydra_config.HydraConfig.get().run.dir
     if os.path.exists(f"{output_dir}/img") is False:
         os.mkdir(f"{output_dir}/img")
-    plt.savefig(f"{output_dir}/img/ram_plot.png")
+    img_path = f"{output_dir}/img/ram_plot.png"
+    plt.savefig(f"{img_path}")
     plt.close()
     
-    return
+    return fig

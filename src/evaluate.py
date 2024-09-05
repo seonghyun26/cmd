@@ -11,13 +11,13 @@ from .load import load_state_file
 from .metric import *
 
 
-def evaluate(cfg, trajectory_list, logger):
+def evaluate(cfg, trajectory_list, logger, epoch):
     task = cfg.job.name
     
     if task == "simulation":
         evaluate_sim(cfg, trajectory_list, logger)
     elif task == "tps":
-        evaluate_tps(cfg, trajectory_list, logger)
+        evaluate_tps(cfg, trajectory_list, logger, epoch)
     else:
         raise ValueError(f"Task {task} not found")
     
@@ -34,11 +34,11 @@ def evaluate_sim(cfg, trajectory_list, logger):
 
 
 # Trajectory list shape: (sample_num, time_horizon, atom_num, 3)
-def evaluate_tps(cfg, trajectory_list, logger):
+def evaluate_tps(cfg, trajectory_list, logger, epoch):
     goal_state = load_state_file(cfg, cfg.job.goal_state, trajectory_list.device)
     goal_state = goal_state.to("cpu")
     trajectory_list = trajectory_list.to("cpu")
-    eval_result = {}
+    eval_result = {"step": epoch}
     
     if "epd" in cfg.job.metrics:
         eval_result["eval/epd"] = compute_epd(cfg, trajectory_list, goal_state)

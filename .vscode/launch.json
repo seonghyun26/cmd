@@ -13,12 +13,10 @@
         "args": [
           "--config-name",
           "debug",
-          "++logging.wandb=False",
+          "++logging.wandb=True",
           "++data.temperature=273.0",
-          "hydra.run.dir=outputs/debug"
-          // "hydra.output_subdir=debug",
-          // "hydra/job_logging=disabled",
-          // "hydra/hydra_logging=disabled",
+          "hydra.run.dir=outputs/debug",
+          "job.metrics=['epd', 'thp', 'ram']",
         ],
         "console": "integratedTerminal"
     },
@@ -33,10 +31,10 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "debug",
+        "test",
         "++logging.wandb=False",
         "++training.train=False",
-        "++training.ckpt_name=3-layer",
+        "++training.ckpt_name=16-layer2",
         "job.metrics=['epd', 'thp', 'ram']",
         "hydra.run.dir=outputs/debug-eval"
         // "hydra.output_subdir=null",

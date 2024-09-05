@@ -18,7 +18,9 @@ def generate(cfg, model_wrapper, device, logger):
     time_horizon = cfg.job.time_horizon
     temperature = cfg.job.temperature
     current_states = load_state_file(cfg, cfg.job.start_state, device)
+    current_states *= 1000.0
     state_list = [current_states]
+    model_wrapper.eval()
     
 
     # Set conditions by task
@@ -34,30 +36,32 @@ def generate(cfg, model_wrapper, device, logger):
     
     
     # Generate trajectories
-    for t in tqdm(
-        range(time_horizon),
-        desc=f"Genearting {sample_num} trajectories for {task}"
-    ):
-        try :
-            step = torch.tensor(time_horizon - t).to(current_states.device).repeat(sample_num, 1)
-            processed_current_states = torch.cat([
-                current_states.reshape(sample_num, -1),
-                goal_states.reshape(sample_num, -1),
-                step,
-                temperature
-            ], dim=1)
-            next_states = model_wrapper.generate(processed_current_states)
-            processed_next_states = current_states.reshape(
-                sample_num,
-                atom_num,
-                3
-            )
-            state_list.append(processed_next_states)
-        except Exception as e:
-            raise ValueError(f"Error in simulation: {e}")
+    with torch.no_grad():
+        for t in tqdm(
+            range(time_horizon),
+            desc=f"Genearting {sample_num} trajectories for {task}"
+        ):
+            try :
+                step = torch.tensor(time_horizon - t).to(current_states.device).repeat(sample_num, 1)
+                processed_current_states = torch.cat([
+                    current_states.reshape(sample_num, -1),
+                    goal_states.reshape(sample_num, -1),
+                    step,
+                    temperature
+                ], dim=1)
+                next_states = model_wrapper.generate(processed_current_states)
+                processed_next_states = current_states.reshape(
+                    sample_num,
+                    atom_num,
+                    3
+                )
+                state_list.append(processed_next_states)
+            except Exception as e:
+                raise ValueError(f"Error in simulation: {e}")
     
     
     trajectory_list = torch.stack(state_list, dim=1)
+    trajectory_list /= 1000.0
     if cfg.job.save:
         save_trajectory(cfg, trajectory_list, logger)
     

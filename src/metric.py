@@ -140,7 +140,7 @@ def compute_ram(cfg, trajectory_list):
         phi_traj_list = np.array([compute_dihedral(trajectory[:, phi_angle]) for trajectory in trajectory_list])
         psi_traj_list = np.array([compute_dihedral(trajectory[:, psi_angle]) for trajectory in trajectory_list])
         
-        ram_plot = plot_ad_potential(
+        ram_plot_img = plot_ad_potential(
             potential = ad_potential,
             traj_dihedral = (phi_traj_list, psi_traj_list),
             start_dihedral = (phi_start, psi_start),
@@ -149,7 +149,7 @@ def compute_ram(cfg, trajectory_list):
     else:
         raise ValueError(f"Ramachandran plot for molecule {molecule} TBA...")
     
-    return wandb.Image(ram_plot)
+    return wandb.Image(ram_plot_img)
 
 
 class AlaninePotential():

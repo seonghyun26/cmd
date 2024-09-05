@@ -52,7 +52,10 @@ def main(cfg):
         
         # Train model
         logger.info("Training...")
-        pbar = trange(cfg.training.epoch, desc="Training")
+        pbar = trange(
+            cfg.training.epoch,
+            desc="Training"
+        )
         for epoch in pbar:
             total_loss = 0
             
@@ -65,6 +68,9 @@ def main(cfg):
                 # Load data
                 data = [d.to(device) for d in data]
                 current_state, next_state, goal_state, step = data
+                current_state *= 1000.0
+                next_state *= 1000.0
+                goal_state *= 1000.0
                 optimizer.zero_grad()
                 
                 # Predict next state
@@ -87,6 +93,7 @@ def main(cfg):
                 "loss/total": total_loss
             }
             
+            # Jobs to do at epoch frequency
             if cfg.logging.wandb:
                 wandb.log(
                     result,
@@ -99,6 +106,11 @@ def main(cfg):
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
                 model_wrapper.save_model(output_dir, epoch)
                 logger.info(f"Epcoh {epoch}, model weights saved at: {output_dir}")
+            if epoch != 0 and epoch % cfg.training.eval_freq == 0:
+                model_wrapper.eval()
+                trajectory_list = generate(cfg, model_wrapper, device, logger)
+                evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=epoch)
+                model_wrapper.train()
         
         # Save model
         logger.info("Training complete!!!")
@@ -117,7 +129,7 @@ def main(cfg):
     # Test model on downstream task (generation)
     logger.info("Evaluating...")
     trajectory_list = generate(cfg, model_wrapper, device, logger)
-    evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger)
+    evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=cfg.training.epoch)
     logger.info("Evaluation complete!!!")
         
         

@@ -2,7 +2,7 @@ batch_size: 4096
 shuffle: True
 epoch: 3
 loss: cvae
-loss_recon_lambda: 1000
+loss_recon_lambda: 1
 optimizer:
   name: Adam
   params: {
@@ -11,7 +11,8 @@ optimizer:
 scheduler:
   name: ExponentialLR
   params: {
-    gamma: 0.9
+    gamma: 0.95
   }
 num_workers: 8
 train: True
+eval_freq: 1
