@@ -136,6 +136,9 @@ class ModelWrapper(nn.Module):
 
         return model
     
+    def parameters(self):
+        return list(self.model.parameters()) + list(self.mu.parameters()) + list(self.var.parameters())
+    
     def save_model(self, path, epoch):
         torch.save(self.model.state_dict(), f"{path}/model-{epoch}.pt")
         

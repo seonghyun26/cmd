@@ -31,7 +31,6 @@ def main(cfg):
     logger = logging.getLogger("CMD")
     model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
     accelerator = Accelerator()
-    model_wrapper = accelerator.prepare(model_wrapper, optimizer, scheduler)
     logger.info(f"Model: {cfg.model.name}, param num: TBA")
     if cfg.logging.wandb:
         wandb.init(
@@ -52,6 +51,10 @@ def main(cfg):
         data_num = len(train_loader.dataset)
         batch_size = cfg.training.batch_size
         logger.info(f"MD Dataset size: {data_num}")
+        
+        # Accelerate        
+        model_wrapper, optimizer, train_loader = accelerator.prepare(model_wrapper, optimizer, train_loader)
+
         
         # Train model
         logger.info("Training...")
