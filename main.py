@@ -6,11 +6,13 @@ import logging
 import datetime
 
 from src import *
+from accelerate import Accelerator
 from tqdm.auto import tqdm, trange
 from omegaconf import DictConfig, OmegaConf, open_dict
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 @hydra.main(
     version_base=None,
@@ -25,10 +27,12 @@ def main(cfg):
     print(OmegaConf.to_yaml(cfg))
     device = torch.device(cfg.logging.device if "device" in cfg.logging else "cpu")
     
-    # Load logger, model, data
+    # Load logger, model, data]
     logger = logging.getLogger("CMD")
     model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
-    logger.info(f"Model: {cfg.model.name}")
+    accelerator = Accelerator()
+    model_wrapper = accelerator.prepare(model_wrapper, optimizer, scheduler)
+    logger.info(f"Model: {cfg.model.name}, param num: TBA")
     if cfg.logging.wandb:
         wandb.init(
             project=cfg.logging.project,
@@ -66,7 +70,7 @@ def main(cfg):
                 leave=False
             ):
                 # Load data
-                data = [d.to(device) for d in data]
+                # data = [d.to(device) for d in data]
                 current_state, next_state, goal_state, step = data
                 current_state *= 1000.0
                 next_state *= 1000.0
@@ -80,7 +84,8 @@ def main(cfg):
                 recon_loss, kl_div = loss_func(next_state, decoded, mu, logvar)
                 loss = cfg.training.loss_recon_lambda * recon_loss + kl_div
                 total_loss += loss.item()
-                loss.backward()
+                # loss.backward()
+                accelerator.backward(loss)
                 optimizer.step()
             
             # Save result and logg

@@ -7,6 +7,7 @@ import numpy as np
 import mdtraj as md
 
 from tqdm import tqdm
+
 from .load import load_state_file
 from .metric import *
 

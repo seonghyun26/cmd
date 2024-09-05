@@ -119,13 +119,20 @@ class ModelWrapper(nn.Module):
         self.batch_size = cfg.training.batch_size
         self.latent_dim = cfg.model.encoder.output_dim
         
-        self.encoder = self.load_model(cfg.model.encoder).to(device)
-        self.decoder = self.load_model(cfg.model.decoder).to(device)
-        self.mu = nn.Linear(self.latent_dim, self.latent_dim).to(device)
-        self.logvar = nn.Linear(self.latent_dim, self.latent_dim).to(device)
+        # self.encoder = self.load_model(cfg.model.encoder).to(device)
+        # self.decoder = self.load_model(cfg.model.decoder).to(device)
+        # self.mu = nn.Linear(self.latent_dim, self.latent_dim).to(device)
+        # self.logvar = nn.Linear(self.latent_dim, self.latent_dim).to(device)
+        self.encoder = self.load_model(cfg.model.encoder)
+        self.decoder = self.load_model(cfg.model.decoder)
+        self.mu = nn.Linear(self.latent_dim, self.latent_dim)
+        self.logvar = nn.Linear(self.latent_dim, self.latent_dim)
 
     def __parameters__(self):
         return self.encoder.parameters(), self.decoder.parameters()
+    
+    def num_parameters(self):
+        return self.encoder.num_parameters() + self.decoder.num_parameters()
     
     def load_model(self, cfg_model):
         model_dict = {
