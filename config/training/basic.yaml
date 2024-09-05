@@ -1,12 +1,11 @@
 batch_size: 4096
 shuffle: True
-epoch: 100
-loss: cvae
-loss_recon_lambda: 1
+epoch: 200
+loss: MSE
 optimizer:
   name: Adam
   params: {
-    lr: 1e-4
+    lr: 1e-3
   }
 scheduler:
   name: ExponentialLR
@@ -15,4 +14,3 @@ scheduler:
   }
 num_workers: 8
 train: True
-eval_freq: 25

@@ -51,7 +51,6 @@ def main(cfg):
         temperature = train_loader.dataset.temperature
         data_num = len(train_loader.dataset)
         batch_size = cfg.training.batch_size
-        loss_lambda = 1
         logger.info(f"MD Dataset size: {data_num}")
         
         # Train model
@@ -72,17 +71,17 @@ def main(cfg):
                 # Load data
                 # data = [d.to(device) for d in data]
                 current_state, next_state, goal_state, step = data
-                current_state *= 1000.0
-                next_state *= 1000.0
-                goal_state *= 1000.0
+                
+                # current_state *= 1000.0
+                # next_state *= 1000.0
+                # goal_state *= 1000.0
                 optimizer.zero_grad()
                 
                 # Predict next state
-                encoded, decoded, mu, logvar = model_wrapper(next_state, current_state, goal_state, step, temperature)
+                state_offset = model_wrapper(current_state, goal_state, step, temperature)
                 
                 # Compute loss
-                recon_loss, kl_div = loss_func(next_state, decoded, mu, logvar)
-                loss = cfg.training.loss_recon_lambda * recon_loss + kl_div
+                loss = loss_func(next_state, current_state + state_offset)
                 total_loss += loss.item()
                 # loss.backward()
                 accelerator.backward(loss)
@@ -90,11 +89,9 @@ def main(cfg):
             
             # Save result and logg
             scheduler.step()
-            total_loss /= data_num / loss_lambda
+            total_loss /= data_num
             result = {
                 "lr": optimizer.param_groups[0]["lr"],
-                "loss/recon": recon_loss,
-                "loss/kl": kl_div,
                 "loss/total": total_loss
             }
             
@@ -107,13 +104,12 @@ def main(cfg):
             if epoch % cfg.logging.update_freq == 0:
                 pbar.set_description(f"Training (loss: {total_loss:4f})")
                 pbar.refresh()  
-            if cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
+            if epoch != 0 and cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
                 model_wrapper.save_model(output_dir, epoch)
                 logger.info(f"Epcoh {epoch}, model weights saved at: {output_dir}")
-            if epoch != 0 and epoch % cfg.training.eval_freq == 0:
                 model_wrapper.eval()
-                trajectory_list = generate(cfg, model_wrapper, device, logger)
+                trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
                 evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=epoch)
                 model_wrapper.train()
         
@@ -129,11 +125,11 @@ def main(cfg):
         ckpt_path = f"model/{cfg.data.molecule}/{cfg.training.ckpt_name}"
         logger.info(f"Loading checkpoint from {ckpt_path}")
         model_wrapper.load_from_checkpoint(ckpt_path)
-
+        epoch = cfg.training.epoch
 
     # Test model on downstream task (generation)
     logger.info("Evaluating...")
-    trajectory_list = generate(cfg, model_wrapper, device, logger)
+    trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
     evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=cfg.training.epoch)
     logger.info("Evaluation complete!!!")
         

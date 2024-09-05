@@ -11,15 +11,15 @@ from tqdm import tqdm
 from .load import load_state_file
 
 
-def generate(cfg, model_wrapper, device, logger):
+def generate(cfg, model_wrapper, epoch, device, logger):
     # Load configs for generation
     sample_num = cfg.job.sample_num
     atom_num = cfg.data.atom
     time_horizon = cfg.job.time_horizon
     temperature = cfg.job.temperature
-    current_states = load_state_file(cfg, cfg.job.start_state, device)
-    current_states *= 1000.0
-    state_list = [current_states]
+    inital_states = load_state_file(cfg, cfg.job.start_state, device)
+    # inital_states *= 1000.0
+    state_list = [inital_states]
     model_wrapper.eval()
     
 
@@ -30,48 +30,46 @@ def generate(cfg, model_wrapper, device, logger):
         # goal_states = load_state_file(cfg, cfg.job.goal_state, device)
     elif task == "tps":
         goal_states = load_state_file(cfg, cfg.job.goal_state, device)
+        # goal_states *= 1000.0
     else:
         raise ValueError(f"Task {task} not found")
-    temperature = torch.tensor(temperature).to(current_states.device).repeat(sample_num, 1)
     
     
     # Generate trajectories
     with torch.no_grad():
+        current_states = inital_states
         for t in tqdm(
             range(time_horizon),
-            desc=f"Genearting {sample_num} trajectories for {task}"
+            desc=f"Epoch {epoch}, genearting {sample_num} trajectories for {task}"
         ):
-            try :
-                step = torch.tensor(time_horizon - t).to(current_states.device).repeat(sample_num, 1)
-                processed_current_states = torch.cat([
-                    current_states.reshape(sample_num, -1),
-                    goal_states.reshape(sample_num, -1),
-                    step,
-                    temperature
-                ], dim=1)
-                next_states = model_wrapper.generate(processed_current_states)
-                processed_next_states = current_states.reshape(
-                    sample_num,
-                    atom_num,
-                    3
-                )
-                state_list.append(processed_next_states)
-            except Exception as e:
-                raise ValueError(f"Error in simulation: {e}")
+            step = torch.tensor(time_horizon - t).to(current_states.device).repeat(sample_num, 1)
+            states_offset = model_wrapper(
+                current_state=current_states,
+                goal_state=goal_states,
+                step=step,
+                temperature=temperature
+            )
+            states_offset = states_offset.reshape(
+                sample_num,
+                atom_num,
+                3
+            )
+            next_states = current_states + states_offset
+            state_list.append(next_states)
+            current_states = next_states
     
     
     trajectory_list = torch.stack(state_list, dim=1)
-    trajectory_list /= 1000.0
     if cfg.job.save:
-        save_trajectory(cfg, trajectory_list, logger)
+        save_trajectory(cfg, trajectory_list, epoch, logger)
     
     return trajectory_list
     
 
     
     
-def save_trajectory(cfg, trajectory_list, logger):
-    trajectory_dir = f"{hydra.core.hydra_config.HydraConfig.get().runtime.output_dir}/{cfg.job.name}/trajectory"
+def save_trajectory(cfg, trajectory_list, epoch, logger):
+    trajectory_dir = f"{hydra.core.hydra_config.HydraConfig.get().runtime.output_dir}/{cfg.job.name}/{epoch}"
     if not os.path.exists(trajectory_dir):
         os.makedirs(trajectory_dir)
     
