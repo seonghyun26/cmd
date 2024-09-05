@@ -112,9 +112,13 @@ def potential_energy(cfg, trajectory):
     
     for frame in trajectory:
         pbb_file_path = f"data/{cfg.data.molecule}/c5.pdb"
-        simulation = load_simulation(cfg, pbb_file_path, frame)
-        energy = simulation.context.getState(getEnergy=True).getPotentialEnergy()
-        energy_list.append(energy._value)
+        try:
+            simulation = load_simulation(cfg, pbb_file_path, frame)
+            energy = simulation.context.getState(getEnergy=True).getPotentialEnergy()
+            energy_list.append(energy._value)
+        except Exception as e:
+            # logger.info(f"Error in computing energy: {e}")
+            energy_list.append(0)
     
     return energy_list
 

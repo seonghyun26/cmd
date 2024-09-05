@@ -63,15 +63,15 @@ def generate(cfg, model_wrapper, device, logger):
     trajectory_list = torch.stack(state_list, dim=1)
     trajectory_list /= 1000.0
     if cfg.job.save:
-        save_trajectory(cfg, trajectory_list, logger)
+        save_trajectory(cfg, trajectory_list, epoch, logger)
     
     return trajectory_list
     
 
     
     
-def save_trajectory(cfg, trajectory_list, logger):
-    trajectory_dir = f"{hydra.core.hydra_config.HydraConfig.get().runtime.output_dir}/{cfg.job.name}/trajectory"
+def save_trajectory(cfg, trajectory_list, epoch, logger):
+    trajectory_dir = f"{hydra.core.hydra_config.HydraConfig.get().runtime.output_dir}/{cfg.job.name}/{epoch}"
     if not os.path.exists(trajectory_dir):
         os.makedirs(trajectory_dir)
     

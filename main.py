@@ -108,7 +108,7 @@ def main(cfg):
                 logger.info(f"Epcoh {epoch}, model weights saved at: {output_dir}")
             if epoch != 0 and epoch % cfg.training.eval_freq == 0:
                 model_wrapper.eval()
-                trajectory_list = generate(cfg, model_wrapper, device, logger)
+                trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
                 evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=epoch)
                 model_wrapper.train()
         
@@ -128,7 +128,7 @@ def main(cfg):
 
     # Test model on downstream task (generation)
     logger.info("Evaluating...")
-    trajectory_list = generate(cfg, model_wrapper, device, logger)
+    trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
     evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=cfg.training.epoch)
     logger.info("Evaluation complete!!!")
         
