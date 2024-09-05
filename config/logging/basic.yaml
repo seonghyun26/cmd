@@ -6,4 +6,4 @@ entity: eddy26
 device: cuda
 checkpoint: True
 update_freq: 10
-ckpt_freq: 20
+ckpt_freq: 40

@@ -38,7 +38,7 @@ def evaluate_tps(cfg, trajectory_list, logger, epoch):
     goal_state = load_state_file(cfg, cfg.job.goal_state, trajectory_list.device)
     goal_state = goal_state.to("cpu")
     trajectory_list = trajectory_list.to("cpu")
-    eval_result = {"step": epoch}
+    eval_result = {}
     
     if "epd" in cfg.job.metrics:
         eval_result["eval/epd"] = compute_epd(cfg, trajectory_list, goal_state)
@@ -53,6 +53,6 @@ def evaluate_tps(cfg, trajectory_list, logger, epoch):
         logger.info(f"{key}: {eval_result[key]}")
     
     if cfg.logging.wandb:
-        wandb.log(eval_result)
+        wandb.log(eval_result, step=epoch)
     
     return

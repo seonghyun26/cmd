@@ -1,7 +1,7 @@
 batch_size: 4096
 shuffle: True
-epoch: 8
-loss: MSE
+epoch: 200
+loss: mse
 optimizer:
   name: Adam
   params: {
@@ -14,4 +14,4 @@ scheduler:
   }
 num_workers: 8
 train: True
-eval_freq: 2
+eval_freq: 25
