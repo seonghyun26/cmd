@@ -2,6 +2,7 @@ batch_size: 4096
 shuffle: True
 epoch: 8
 loss: MSE
+loss_variance: False
 optimizer:
   name: Adam
   params: {
@@ -12,18 +13,19 @@ optimizer:
 #   params: {
 #     gamma: 0.99
 #   }
-scheduler:
-  name: ReduceLROnPlateau
-  params: {
-    gamma: 0.8,
-    milestones: [30, 80, 150]
-  }
 # scheduler:
-#   name: CosineAnnealingLR
+#   name: ReduceLROnPlateau
 #   params: {
-#     T_max: 200,
-#     eta_min: 1e-5
+#     gamma: 0.8,
+#     milestones: [30, 80, 150]
 #   }
+scheduler:
+  name: CosineAnnealingLR
+  params: {
+    T_max: 200,
+    eta_min: 1e-5
+  }
 num_workers: 8
 train: True
 eval_freq: 2
+max_grad_norm: 10

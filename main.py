@@ -92,10 +92,15 @@ def main(cfg):
                 total_var += var.sum()
                 if cfg.training.loss_variance:
                     loss -= var.mean()
-                loss.backward()
+                # loss.backward()
+                accelerator.backward(loss)
+                if cfg.training.max_grad_norm is not None:
+                    if accelerator.sync_gradients:
+                        accelerator.clip_grad_norm_(model_wrapper.parameters(), cfg.training.max_grad_norm)
+                    optimizer.step()
                 
                 total_loss += loss.item()
-                optimizer.step()
+                # optimizer.step()
             
             # results 
             scheduler.step()
