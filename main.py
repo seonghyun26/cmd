@@ -80,18 +80,22 @@ def main(cfg):
                 # Compute loss
                 loss = loss_func(next_state, current_state + state_offset)
                 if cfg.training.loss_scale == "step":
-                    loss = loss / step
-                total_loss += loss.item()
-                total_var += var.sum().item()
+                    loss = loss.reshape(step.shape[0], -1) / step
+                    loss = loss.mean()
+                total_var += var.sum()
+                if cfg.training.loss_variance:
+                    loss -= var.mean()
                 loss.backward()
+                
+                total_loss += loss.item()
                 optimizer.step()
             
-            # results and update
+            # results 
             scheduler.step()
             result = {
                 "lr": optimizer.param_groups[0]["lr"],
-                "loss/total": total_loss,
-                "train/var": total_var,
+                "loss/total": total_loss / len(train_loader),
+                "train/var": total_var  / len(train_loader),
             }
             pbar.set_description(f"Training (loss: {total_loss:4f})")
             pbar.refresh()  

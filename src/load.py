@@ -5,7 +5,7 @@ import mdtraj as md
 import torch.nn as nn
 
 from torch.optim import Adam, SGD
-from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR
+from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
@@ -181,6 +181,7 @@ def load_model_wrapper(cfg, device):
     return model_wrapper, optimizer, scheduler
 
 
+
 def load_optimizer(cfg, model_param):
     optimizer_dict = {
         "Adam": Adam,
@@ -221,7 +222,7 @@ def load_scheduler(cfg, optimizer):
 def load_loss(cfg):
     loss_name = cfg.training.loss.lower()
     if loss_name == "mse":
-        loss = nn.MSELoss()
+        loss = nn.MSELoss(reduction="none" if cfg.training.loss_scale == "step" else "mean")
     else:
         raise ValueError(f"Loss {cfg.training.loss} not found")
     

@@ -7,11 +7,23 @@ optimizer:
   params: {
     lr: 1e-3
   }
+# scheduler:
+#   name: ExponentialLR
+#   params: {
+#     gamma: 0.99
+#   }
 scheduler:
-  name: ExponentialLR
+  name: ReduceLROnPlateau
   params: {
-    gamma: 0.99
+    gamma: 0.8,
+    milestones: [30, 80, 150]
   }
+# scheduler:
+#   name: CosineAnnealingLR
+#   params: {
+#     T_max: 200,
+#     eta_min: 1e-5
+#   }
 num_workers: 8
 train: True
 eval_freq: 2

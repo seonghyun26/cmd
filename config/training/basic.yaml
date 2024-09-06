@@ -3,7 +3,8 @@ batch_size: 8192
 shuffle: True
 epoch: 200
 loss: MSE
-# loss_scale: step
+loss_scale: none
+loss_variance: False
 optimizer:
   name: Adam
   params: {

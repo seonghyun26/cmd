@@ -18,9 +18,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     time_horizon = cfg.job.time_horizon
     temperature = cfg.job.temperature
     inital_states = load_state_file(cfg, cfg.job.start_state, device)
-    # inital_states *= 1000.0
-    state_list = [inital_states]
-    model_wrapper.eval()
+    inital_states *= 1000.0
     
 
     # Set conditions by task
@@ -29,14 +27,16 @@ def generate(cfg, model_wrapper, epoch, device, logger):
         raise NotImplementedError("Simulation task TBA")
     elif task == "tps":
         goal_states = load_state_file(cfg, cfg.job.goal_state, device)
+        goal_states *= 1000.0
     else:
         raise ValueError(f"Task {task} not found")
     
     
     # Generate trajectories
+    state_list = [inital_states]
+    current_states = inital_states
+    model_wrapper.eval()
     with torch.no_grad():
-        current_states = inital_states * 1000.0
-        goal_states *= 1000.0
         for t in tqdm(
             range(time_horizon),
             desc=f"Epoch {epoch}, genearting {sample_num} trajectories for {task}"
