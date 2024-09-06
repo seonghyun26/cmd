@@ -42,7 +42,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
             desc=f"Epoch {epoch}, genearting {sample_num} trajectories for {task}"
         ):
             step = torch.tensor(time_horizon - t).to(current_states.device).repeat(sample_num, 1)
-            states_offset, var = model_wrapper(
+            states_offset, mu, log_var = model_wrapper(
                 current_state=current_states,
                 goal_state=goal_states,
                 step=step,

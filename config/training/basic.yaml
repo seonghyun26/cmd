@@ -2,9 +2,9 @@
 batch_size: 8192
 shuffle: True
 epoch: 200
-loss: MSE
-loss_scale: none
-loss_variance: False
+loss:
+  name: mse+reg
+  reduction: mean
 optimizer:
   name: Adam
   params: {
@@ -17,3 +17,4 @@ scheduler:
   }
 num_workers: 8
 train: True
+test: False

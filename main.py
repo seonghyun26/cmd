@@ -42,9 +42,12 @@ def main(cfg):
     # Train or load model from checkpoint
     if cfg.training.train:
         # Load dataset
-        train_loader = load_data(cfg)
-        loss_func = load_loss(cfg)
-        temperature = train_loader.dataset.temperature
+        train_loader, test_loader = load_data(cfg)
+        criteria = load_loss(cfg)
+        if cfg.training.test:
+            temperature = train_loader.dataset.dataset.temperature
+        else:
+            temperature = train_loader.dataset.temperature
         data_num = len(train_loader.dataset)
         batch_size = cfg.training.batch_size
         logger.info(f"MD Dataset size: {data_num}")
@@ -56,6 +59,7 @@ def main(cfg):
             desc="Training"
         )
         for epoch in pbar:
+            model_wrapper.train()
             total_loss = 0
             total_var = 0
             
@@ -75,27 +79,33 @@ def main(cfg):
                 optimizer.zero_grad()
                 
                 # Predict next state
-                state_offset, var = model_wrapper(current_state, goal_state, step, temperature)
+                state_offset, mu, log_var = model_wrapper(current_state, goal_state, step, temperature)
                 
                 # Compute loss
-                loss = loss_func(next_state, current_state + state_offset)
-                if cfg.training.loss_scale == "step":
-                    loss = loss.reshape(step.shape[0], -1) / step
-                    loss = loss.mean()
-                total_var += var.sum()
-                if cfg.training.loss_variance:
-                    loss -= var.mean()
+                loss = criteria(next_state, current_state + state_offset, mu, log_var)
                 loss.backward()
-                
                 total_loss += loss.item()
                 optimizer.step()
             
             # results 
             scheduler.step()
+            if cfg.training.test:
+                model_wrapper.eval()
+                test_loss = 0
+                for i, test_data in enumerate(test_loader):
+                    data = [d.to(device) for d in data]
+                    current_state, next_state, goal_state, step = data
+                    current_state *= 1000.0
+                    next_state *= 1000.0
+                    goal_state *= 1000.0
+                    state_offset, var = model_wrapper(current_state, goal_state, step, temperature)
+                    loss = criteria(next_state, current_state + state_offset)
+                    test_loss += loss.mean()
             result = {
                 "lr": optimizer.param_groups[0]["lr"],
                 "loss/total": total_loss / len(train_loader),
                 "train/var": total_var  / len(train_loader),
+                # "test/loss": test_loss / len(test_loader)
             }
             pbar.set_description(f"Training (loss: {total_loss:4f})")
             pbar.refresh()  

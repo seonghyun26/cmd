@@ -3,3 +3,4 @@ atom: 22
 temperature: 300.0
 state: c5
 index: random
+train_test_split: [0.8, 0.2]
