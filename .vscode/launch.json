@@ -14,6 +14,7 @@
           "--config-name",
           "debug",
           "++logging.wandb=False",
+          "++training.loss_scale=step",
           "++data.temperature=273.0",
           "hydra.run.dir=outputs/debug",
           "job.metrics=['epd', 'thp', 'ram']",
@@ -31,10 +32,10 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "test",
+        "mlp-big",
         "++logging.wandb=False",
         "++training.train=False",
-        "++training.ckpt_name=16-layer2",
+        "++training.ckpt_name=16-layer",
         "job.metrics=['epd', 'thp', 'ram']",
         "hydra.run.dir=outputs/debug-eval"
         // "hydra.output_subdir=null",

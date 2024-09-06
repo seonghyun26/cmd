@@ -1,0 +1,32 @@
+HETATM    1  H1  ACE A   1      19.745   3.573  20.603  1.00  0.00           H  
+HETATM    2  CH3 ACE A   1      18.882   3.072  21.040  1.00  0.00           C  
+HETATM    3  H2  ACE A   1      19.299   2.583  21.920  1.00  0.00           H  
+HETATM    4  H3  ACE A   1      18.428   2.368  20.342  1.00  0.00           H  
+HETATM    5  C   ACE A   1      17.901   4.069  21.635  1.00  0.00           C  
+HETATM    6  O   ACE A   1      16.732   3.819  21.870  1.00  0.00           O  
+ATOM      7  N   ALA A   2      18.376   5.305  21.721  1.00  0.00           N  
+ATOM      8  H   ALA A   2      19.385   5.264  21.729  1.00  0.00           H  
+ATOM      9  CA  ALA A   2      17.741   6.537  22.185  1.00  0.00           C  
+ATOM     10  HA  ALA A   2      16.684   6.481  21.923  1.00  0.00           H  
+ATOM     11  CB  ALA A   2      18.058   6.643  23.717  1.00  0.00           C  
+ATOM     12  HB1 ALA A   2      17.571   7.519  24.145  1.00  0.00           H  
+ATOM     13  HB2 ALA A   2      19.126   6.745  23.909  1.00  0.00           H  
+ATOM     14  HB3 ALA A   2      17.691   5.788  24.285  1.00  0.00           H  
+ATOM     15  C   ALA A   2      18.296   7.815  21.479  1.00  0.00           C  
+ATOM     16  O   ALA A   2      17.564   8.475  20.800  1.00  0.00           O  
+HETATM   17  N   NME A   3      19.537   8.155  21.666  1.00  0.00           N  
+HETATM   18  H   NME A   3      20.012   7.521  22.294  1.00  0.00           H  
+HETATM   19  C   NME A   3      20.091   9.424  21.384  1.00  0.00           C  
+HETATM   20  H1  NME A   3      20.639   9.837  22.230  1.00  0.00           H  
+HETATM   21  H2  NME A   3      20.760   9.407  20.523  1.00  0.00           H  
+HETATM   22  H3  NME A   3      19.228  10.046  21.144  1.00  0.00           H  
+CONECT    1    2
+CONECT    2    3    4    5
+CONECT    5    6    7
+CONECT    7    8    9
+CONECT    9   10   11   15
+CONECT   11   12   13   14
+CONECT   15   16   16   17
+CONECT   17   18   19
+CONECT   19   20   21   22
+END

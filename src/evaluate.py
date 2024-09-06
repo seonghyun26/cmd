@@ -54,6 +54,9 @@ def evaluate_tps(cfg, trajectory_list, logger, epoch):
         logger.info(f"{key}: {eval_result[key]}")
     
     if cfg.logging.wandb:
-        wandb.log(eval_result, step=epoch)
+        wandb.log(
+            eval_result,
+            step=epoch
+        )
     
     return

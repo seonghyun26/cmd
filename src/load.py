@@ -5,7 +5,7 @@ import mdtraj as md
 import torch.nn as nn
 
 from torch.optim import Adam, SGD
-from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR
+from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
@@ -143,7 +143,7 @@ class ModelWrapper(nn.Module):
         torch.save(self.model.state_dict(), f"{path}/model-{epoch}.pt")
         
     def load_from_checkpoint(self, path):
-        self.model.load_state_dict(torch.load(f"{path}/encoder.pt"))
+        self.model.load_state_dict(torch.load(f"{path}/model.pt"))
     
     def forward(self,
         current_state: torch.Tensor,
@@ -168,10 +168,10 @@ class ModelWrapper(nn.Module):
         state_offset = self.reparameterize(mu, var)
         state_offset = state_offset.reshape(batch_size, self.atom_num, 3)
         
-        return state_offset
+        return state_offset, var
     
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
+    def reparameterize(self, mu, var):
+        std = torch.exp(var)
         eps = torch.randn_like(std)
         
         return mu + eps * std
@@ -225,7 +225,7 @@ def load_scheduler(cfg, optimizer):
 def load_loss(cfg):
     loss_name = cfg.training.loss.lower()
     if loss_name == "mse":
-        loss = nn.MSELoss()
+        loss = nn.MSELoss(reduction="none" if cfg.training.loss_scale == "step" else "mean")
     else:
         raise ValueError(f"Loss {cfg.training.loss} not found")
     

@@ -64,6 +64,7 @@ def main(cfg):
         )
         for epoch in pbar:
             total_loss = 0
+            total_var = 0
             
             for i, data in tqdm(
                 enumerate(train_loader),
@@ -75,39 +76,46 @@ def main(cfg):
                 # data = [d.to(device) for d in data]
                 current_state, next_state, goal_state, step = data
                 
-                # current_state *= 1000.0
-                # next_state *= 1000.0
-                # goal_state *= 1000.0
+                current_state *= 1000.0
+                next_state *= 1000.0
+                goal_state *= 1000.0
                 optimizer.zero_grad()
                 
                 # Predict next state
-                state_offset = model_wrapper(current_state, goal_state, step, temperature)
+                state_offset, var = model_wrapper(current_state, goal_state, step, temperature)
                 
                 # Compute loss
                 loss = loss_func(next_state, current_state + state_offset)
+                if cfg.training.loss_scale == "step":
+                    loss = loss.reshape(step.shape[0], -1) / step
+                    loss = loss.mean()
+                total_var += var.sum()
+                if cfg.training.loss_variance:
+                    loss -= var.mean()
+                loss.backward()
+                
                 total_loss += loss.item()
-                # loss.backward()
-                accelerator.backward(loss)
                 optimizer.step()
             
-            # Save result and logg
+            # results 
             scheduler.step()
-            total_loss /= data_num
             result = {
                 "lr": optimizer.param_groups[0]["lr"],
-                "loss/total": total_loss
+                "loss/total": total_loss / len(train_loader),
+                "train/var": total_var  / len(train_loader),
             }
+            pbar.set_description(f"Training (loss: {total_loss:4f})")
+            pbar.refresh()  
             
-            # Jobs to do at epoch frequency
+            # Wandb loggging
             if cfg.logging.wandb:
                 wandb.log(
                     result,
                     step=epoch
                 )
-            if epoch % cfg.logging.update_freq == 0:
-                pbar.set_description(f"Training (loss: {total_loss:4f})")
-                pbar.refresh()  
-            if epoch != 0 and cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
+                
+            # Jobs to do at epoch frequency
+            if epoch * cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
                 model_wrapper.save_model(output_dir, epoch)
                 logger.info(f"Epcoh {epoch}, model weights saved at: {output_dir}")
