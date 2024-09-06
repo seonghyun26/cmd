@@ -61,6 +61,7 @@ class ModelWrapper(nn.Module):
     
     def reparameterize(self, mu, var):
         std = torch.exp(var)
-        eps = torch.randn_like(std)
+        # eps = torch.randn_like(std)
+        eps = torch.normal(mean=0.0, std=1.0, size=(1,)).to(std.device)
         
         return mu + eps * std

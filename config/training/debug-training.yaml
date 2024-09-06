@@ -2,7 +2,7 @@ batch_size: 4096
 shuffle: True
 epoch: 8
 loss:
-  name: MSE
+  name: MSE+reg
   reduction: mean
 optimizer:
   name: Adam
@@ -35,5 +35,5 @@ scheduler:
 #   }
 num_workers: 8
 train: True
-test: True
+test: False
 eval_freq: 2

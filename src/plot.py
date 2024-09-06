@@ -35,7 +35,7 @@ def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral, e
             linestyle="None",
             markersize=4,
             alpha=1.0,
-            zorder=101
+            zorder=10
         )
 
     # Plot start and goal states

@@ -102,8 +102,8 @@ def main(cfg):
                     # current_state *= 1000.0
                     # next_state *= 1000.0
                     # goal_state *= 1000.0
-                    state_offset, var = model_wrapper(current_state, goal_state, step, temperature)
-                    loss = criteria(next_state, current_state + state_offset)
+                    state_offset, mu, log_var = model_wrapper(current_state, goal_state, step, temperature)
+                    loss = criteria(next_state, current_state + state_offset, mu, log_var)
                     test_loss += loss.mean()
             result = {
                 "lr": optimizer.param_groups[0]["lr"],
