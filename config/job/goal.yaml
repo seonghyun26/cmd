@@ -6,7 +6,7 @@ sample_num: 16
 temperature: 300
 save: True
 time_horizon: 500
-thp_cv_bound: 75
+thp_cv_bound: 0.75
 simulation:
   force_field: ["amber99sbildn.xml", "tip3p.xml"]
   platform: OpenCL
@@ -15,5 +15,5 @@ simulation:
 metrics:
 - epd
 - thp
-- energy
 - ram
+# - energy

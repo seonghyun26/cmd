@@ -33,6 +33,7 @@ def compute_thp(cfg, trajectory_list, goal_state):
     molecule = cfg.job.molecule
     sample_num = cfg.job.sample_num
     last_state = trajectory_list[:, -1]
+    cv_bound = cfg.job.thp_cv_bound
     
     if molecule == "alanine":
         phi_angle = [1, 6, 8, 14]
@@ -43,7 +44,7 @@ def compute_thp(cfg, trajectory_list, goal_state):
         phi_goal = compute_dihedral(goal_state[:, phi_angle])
         psi_goal = compute_dihedral(goal_state[:, psi_angle])
         
-        hit = (np.abs(psi - psi_goal) < 0.75) & (np.abs(phi - phi_goal) < 0.75)
+        hit = (np.abs(psi - psi_goal) < cv_bound) & (np.abs(phi - phi_goal) < cv_bound)
     else:
         raise ValueError(f"THP for molecule {molecule} TBA")
     

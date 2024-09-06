@@ -26,24 +26,23 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     # Set conditions by task
     task = cfg.job.name
     if task == "simulation":
-        pass
-        # goal_states = load_state_file(cfg, cfg.job.goal_state, device)
+        raise NotImplementedError("Simulation task TBA")
     elif task == "tps":
         goal_states = load_state_file(cfg, cfg.job.goal_state, device)
-        # goal_states *= 1000.0
     else:
         raise ValueError(f"Task {task} not found")
     
     
     # Generate trajectories
     with torch.no_grad():
-        current_states = inital_states
+        current_states = inital_states * 1000.0
+        goal_states *= 1000.0
         for t in tqdm(
             range(time_horizon),
             desc=f"Epoch {epoch}, genearting {sample_num} trajectories for {task}"
         ):
             step = torch.tensor(time_horizon - t).to(current_states.device).repeat(sample_num, 1)
-            states_offset = model_wrapper(
+            states_offset, var = model_wrapper(
                 current_state=current_states,
                 goal_state=goal_states,
                 step=step,
@@ -60,6 +59,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     
     
     trajectory_list = torch.stack(state_list, dim=1)
+    trajectory_list /= 1000.0
     if cfg.job.save:
         save_trajectory(cfg, trajectory_list, epoch, logger)
     

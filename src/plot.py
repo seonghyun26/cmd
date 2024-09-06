@@ -7,18 +7,17 @@ import matplotlib.pyplot as plt
 
 
 def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral):
-    # Plot the potential surface    
     plt.clf()
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111)
     sample_num = traj_dihedral[0].shape[0]
     traj_length = traj_dihedral[0].shape[1]
 
+    # Plot the potential
     xs = np.arange(-np.pi, np.pi + 0.1, 0.1)
     ys = np.arange(-np.pi, np.pi + 0.1, 0.1)
     x, y = np.meshgrid(xs, ys)
     inp = torch.tensor(np.array([x, y])).view(2, -1).T
-
     z = potential.potential(inp)
     z = z.view(y.shape[0], y.shape[1])
     plt.contourf(xs, ys, z, levels=100, zorder=0)

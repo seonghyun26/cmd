@@ -140,7 +140,7 @@ class ModelWrapper(nn.Module):
         torch.save(self.model.state_dict(), f"{path}/model-{epoch}.pt")
         
     def load_from_checkpoint(self, path):
-        self.model.load_state_dict(torch.load(f"{path}/encoder.pt"))
+        self.model.load_state_dict(torch.load(f"{path}/model.pt"))
     
     def forward(self,
         current_state: torch.Tensor,
@@ -165,10 +165,10 @@ class ModelWrapper(nn.Module):
         state_offset = self.reparameterize(mu, var)
         state_offset = state_offset.reshape(batch_size, self.atom_num, 3)
         
-        return state_offset
+        return state_offset, var
     
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
+    def reparameterize(self, mu, var):
+        std = torch.exp(var)
         eps = torch.randn_like(std)
         
         return mu + eps * std
@@ -179,7 +179,6 @@ def load_model_wrapper(cfg, device):
     scheduler = load_scheduler(cfg, optimizer)
     
     return model_wrapper, optimizer, scheduler
-
 
 
 def load_optimizer(cfg, model_param):
