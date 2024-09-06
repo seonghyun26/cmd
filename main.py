@@ -61,7 +61,8 @@ def main(cfg):
         for epoch in pbar:
             model_wrapper.train()
             total_loss = 0
-            total_var = 0
+            total_mse = 0
+            total_reg = 0
             
             for i, data in tqdm(
                 enumerate(train_loader),
@@ -73,18 +74,21 @@ def main(cfg):
                 data = [d.to(device) for d in data]
                 current_state, next_state, goal_state, step = data
                 
-                current_state *= 1000.0
-                next_state *= 1000.0
-                goal_state *= 1000.0
+                # current_state *= 1000.0
+                # next_state *= 1000.0
+                # goal_state *= 1000.0
                 optimizer.zero_grad()
                 
                 # Predict next state
                 state_offset, mu, log_var = model_wrapper(current_state, goal_state, step, temperature)
                 
                 # Compute loss
-                loss = criteria(next_state, current_state + state_offset, mu, log_var)
-                loss.backward()
+                mse_loss, reg_loss = criteria(next_state, current_state + state_offset, mu, log_var)
+                loss = mse_loss + reg_loss
+                total_mse += mse_loss.item()
+                total_reg += reg_loss.item()
                 total_loss += loss.item()
+                loss.backward()
                 optimizer.step()
             
             # results 
@@ -95,16 +99,17 @@ def main(cfg):
                 for i, test_data in enumerate(test_loader):
                     data = [d.to(device) for d in data]
                     current_state, next_state, goal_state, step = data
-                    current_state *= 1000.0
-                    next_state *= 1000.0
-                    goal_state *= 1000.0
+                    # current_state *= 1000.0
+                    # next_state *= 1000.0
+                    # goal_state *= 1000.0
                     state_offset, var = model_wrapper(current_state, goal_state, step, temperature)
                     loss = criteria(next_state, current_state + state_offset)
                     test_loss += loss.mean()
             result = {
                 "lr": optimizer.param_groups[0]["lr"],
                 "loss/total": total_loss / len(train_loader),
-                "train/var": total_var  / len(train_loader),
+                "loss/mse": total_mse / len(train_loader),
+                "loss/reg": total_reg / len(train_loader),
                 # "test/loss": test_loss / len(test_loader)
             }
             pbar.set_description(f"Training (loss: {total_loss:4f})")

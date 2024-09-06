@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral):
+def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral, epoch):
     plt.clf()
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111)
@@ -57,7 +57,7 @@ def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral):
     output_dir = hydra.core.hydra_config.HydraConfig.get().run.dir
     if os.path.exists(f"{output_dir}/img") is False:
         os.mkdir(f"{output_dir}/img")
-    img_path = f"{output_dir}/img/ram_plot.png"
+    img_path = f"{output_dir}/img/ram-{epoch}.png"
     plt.savefig(f"{img_path}")
     plt.close()
     

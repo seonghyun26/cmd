@@ -5,7 +5,7 @@ import mdtraj as md
 import torch.nn as nn
 
 from torch.optim import Adam, SGD
-from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, ReduceLROnPlateau
+from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader, Dataset, random_split
 
 from openmm import *
@@ -14,6 +14,7 @@ from openmm.unit import *
 
 from .data import *
 from .model import ModelWrapper
+
 
 def load_data(cfg):
     data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
@@ -43,8 +44,7 @@ def load_data(cfg):
         test_loader = None
     
     return train_loader, test_loader
-
-        
+       
 
 def load_model_wrapper(cfg, device):
     model_wrapper = ModelWrapper(cfg, device)
@@ -52,7 +52,6 @@ def load_model_wrapper(cfg, device):
     scheduler = load_scheduler(cfg, optimizer)
     
     return model_wrapper, optimizer, scheduler
-
 
 
 def load_optimizer(cfg, model_param):
@@ -79,6 +78,7 @@ def load_scheduler(cfg, optimizer):
         "MultiStepLR": MultiStepLR,
         "ExponentialLR": ExponentialLR,
         "CosineAnnealingLR": CosineAnnealingLR,
+        "CosineAnnealingWarmRestarts": CosineAnnealingWarmRestarts
     }
     
     if cfg.training.scheduler.name in scheduler_dict.keys():
@@ -101,7 +101,7 @@ def load_loss(cfg):
             mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
             reg_loss = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
             
-            return mse_loss + reg_loss
+            return mse_loss, reg_loss.mean()
         loss = mse_reg_loss
     else:
         raise ValueError(f"Loss {loss_name} not found")

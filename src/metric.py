@@ -124,7 +124,7 @@ def potential_energy(cfg, trajectory):
     return energy_list
 
 
-def compute_ram(cfg, trajectory_list):
+def compute_ram(cfg, trajectory_list, epoch):
     if cfg.job.molecule == "alanine":
         landscape_path = f"./data/{cfg.job.molecule}/final_frame.dat"
         ad_potential = AlaninePotential(landscape_path)
@@ -150,6 +150,7 @@ def compute_ram(cfg, trajectory_list):
             traj_dihedral = (phi_traj_list, psi_traj_list),
             start_dihedral = (phi_start, psi_start),
             goal_dihedral = (phi_goal, psi_goal),
+            epoch = epoch
         )
     else:
         raise ValueError(f"Ramachandran plot for molecule {molecule} TBA...")

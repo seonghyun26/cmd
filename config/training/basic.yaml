@@ -11,9 +11,10 @@ optimizer:
     lr: 1e-3
   }
 scheduler:
-  name: ExponentialLR
+  name: CosineAnnealingLR
   params: {
-    gamma: 0.99
+    T_max: 200,
+    eta_min: 1e-5
   }
 num_workers: 8
 train: True

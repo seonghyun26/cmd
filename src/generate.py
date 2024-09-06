@@ -18,7 +18,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     time_horizon = cfg.job.time_horizon
     temperature = cfg.job.temperature
     inital_states = load_state_file(cfg, cfg.job.start_state, device)
-    inital_states *= 1000.0
+    # inital_states *= 1000.0
     
 
     # Set conditions by task
@@ -27,7 +27,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
         raise NotImplementedError("Simulation task TBA")
     elif task == "tps":
         goal_states = load_state_file(cfg, cfg.job.goal_state, device)
-        goal_states *= 1000.0
+        # goal_states *= 1000.0
     else:
         raise ValueError(f"Task {task} not found")
     
@@ -59,7 +59,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     
     
     trajectory_list = torch.stack(state_list, dim=1)
-    trajectory_list /= 1000.0
+    # trajectory_list /= 1000.0
     if cfg.job.save:
         save_trajectory(cfg, trajectory_list, epoch, logger)
     
