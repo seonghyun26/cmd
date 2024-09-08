@@ -35,15 +35,15 @@ def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral, e
             linestyle="None",
             markersize=4,
             alpha=1.0,
-            zorder=10
+            zorder=101
         )
 
     # Plot start and goal states
     ax.scatter(
-        start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=100, s=100
+        start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=100, s=160
     )
     ax.scatter(
-        goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=100, s=400, marker="*"
+        goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=100, s=500, marker="*"
     )
     
     # Plot the Ramachandran plot

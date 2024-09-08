@@ -94,19 +94,29 @@ def load_scheduler(cfg, optimizer):
 
 def load_loss(cfg):
     loss_name = cfg.training.loss.name.lower()
-    if loss_name == "mse":
-        loss = nn.MSELoss(reduction=cfg.training.loss.reduction)
-    elif loss_name == "mse+reg":
-        def mse_reg_loss(y_true, y_pred, mu, log_var):
-            mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
-            reg_loss = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
-            
-            return mse_loss, reg_loss.mean()
-        loss = mse_reg_loss
+    
+    def mse_loss(y_true, y_pred, *args):
+        loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+        
+        return loss
+    
+    def mse_reg_loss(y_true, y_pred, mu, log_var, *args):
+        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+        reg_loss = -0.5 * torch.sum(1 + log_var - log_var.exp())
+        
+        return mse_loss, reg_loss.mean()
+    
+    loss_func_list = {
+        "mse": mse_loss,
+        "mse+reg": mse_reg_loss
+    }
+    
+    if loss_name in loss_func_list.keys():
+        loss_func = loss_func_list[loss_name]
     else:
         raise ValueError(f"Loss {loss_name} not found")
     
-    return loss
+    return loss_func
 
 
 def load_state_file(cfg, state, device):

@@ -14,4 +14,3 @@ scheduler:
   }
 num_workers: 8
 train: True
-eval_freq: 25

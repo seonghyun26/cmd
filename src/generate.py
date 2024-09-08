@@ -13,12 +13,13 @@ from .load import load_state_file
 
 def generate(cfg, model_wrapper, epoch, device, logger):
     # Load configs for generation
-    sample_num = cfg.job.sample_num
     atom_num = cfg.data.atom
-    time_horizon = cfg.job.time_horizon
+    scale = cfg.training.scale
+    sample_num = cfg.job.sample_num
     temperature = cfg.job.temperature
+    time_horizon = cfg.job.time_horizon
     inital_states = load_state_file(cfg, cfg.job.start_state, device)
-    # inital_states *= 1000.0
+    inital_states *= scale
     
 
     # Set conditions by task
@@ -27,7 +28,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
         raise NotImplementedError("Simulation task TBA")
     elif task == "tps":
         goal_states = load_state_file(cfg, cfg.job.goal_state, device)
-        # goal_states *= 1000.0
+        goal_states *= scale
     else:
         raise ValueError(f"Task {task} not found")
     
@@ -59,7 +60,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     
     
     trajectory_list = torch.stack(state_list, dim=1)
-    # trajectory_list /= 1000.0
+    trajectory_list /= scale
     if cfg.job.save:
         save_trajectory(cfg, trajectory_list, epoch, logger)
     

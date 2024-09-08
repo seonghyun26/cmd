@@ -1,0 +1,5 @@
+molecule: alanine
+atom: 22
+temperature: 300.0
+state: c5
+index: 40000000-random

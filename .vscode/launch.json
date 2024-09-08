@@ -14,7 +14,7 @@
           "--config-name",
           "debug",
           "++logging.wandb=False",
-          "++training.loss_scale=step",
+          "++training.loss.name=mse+reg",
           "++data.temperature=273.0",
           "hydra.run.dir=outputs/debug",
           "job.metrics=['epd', 'thp', 'ram']",

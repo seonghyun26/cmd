@@ -2,8 +2,9 @@
 batch_size: 8192
 shuffle: True
 epoch: 200
+scale: 100.0
 loss:
-  name: mse+reg
+  name: mse
   reduction: mean
 optimizer:
   name: Adam

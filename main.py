@@ -49,6 +49,7 @@ def main(cfg):
         else:
             temperature = train_loader.dataset.temperature
         data_num = len(train_loader.dataset)
+        scale = cfg.training.scale
         batch_size = cfg.training.batch_size
         logger.info(f"MD Dataset size: {data_num}")
         
@@ -74,9 +75,9 @@ def main(cfg):
                 data = [d.to(device) for d in data]
                 current_state, next_state, goal_state, step = data
                 
-                # current_state *= 1000.0
-                # next_state *= 1000.0
-                # goal_state *= 1000.0
+                current_state *= scale
+                next_state *= scale
+                goal_state *= scale
                 optimizer.zero_grad()
                 
                 # Predict next state
@@ -99,17 +100,14 @@ def main(cfg):
                 for i, test_data in enumerate(test_loader):
                     data = [d.to(device) for d in data]
                     current_state, next_state, goal_state, step = data
-                    # current_state *= 1000.0
-                    # next_state *= 1000.0
-                    # goal_state *= 1000.0
                     state_offset, mu, log_var = model_wrapper(current_state, goal_state, step, temperature)
                     loss = criteria(next_state, current_state + state_offset, mu, log_var)
                     test_loss += loss.mean()
             result = {
                 "lr": optimizer.param_groups[0]["lr"],
-                "loss/total": total_loss / len(train_loader),
                 "loss/mse": total_mse / len(train_loader),
                 "loss/reg": total_reg / len(train_loader),
+                "loss/total": total_loss / len(train_loader),
                 # "test/loss": test_loss / len(test_loader)
             }
             pbar.set_description(f"Training (loss: {total_loss:4f})")
@@ -122,7 +120,7 @@ def main(cfg):
                     step=epoch
                 )
                 
-            # Jobs to do at epoch frequency
+            # Save checkpoint and evaluate
             if epoch * cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
                 model_wrapper.save_model(output_dir, epoch)

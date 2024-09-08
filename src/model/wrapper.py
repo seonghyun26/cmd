@@ -52,16 +52,16 @@ class ModelWrapper(nn.Module):
         latent = self.model(conditions)
         
         mu = self.mu(latent)
-        var = self.log_var(latent)
-        var = torch.clamp(var, max=10)
-        state_offset = self.reparameterize(mu, var)
+        log_var = self.log_var(latent)
+        log_var = torch.clamp(log_var, max=10)
+        state_offset = self.reparameterize(mu, log_var)
         state_offset = state_offset.reshape(batch_size, self.atom_num, 3)
         
-        return state_offset, mu, var
+        return state_offset, mu, log_var
     
-    def reparameterize(self, mu, var):
-        std = torch.exp(var)
-        # eps = torch.randn_like(std)
-        eps = torch.normal(mean=0.0, std=1.0, size=(1,)).to(std.device)
+    def reparameterize(self, mu, log_var):
+        std = torch.exp(log_var)
+        eps = torch.randn_like(std)
+        # eps = torch.normal(mean=0.0, std=1.0, size=(1,)).to(std.device)
         
         return mu + eps * std
