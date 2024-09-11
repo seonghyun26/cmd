@@ -11,7 +11,10 @@ class ModelWrapper(nn.Module):
         self.batch_size = cfg.training.batch_size
         self.output_dim = cfg.model.hidden_dim[-1]
         self.model = self.load_model(cfg).to(device)
+        self.noise_scale = cfg.training.noise_scale
         
+        # self.alpha = torch.nn.Parameter(torch.ones(1)) .to(device)
+        self.alpha = 1
         self.mu = nn.Linear(self.output_dim, self.atom_num * 3).to(device)
         self.log_var = nn.Linear(self.output_dim, self.atom_num * 3).to(device)
     
@@ -53,6 +56,7 @@ class ModelWrapper(nn.Module):
         
         mu = self.mu(latent)
         log_var = self.log_var(latent)
+        log_var = self.alpha * log_var
         log_var = torch.clamp(log_var, max=10)
         state_offset = self.reparameterize(mu, log_var)
         state_offset = state_offset.reshape(batch_size, self.atom_num, 3)
@@ -61,7 +65,6 @@ class ModelWrapper(nn.Module):
     
     def reparameterize(self, mu, log_var):
         std = torch.exp(log_var)
-        eps = torch.randn_like(std)
-        # eps = torch.normal(mean=0.0, std=1.0, size=(1,)).to(std.device)
+        eps = torch.randn_like(std) * self.noise_scale
         
         return mu + eps * std

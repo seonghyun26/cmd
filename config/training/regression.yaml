@@ -3,14 +3,13 @@ batch_size: 8192
 shuffle: True
 epoch: 200
 scale: 100.0
-step_scale: False
 loss:
   name: mse
   reduction: mean
 optimizer:
   name: Adam
   params: {
-    lr: 1e-4
+    lr: 1e-3
   }
 scheduler:
   name: CosineAnnealingLR
@@ -20,5 +19,4 @@ scheduler:
   }
 num_workers: 8
 train: True
-test: False
-noise_scale: 1
+test: True

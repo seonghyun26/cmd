@@ -6,16 +6,19 @@
         "type": "debugpy",
         "request": "launch",
         "env": {
-            "CUDA_VISIBLE_DEVICES": "5,6,7"
+            "CUDA_VISIBLE_DEVICES": "6,7"
         },
         "cwd": "/home/shpark/prj-cmd/cmd/",
         "program": "main.py",
         "args": [
           "--config-name",
           "debug",
-          "++logging.wandb=False",
-          "++training.loss.name=mse+reg",
-          "++data.temperature=273.0",
+          "++training.step_scale=True",
+          "++training.loss.name=mse+reg4",
+          // "++training.loss.name=mse+reg",
+          // "++data.state=c7ax",
+          // "++data.temperature=300.0",
+          // "++data.index=10000000-goal",
           "hydra.run.dir=outputs/debug",
           "job.metrics=['epd', 'thp', 'ram']",
         ],
@@ -26,7 +29,7 @@
       "type": "debugpy",
       "request": "launch",
       "env": {
-          "CUDA_VISIBLE_DEVICES": "5,6,7"
+          "CUDA_VISIBLE_DEVICES": "6,7"
       },
       "cwd": "/home/shpark/prj-cmd/cmd/",
       "module": "accelerate.commands.launch",
@@ -53,16 +56,10 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "mlp-big",
+        "regression",
         "++logging.wandb=False",
-        "++training.train=False",
-        "++training.ckpt_name=16-layer",
         "job.metrics=['epd', 'thp', 'ram']",
         "hydra.run.dir=outputs/debug-eval"
-        // "hydra.output_subdir=null",
-        // "hydra/job_logging=disabled",
-        // "hydra/hydra_logging=disabled",
-        // "++training.batch_size=4",
       ],
       "console": "integratedTerminal"
   }

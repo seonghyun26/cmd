@@ -1,3 +1,4 @@
+evaluate: True
 name: tps
 molecule: alanine
 start_state: c5

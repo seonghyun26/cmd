@@ -33,7 +33,7 @@ def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral, e
             traj_dihedral[1][idx],
             marker="o",
             linestyle="None",
-            markersize=4,
+            markersize=3,
             alpha=1.0,
             zorder=101
         )

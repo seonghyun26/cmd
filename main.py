@@ -38,6 +38,7 @@ def main(cfg):
                 cfg, resolve=True, throw_on_missing=True
             )
         )
+        wandb.log({"param": sum([p.numel() for p in model_wrapper.parameters()])})
     
     # Train or load model from checkpoint
     if cfg.training.train:
@@ -64,6 +65,7 @@ def main(cfg):
             total_loss = 0
             total_mse = 0
             total_reg = 0
+            total_log_var = 0
             
             for i, data in tqdm(
                 enumerate(train_loader),
@@ -74,45 +76,60 @@ def main(cfg):
                 # Load data
                 data = [d.to(device) for d in data]
                 current_state, next_state, goal_state, step = data
-                
                 current_state *= scale
                 next_state *= scale
                 goal_state *= scale
                 optimizer.zero_grad()
                 
                 # Predict next state
-                state_offset, mu, log_var = model_wrapper(current_state, goal_state, step, temperature)
+                state_offset, mu, log_var = model_wrapper(
+                    current_state, goal_state, step, temperature
+                )
                 
                 # Compute loss
-                mse_loss, reg_loss = criteria(next_state, current_state + state_offset, mu, log_var)
+                mse_loss, reg_loss = criteria(next_state, current_state + state_offset, mu, log_var, step)
                 loss = mse_loss + reg_loss
-                total_mse += mse_loss.item()
-                total_reg += reg_loss.item()
-                total_loss += loss.item()
+                total_mse += mse_loss
+                total_reg += reg_loss
+                total_loss += loss
+                total_log_var += log_var.mean()
                 loss.backward()
                 optimizer.step()
             
-            # results 
+            # Update results
             scheduler.step()
+            result = {
+                "lr": optimizer.param_groups[0]["lr"],
+                "loss/total": total_loss / len(train_loader),   
+                "loss/mse": total_mse / len(train_loader),
+                "loss/reg": total_reg / len(train_loader),
+                "train/log_var": total_log_var / len(train_loader)
+            }
+            pbar.set_description(f"Training (loss: {total_loss / len(train_loader):8f})")
+            pbar.refresh() 
+            
+            # Test dataset if available
             if cfg.training.test:
                 model_wrapper.eval()
                 test_loss = 0
+                test_loss_mse = 0
+                test_loss_reg = 0
                 for i, test_data in enumerate(test_loader):
                     data = [d.to(device) for d in data]
                     current_state, next_state, goal_state, step = data
                     state_offset, mu, log_var = model_wrapper(current_state, goal_state, step, temperature)
-                    loss = criteria(next_state, current_state + state_offset, mu, log_var)
-                    test_loss += loss.mean()
-            result = {
-                "lr": optimizer.param_groups[0]["lr"],
-                "loss/mse": total_mse / len(train_loader),
-                "loss/reg": total_reg / len(train_loader),
-                "loss/total": total_loss / len(train_loader),
-                # "test/loss": test_loss / len(test_loader)
-            }
-            pbar.set_description(f"Training (loss: {total_loss:4f})")
-            pbar.refresh()  
-            
+                    mse_loss, reg_loss = criteria(next_state, current_state + state_offset, mu, log_var)
+                    loss = mse_loss + reg_loss
+                    test_loss_mse += mse_loss
+                    test_loss_reg += reg_loss
+                    test_loss += loss
+                model_wrapper.train()
+                result.update({
+                    "test/loss": test_loss / len(test_loader),
+                    "test/mse": test_loss_mse / len(test_loader),
+                    "test/reg": test_loss_reg / len(test_loader),
+                })
+
             # Wandb loggging
             if cfg.logging.wandb:
                 wandb.log(
@@ -120,7 +137,7 @@ def main(cfg):
                     step=epoch
                 )
                 
-            # Save checkpoint and evaluate
+            # Save checkpoint 
             if epoch * cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
                 model_wrapper.save_model(output_dir, epoch)
@@ -129,14 +146,38 @@ def main(cfg):
                 trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
                 evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=epoch)
                 model_wrapper.train()
-        
+    
         # Save model
-        logger.info("Training complete!!!")
+        logger.info("Training complete")
         if cfg.logging.checkpoint:
             output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
             model_wrapper.save_model(output_dir, "final")
             logger.info(f"Final model weights saved at: {output_dir}")
         
+        if cfg.training.test:
+            model_wrapper.eval()
+            test_loss = 0
+            test_loss_mse = 0
+            test_loss_reg = 0
+            for i, test_data in enumerate(test_loader):
+                data = [d.to(device) for d in data]
+                current_state, next_state, goal_state, step = data
+                state_offset, mu, log_var = model_wrapper(current_state, goal_state, step, temperature)
+                mse_loss, reg_loss = criteria(next_state, current_state + state_offset, mu, log_var)
+                loss = mse_loss + reg_loss
+                test_loss_mse += mse_loss
+                test_loss_reg += reg_loss
+                test_loss += loss
+            model_wrapper.train()
+            result.update({
+                "test/loss": test_loss / len(test_loader),
+                "test/mse": test_loss_mse / len(test_loader),
+                "test/reg": test_loss_reg / len(test_loader),
+            })
+            wandb.log(
+                result,
+                step=epoch
+            )
     else:
         # Load trainined model from checkpoint
         ckpt_path = f"model/{cfg.data.molecule}/{cfg.training.ckpt_name}"
@@ -145,11 +186,16 @@ def main(cfg):
         epoch = cfg.training.epoch
 
     # Test model on downstream task (generation)
-    logger.info("Evaluating...")
-    trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
-    evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=cfg.training.epoch)
-    logger.info("Evaluation complete!!!")
-        
+    if cfg.job.evaluate:
+        logger.info("Evaluating...")
+        trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
+        evaluate(
+            cfg=cfg, 
+            trajectory_list=trajectory_list,
+            logger=logger,
+            epoch=cfg.training.epoch
+        )
+        logger.info("Evaluation complete!!!")
         
     # Finish and exit
     if cfg.logging.wandb:

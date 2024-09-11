@@ -1,0 +1,6 @@
+defaults:
+- model: mlp-small
+- data: alanine-regression
+- training: regression
+- logging: basic
+- job: goal
