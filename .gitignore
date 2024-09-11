@@ -1,11 +1,13 @@
 *__pycache__*
 *.pyc
 *.ipynb_checkpoints*
+*Ala2Implicit1000Test*
 
 log/*
 outputs/*
 wandb/*
 
+*.tgz
 *.png
 *.csv
 *.dcd

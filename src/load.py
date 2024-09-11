@@ -8,7 +8,6 @@ from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader, Dataset, random_split
 
-# from .loss import *
 from .data import *
 from .model import ModelWrapper
 

@@ -1,6 +1,6 @@
 batch_size: 4096
 shuffle: True
-epoch: 4
+epoch: 8
 scale: 100.0
 loss:
   name: MSE+reg3

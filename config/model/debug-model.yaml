@@ -1,3 +1,5 @@
 name: MLP
 layers: 3
 hidden_dim: [64, 64, 64]
+transform: ic
+# transform: xyz
