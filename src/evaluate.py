@@ -45,7 +45,7 @@ def evaluate_tps(cfg, trajectory_list, logger, epoch):
     if "thp" in cfg.job.metrics:
         eval_result["eval/thp"] = compute_thp(cfg, trajectory_list, goal_state)
     if "energy" in cfg.job.metrics:
-        eval_result["eval/max_energy"], eval_result["eval/final_energy_err"] = compute_energy(cfg, trajectory_list, goal_state)
+        eval_result["eval/max_energy"], eval_result["eval/final_energy"], eval_result["eval/final_energy_err"] = compute_energy(cfg, trajectory_list, goal_state)
     if "ram" in cfg.job.metrics:
         eval_result["eval/ram"] = compute_ram(cfg, trajectory_list, epoch)
     

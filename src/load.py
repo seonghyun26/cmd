@@ -8,12 +8,8 @@ from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader, Dataset, random_split
 
-from openmm import *
-from openmm.app import *
-from openmm.unit import *
-
+# from .loss import *
 from .data import *
-from .loss import *
 from .model import ModelWrapper
 
 def load_data(cfg):
@@ -94,6 +90,48 @@ def load_scheduler(cfg, optimizer):
 
 def load_loss(cfg):
     loss_name = cfg.training.loss.name.lower()
+    
+    def mse_loss(y_true, y_pred, *args):
+        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+
+        return mse_loss, 0
+
+    def mse_reg_loss(y_true, y_pred, mu, log_var, *args):
+        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+        reg_loss = -0.5 * torch.sum(1 + log_var - log_var.exp())
+
+        return mse_loss, reg_loss.mean()
+
+    def mse_reg2_loss(y_true, y_pred, mu, log_var, *args):
+        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+        reg_loss = torch.square(log_var.exp())
+
+        return mse_loss, reg_loss.mean()
+
+    def mse_reg3_loss(y_true, y_pred, mu, log_var, *args):
+        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+        reg_loss = torch.square(log_var)
+
+        return mse_loss, reg_loss.mean()
+
+    def mse_reg4_loss(y_true, y_pred, mu, log_var, step, *args):
+        mse_loss = nn.MSELoss(reduction="none")(y_pred, y_true).mean(dim=(1,2))
+        reg_loss = torch.square(log_var).mean(dim=(1))
+        step_div = torch.sqrt(step).squeeze()
+        mse_loss /= step_div
+        reg_loss /= step_div
+        
+        if cfg.training.loss.reduction == "mean":
+            mse_loss = mse_loss.mean()
+            reg_loss = reg_loss.mean()
+        elif cfg.training.loss.reduction == "sum":
+            mse_loss = mse_loss.sum()
+            reg_loss = reg_loss.sum()
+        else:
+            raise ValueError(f"Reduction {cfg.training.loss.reduction} not found")
+
+        return mse_loss, reg_loss
+    
     loss_func_list = {
         "mse": mse_loss,
         "mse+reg": mse_reg_loss,
@@ -106,7 +144,8 @@ def load_loss(cfg):
         loss_func = loss_func_list[loss_name]
     else:
         raise ValueError(f"Loss {loss_name} not found")
-        return loss_func
+    
+    return loss_func
 
 
 def load_state_file(cfg, state, device):
@@ -118,42 +157,3 @@ def load_state_file(cfg, state, device):
     return states
 
 
-def load_simulation(cfg, pbb_file_path, frame=None):
-    # set pdb file with current positions
-    pdb = PDBFile(pbb_file_path)
-    
-    # Set force field
-    force_field = ForceField(*cfg.job.simulation.force_field)
-    system = force_field.createSystem(
-        pdb.topology,
-        nonbondedCutoff=3 * nanometer,
-        constraints=HBonds
-    )
-    integrator = LangevinIntegrator(
-        cfg.job.simulation.temperature * kelvin,
-        1 / picosecond,
-        1 * femtoseconds
-    )
-    platform = Platform.getPlatformByName(cfg.job.simulation.platform)
-    properties = {'Precision': cfg.job.simulation.precision}
-
-    simulation = Simulation(
-        pdb.topology,
-        system,
-        integrator,
-        platform,
-        properties
-    )        
-    # simulation.context.setPositions(pdb.positions)
-    # if frame is not None:
-    #     for i in range(frame.shape[0]):
-    #         for j in range(frame.shape[1]):
-    #             pdb.positions[i][j]._value = frame[i][j].item()
-    atom_xyz = frame.detach().cpu().numpy()
-    atom_list = [Vec3(atom[0], atom[1], atom[2]) for atom in atom_xyz]
-    current_state_openmm = Quantity(value=atom_list, unit=nanometer)
-    simulation.context.setPositions(current_state_openmm)            
-    
-    simulation.minimizeEnergy()
-    
-    return simulation

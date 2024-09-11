@@ -9,8 +9,8 @@ import numpy as np
 import mdtraj as md
 
 from tqdm import tqdm
-from .load import load_simulation
 from .plot import plot_ad_potential
+from .simulation import init_simulation, set_simulation
 from mdtraj.geometry import indices_phi, indices_psi
 
 pairwise_distance = torch.cdist
@@ -91,7 +91,7 @@ def compute_energy(cfg, trajectory_list, goal_state):
     sample_num = trajectory_list.shape[0]
     path_length = trajectory_list.shape[1]
     goal_state_file_path = f"data/{cfg.data.molecule}/{cfg.job.goal_state}.pdb"
-    goal_simulation = load_simulation(cfg, goal_state_file_path, None)
+    goal_simulation = init_simulation(cfg, goal_state_file_path)
     goal_state_energy = goal_simulation.context.getState(getEnergy=True).getPotentialEnergy()._value
     
     path_energy_list = []
@@ -105,21 +105,22 @@ def compute_energy(cfg, trajectory_list, goal_state):
     
     path_maximum_energy = np.max(path_energy_list, axis=1)
     path_final_energy_error = np.array(path_energy_list[:, -1]) - goal_state_energy
-    return path_maximum_energy.mean(), path_final_energy_error.mean()
+    return path_maximum_energy.mean(), path_energy_list[:, -1].mean(), path_final_energy_error.mean()
 
 
 def potential_energy(cfg, trajectory):
     energy_list = []
+    pbb_file_path = f"data/{cfg.data.molecule}/c5.pdb"
+    simulation = init_simulation(cfg, pbb_file_path)
     
     for frame in trajectory:
-        pbb_file_path = f"data/{cfg.data.molecule}/c5.pdb"
         try:
-            simulation = load_simulation(cfg, pbb_file_path, frame)
+            simulation = set_simulation(simulation, frame)
             energy = simulation.context.getState(getEnergy=True).getPotentialEnergy()
             energy_list.append(energy._value)
         except Exception as e:
-            # logger.info(f"Error in computing energy: {e}")
-            energy_list.append(0)
+            print(f"Error in computing energy: {e}")
+            energy_list.append(100)
     
     return energy_list
 

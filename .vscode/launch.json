@@ -20,7 +20,7 @@
           // "++data.temperature=300.0",
           // "++data.index=10000000-goal",
           "hydra.run.dir=outputs/debug",
-          "job.metrics=['epd', 'thp', 'ram']",
+          "job.metrics=['epd', 'thp', 'ram', 'energy']",
         ],
         "console": "integratedTerminal"
     },

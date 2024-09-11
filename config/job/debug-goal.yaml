@@ -17,4 +17,4 @@ metrics:
 - epd
 - thp
 - ram
-# - energy
+- energy
