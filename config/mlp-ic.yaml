@@ -1,0 +1,6 @@
+defaults:
+- model: mlp
+- data: alanine-ic
+- training: ic
+- logging: basic
+- job: goal

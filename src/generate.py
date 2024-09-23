@@ -16,7 +16,6 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     atom_num = cfg.data.atom
     scale = cfg.training.scale
     sample_num = cfg.job.sample_num
-    temperature = cfg.job.temperature
     time_horizon = cfg.job.time_horizon
     inital_states = load_state_file(cfg, cfg.job.start_state, device)
     inital_states *= scale
@@ -42,22 +41,38 @@ def generate(cfg, model_wrapper, epoch, device, logger):
             range(time_horizon),
             desc=f"Epoch {epoch}, genearting {sample_num} trajectories for {task}"
         ):
+            # Generate next state offset
             step = torch.tensor(time_horizon - t).to(current_states.device).repeat(sample_num, 1)
+            temperature = torch.tensor(cfg.job.temperature).to(current_states.device).repeat(sample_num, 1)
             states_offset, mu, log_var = model_wrapper(
                 current_state=current_states,
                 goal_state=goal_states,
                 step=step,
                 temperature=temperature
             )
-            states_offset = states_offset.reshape(
-                sample_num,
-                atom_num,
-                3
-            )
-            next_states = current_states + states_offset
+            
+            # Reshape states_offset
+            if cfg.data.molecule == "alanine":
+                states_offset = states_offset.reshape(
+                    sample_num,
+                    atom_num,
+                    3
+                )
+            elif cfg.data.molecule == "double-well":
+                states_offset = states_offset.reshape(
+                    sample_num,
+                    atom_num
+                )
+            else:
+                raise ValueError(f"Molecule {cfg.data.molecule} not found")
+                
+            # Compute next state by transform type
+            if cfg.model.transform == "ic2" or cfg.model.transform == "ic4":
+                next_states = states_offset
+            else: 
+                next_states = current_states + states_offset
             state_list.append(next_states)
             current_states = next_states
-    
     
     trajectory_list = torch.stack(state_list, dim=1)
     trajectory_list /= scale

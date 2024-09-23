@@ -14,13 +14,28 @@
           "--config-name",
           "debug",
           "++training.step_scale=True",
-          "++training.loss.name=mse+reg4",
-          // "++training.loss.name=mse+reg",
+          "++training.loss.name=mse+reg5",
+          "++model.transform=ic4",
           // "++data.state=c7ax",
           // "++data.temperature=300.0",
           // "++data.index=10000000-goal",
           "hydra.run.dir=outputs/debug",
           "job.metrics=['epd', 'thp', 'ram', 'energy']",
+        ],
+        "console": "integratedTerminal"
+    },
+    {
+        "name": "CMD-DW",
+        "type": "debugpy",
+        "request": "launch",
+        "env": {
+            "CUDA_VISIBLE_DEVICES": "0,1"
+        },
+        "cwd": "/home/shpark/prj-cmd/cmd/",
+        "program": "main.py",
+        "args": [
+          "--config-name",
+          "double-well",
         ],
         "console": "integratedTerminal"
     },

@@ -1,4 +1,5 @@
 name: MLP
 layers: 8
 hidden_dim: [256, 256, 256, 256, 256, 256, 256, 256]
-transform: ic
+init: xavier
+transform: xyz

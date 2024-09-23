@@ -30,8 +30,16 @@ class ModelWrapper(nn.Module):
         if cfg.model.transform == "ic":
             self.transform = load_internal_coordinate_transform()
             self.representation_dim = (cfg.data.atom - 5) * 3 + (cfg.data.atom - 7)
-        elif cfg.model.transform == "xyz":
+        elif cfg.model.transform == "ic2" or cfg.model.transform == "ic4":
+            self.transform = load_internal_coordinate_transform()
+            self.representation_dim = cfg.data.atom - 5
+        elif cfg.model.transform == "ic3":
+            self.transform = load_internal_coordinate_transform()
+            self.representation_dim = (cfg.data.atom - 5) * 2
+        elif cfg.model.transform == "xyz" and cfg.data.molecule == "alanine":
             self.representation_dim = cfg.data.atom * 3
+        elif cfg.model.transform == "xyz" and cfg.data.molecule == "double-well":
+            self.representation_dim = cfg.data.atom 
         else:
             raise ValueError(f"Transform {cfg.model.transform} not found")
         self.input_dim = self.representation_dim * 2 + 2
@@ -57,14 +65,38 @@ class ModelWrapper(nn.Module):
         current_state: torch.Tensor,
         goal_state: torch.Tensor,
         step: torch.Tensor,
-        temperature: float
+        temperature: torch.Tensor
     ) -> torch.Tensor:
         if hasattr(self, "transform"):
             current_state = torch.cat(self.transform.forward(current_state)[:-1], dim=1)
             goal_state = torch.cat(self.transform.forward(goal_state)[:-1], dim=1)
+            if self.cfg.model.transform == "ic2":
+                current_state_bond = current_state[:, :17]
+                current_state_angle = current_state[:, 17:34]
+                current_state_torsion = current_state[:, 34:51]
+                current_state_fixed_x = current_state[:, 51:66]
+                current_state = current_state[:, 34:51]
+                # goal_state_bond = goal_state[:, :17]
+                # goal_state_angle = goal_state[:, 17:34]
+                goal_state = goal_state[:, 34:51]
+            elif self.cfg.model.transform == "ic3":
+                current_state_bond = current_state[:, :17]
+                current_state_angle_torsion = current_state[:, 17:51]
+                current_state_fixed_x = current_state[:, 51:66]
+                current_state = current_state[:, 17:51]
+                goal_state = goal_state[:, 17:51]
+            elif self.cfg.model.transform == "ic4":
+                current_state_bond = current_state[:, :17]
+                current_state_angle = current_state[:, 17:34]
+                current_state_torsion = current_state[:, 34:51]
+                current_state_fixed_x = current_state[:, 51:66]
+                current_state = current_state[:, 34:51]
+                # goal_state_bond = goal_state[:, :17]
+                # goal_state_angle = goal_state[:, 17:34]
+                goal_state = goal_state[:, 34:51]
         
         batch_size = current_state.shape[0]
-        temperature = torch.tensor(temperature).to(current_state.device).repeat(current_state.shape[0], 1)
+        # temperature = torch.tensor(temperature).to(current_state.device).repeat(current_state.shape[0], 1)
         
         conditions = torch.cat([
             current_state.reshape(batch_size, -1),
@@ -80,15 +112,46 @@ class ModelWrapper(nn.Module):
         log_var = torch.clamp(log_var, max=10)
         state_offset = self.reparameterize(mu, log_var)
         
-        
         if hasattr(self, "transform"):
-            state_offset = torch.cat(self.transform._inverse(
-                state_offset[:, :17],
-                state_offset[:, 17:34],
-                state_offset[:, 34:51],
-                state_offset[:, 51:66]
-            ), dim=1)[:, :-1]
-        state_offset = state_offset.reshape(batch_size, self.atom_num, 3)
+            if self.cfg.model.transform == "ic":
+                state_offset = torch.cat(self.transform._inverse(
+                    state_offset[:, :17],
+                    state_offset[:, 17:34],
+                    state_offset[:, 34:51],
+                    state_offset[:, 51:66]
+                ), dim=1)[:, :-1]
+            elif self.cfg.model.transform == "ic2":
+                predicted_state_torsion = (current_state_torsion + state_offset) % np.pi
+                state_offset = torch.cat(self.transform._inverse(
+                    current_state_bond,
+                    current_state_angle,
+                    predicted_state_torsion,
+                    current_state_fixed_x
+                ), dim=1)[:, :-1]
+            elif self.cfg.model.transform == "ic3":
+                state_offset = np.pi * torch.cos(state_offset)
+                predicted_state_angle_torsion = (current_state_angle_torsion + state_offset) % (2 *np.pi) - np.pi
+                state_offset = torch.cat(self.transform._inverse(
+                    current_state_bond,
+                    predicted_state_angle_torsion[:, :17],
+                    predicted_state_angle_torsion[:, 17:],
+                    current_state_fixed_x
+                ), dim=1)[:, :-1]
+            elif self.cfg.model.transform == "ic4":
+                state_offset = np.pi * torch.cos(state_offset)
+                predicted_state_torsion = (current_state_torsion + state_offset) % (2 *np.pi) - np.pi
+                state_offset = torch.cat(self.transform._inverse(
+                    current_state_bond,
+                    current_state_angle,
+                    predicted_state_torsion,
+                    current_state_fixed_x
+                ), dim=1)[:, :-1]
+            else:
+                raise ValueError(f"Transform {self.cfg.model.transform} not found")
+        if self.cfg.data.molecule == "alanine":
+            state_offset = state_offset.reshape(batch_size, self.atom_num, 3)
+        elif self.cfg.data.molecule == "double-well":
+            state_offset = state_offset.reshape(batch_size, self.atom_num)
         
         return state_offset, mu, log_var
     
@@ -123,8 +186,32 @@ def load_internal_coordinate_transform():
     coordinate_transform = bg.RelativeInternalCoordinateTransformation(
         z_matrix=z_matrix,
         fixed_atoms=rigid_block,
-        normalize_angles = True,
-        eps = 1e-7, 
+        normalize_angles = False,
+        eps = 1e-10, 
     )
     
     return coordinate_transform
+
+def load_custom_ic_transform():
+    z_matrix = np.array([
+        [ 0,  1,  4,  6],
+        [ 1,  4,  6,  8],
+        [ 2,  1,  4,  0],
+        [ 3,  1,  4,  0],
+        [ 4,  6,  8, 14],
+        [ 5,  4,  6,  8],
+        [ 7,  6,  8,  4],
+        [11, 10,  8,  6],
+        [12, 10,  8, 11],
+        [13, 10,  8, 11],
+        [15, 14,  8, 16],
+        [16, 14,  8,  6],
+        [17, 16, 14, 15],
+        [18, 16, 14,  8],
+        [19, 18, 16, 14],
+        [20, 18, 16, 19],
+        [21, 18, 16, 19]
+    ])
+    rigid_block = np.array([ 6,  8,  9, 10, 14])
+    
+    return

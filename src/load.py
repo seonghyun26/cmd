@@ -12,24 +12,10 @@ from .data import *
 from .model import ModelWrapper
 
 def load_data(cfg):
-    data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
-    
-    dataset = torch.load(f"{data_path}")
-    if cfg.training.test:
-        train_dataset, test_dataset = random_split(dataset, cfg.data.train_test_split)
-        train_loader = DataLoader(
-            dataset=train_dataset,
-            batch_size=cfg.training.batch_size,
-            shuffle=cfg.training.shuffle,
-            num_workers=cfg.training.num_workers
-        )
-        test_loader = DataLoader(
-            dataset=test_dataset,
-            batch_size=cfg.training.batch_size,
-            shuffle=cfg.training.shuffle,
-            num_workers=cfg.training.num_workers
-        )
-    else:
+    if cfg.data.molecule == "double-well":
+        data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
+        dataset = torch.load(f"{data_path}")
+        
         train_loader = DataLoader(
             dataset=dataset,
             batch_size=cfg.training.batch_size,
@@ -37,6 +23,34 @@ def load_data(cfg):
             num_workers=cfg.training.num_workers
         )
         test_loader = None
+    elif cfg.data.molecule == "alanine":
+        data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
+        
+        dataset = torch.load(f"{data_path}")
+        if cfg.training.test:
+            train_dataset, test_dataset = random_split(dataset, cfg.data.train_test_split)
+            train_loader = DataLoader(
+                dataset=train_dataset,
+                batch_size=cfg.training.batch_size,
+                shuffle=cfg.training.shuffle,
+                num_workers=cfg.training.num_workers
+            )
+            test_loader = DataLoader(
+                dataset=test_dataset,
+                batch_size=cfg.training.batch_size,
+                shuffle=cfg.training.shuffle,
+                num_workers=cfg.training.num_workers
+            )
+        else:
+            train_loader = DataLoader(
+                dataset=dataset,
+                batch_size=cfg.training.batch_size,
+                shuffle=cfg.training.shuffle,
+                num_workers=cfg.training.num_workers
+            )
+            test_loader = None
+    else:
+        raise ValueError(f"Molecule {cfg.data.molecule} not found")
     
     return train_loader, test_loader
        
@@ -131,12 +145,19 @@ def load_loss(cfg):
 
         return mse_loss, reg_loss
     
+    def mse_reg5_loss(y_true, y_pred, mu, log_var, *args):
+        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+        reg_loss = torch.square(mu) + torch.square(log_var)
+
+        return mse_loss, reg_loss.mean()
+    
     loss_func_list = {
         "mse": mse_loss,
         "mse+reg": mse_reg_loss,
         "mse+reg2": mse_reg2_loss,
         "mse+reg3": mse_reg3_loss,
         "mse+reg4": mse_reg4_loss,
+        "mse+reg5": mse_reg5_loss,
     }
     
     if loss_name in loss_func_list.keys():
@@ -148,10 +169,19 @@ def load_loss(cfg):
 
 
 def load_state_file(cfg, state, device):
-    state_dir = f"./data/{cfg.job.molecule}/{state}.pdb"
-    state = md.load(state_dir).xyz
-    state = torch.tensor(state).to(device)
-    states = state.repeat(cfg.job.sample_num, 1, 1)
+    if cfg.job.molecule == "alanine":
+        state_dir = f"./data/{cfg.job.molecule}/{state}.pdb"
+        state = md.load(state_dir).xyz
+        state = torch.tensor(state).to(device)
+        states = state.repeat(cfg.job.sample_num, 1, 1)
+    elif cfg.job.molecule == "double-well":
+        if state == "left":
+            state = torch.tensor([-1.118, 0], dtype=torch.float32).to(device)
+        elif state == "right":
+            state = torch.tensor([1.118, 0], dtype=torch.float32).to(device)
+        states = state.repeat(cfg.job.sample_num, 1)
+    else:
+        raise ValueError(f"Molecule {cfg.job.molecule} not found")
     
     return states
 

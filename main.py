@@ -75,7 +75,8 @@ def main(cfg):
             ):
                 # Load data
                 data = [d.to(device) for d in data]
-                current_state, next_state, goal_state, step = data
+                # current_state, next_state, goal_state, step = data
+                current_state, next_state, goal_state, step, temperature = data
                 current_state *= scale
                 next_state *= scale
                 goal_state *= scale
@@ -87,7 +88,11 @@ def main(cfg):
                 )
                 
                 # Compute loss
-                mse_loss, reg_loss = criteria(next_state, current_state + state_offset, mu, log_var, step)
+                if cfg.model.transform == "ic2" or cfg.model.transform == "ic4":
+                    predicted_next_state = state_offset
+                else: 
+                    predicted_next_state = current_state + state_offset
+                mse_loss, reg_loss = criteria(next_state, predicted_next_state, mu, log_var, step)
                 loss = mse_loss + reg_loss
                 total_mse += mse_loss
                 total_reg += reg_loss

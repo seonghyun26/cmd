@@ -1,0 +1,6 @@
+defaults:
+- model: mlp-small
+- data: double-well
+- training: double-well
+- logging: double-well
+- job: goal-dw
