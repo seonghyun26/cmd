@@ -12,10 +12,10 @@ from .data import *
 from .model import ModelWrapper
 
 def load_data(cfg):
+    data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
+    dataset = torch.load(f"{data_path}")
+    
     if cfg.data.molecule == "double-well":
-        data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
-        dataset = torch.load(f"{data_path}")
-        
         train_loader = DataLoader(
             dataset=dataset,
             batch_size=cfg.training.batch_size,
@@ -24,9 +24,6 @@ def load_data(cfg):
         )
         test_loader = None
     elif cfg.data.molecule == "alanine":
-        data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
-        
-        dataset = torch.load(f"{data_path}")
         if cfg.training.test:
             train_dataset, test_dataset = random_split(dataset, cfg.data.train_test_split)
             train_loader = DataLoader(

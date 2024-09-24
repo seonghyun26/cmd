@@ -19,10 +19,8 @@ import matplotlib.pyplot as plt
 )
 def main(cfg):
     # Load configs
-    print(f">> Loading configs...")
     with open_dict(cfg):
         cfg.logging.dir = hydra.core.hydra_config.HydraConfig.get().run.dir
-    print(OmegaConf.to_yaml(cfg))
     device = torch.device(cfg.logging.device if "device" in cfg.logging else "cpu")
     
     # Load logger, model, data
@@ -43,22 +41,23 @@ def main(cfg):
     # Train or load model from checkpoint
     if cfg.training.train:
         # Load dataset
+        logger.info(">> Loading dataset...")
         train_loader, test_loader = load_data(cfg)
         criteria = load_loss(cfg)
-        if cfg.training.test:
-            temperature = train_loader.dataset.dataset.temperature
-        else:
-            temperature = train_loader.dataset.temperature
+        # if cfg.training.test:
+        #     temperature = train_loader.dataset.dataset.temperature
+        # else:
+        #     temperature = train_loader.dataset.temperature
         data_num = len(train_loader.dataset)
         scale = cfg.training.scale
         batch_size = cfg.training.batch_size
-        logger.info(f"MD Dataset size: {data_num}")
+        logger.info(f">> Dataset size: {data_num}")
         
         # Train model
-        logger.info("Training...")
+        logger.info(">> Training...")
         pbar = trange(
             cfg.training.epoch,
-            desc="Training"
+            desc="Training (Loss: ----)"
         )
         for epoch in pbar:
             model_wrapper.train()
@@ -74,12 +73,7 @@ def main(cfg):
                 leave=False
             ):
                 # Load data
-                data = [d.to(device) for d in data]
-                # current_state, next_state, goal_state, step = data
-                current_state, next_state, goal_state, step, temperature = data
-                current_state *= scale
-                next_state *= scale
-                goal_state *= scale
+                current_state, next_state, goal_state, step, temperature = (d.to(device) * scale for d in data)
                 optimizer.zero_grad()
                 
                 # Predict next state
@@ -88,10 +82,7 @@ def main(cfg):
                 )
                 
                 # Compute loss
-                if cfg.model.transform == "ic2" or cfg.model.transform == "ic4":
-                    predicted_next_state = state_offset
-                else: 
-                    predicted_next_state = current_state + state_offset
+                predicted_next_state = current_state + state_offset
                 mse_loss, reg_loss = criteria(next_state, predicted_next_state, mu, log_var, step)
                 loss = mse_loss + reg_loss
                 total_mse += mse_loss

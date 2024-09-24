@@ -1,8 +1,8 @@
-wandb: False
+wandb: True
 tags:
 - test
 project: cmd
 entity: eddy26
 device: cuda
 checkpoint: True
-ckpt_freq: 10
+ckpt_freq: 40

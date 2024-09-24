@@ -1,6 +1,6 @@
 name: MLP
-layers: 3
-hidden_dim: [64, 64, 64]
+layers: 2
+hidden_dim: 64
 init: xavier
-transform: ic
-# transform: xyz
+transform: xyz
+residual: True

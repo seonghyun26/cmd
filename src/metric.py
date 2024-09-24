@@ -188,7 +188,7 @@ def compute_ram(cfg, trajectory_list, epoch):
         dw_potential_path = f"./data/{cfg.job.molecule}/potential.dat"
         dw_potential = DoubleWellPotential(dw_potential_path)
         start_state = torch.tensor([-1.118, 0], dtype=torch.float32).to(device)
-        goal_state = torch.tensor([-1.118, 0], dtype=torch.float32).to(device)
+        goal_state = torch.tensor([1.118, 0], dtype=torch.float32).to(device)
         
         ram_plot_img = plot_dw_potential(
             potential = dw_potential,

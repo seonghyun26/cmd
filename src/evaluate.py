@@ -28,7 +28,7 @@ def evaluate_sim(cfg, trajectory_list, logger):
     # Load ground truth simulation results
     
     # Compare the results
-    
+    pass
     
     return
 

@@ -1,11 +1,11 @@
-# batch_size: 4096
-batch_size: 8192
+batch_size: 4096
+# batch_size: 8192
 shuffle: True
-epoch: 100
+epoch: 200
 scale: 100.0
 step_scale: False
 loss:
-  name: mse
+  name: mse+reg5
   reduction: mean
 optimizer:
   name: Adam
@@ -15,7 +15,7 @@ optimizer:
 scheduler:
   name: CosineAnnealingLR
   params: {
-    T_max: 100,
+    T_max: 200,
     eta_min: 1e-5
   }
 num_workers: 8

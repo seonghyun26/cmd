@@ -57,7 +57,7 @@ def plot_ad_potential(potential, traj_dihedral, start_dihedral, goal_dihedral, e
     output_dir = hydra.core.hydra_config.HydraConfig.get().run.dir
     if os.path.exists(f"{output_dir}/img") is False:
         os.mkdir(f"{output_dir}/img")
-    img_path = f"{output_dir}/img/ram-{epoch}.png"
+    img_path = f"{output_dir}/img/ad-ram-{epoch}.png"
     plt.savefig(f"{img_path}")
     plt.close()
     
@@ -67,8 +67,8 @@ def plot_dw_potential(potential, traj, start, goal, epoch):
     plt.clf()
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111)
-    sample_num = traj[0].shape[0]
-    traj_length = traj[0].shape[1]
+    sample_num = traj.shape[0]
+    traj_length = traj.shape[1]
 
     # Plot the potential
     bound = 1.7
@@ -88,8 +88,8 @@ def plot_dw_potential(potential, traj, start, goal, epoch):
     )
     for idx in range(sample_num):
         ax.plot(
-            traj_dihedral[0][idx],
-            traj_dihedral[1][idx],
+            traj[idx, :, 0],
+            traj[idx, :, 1],
             marker="o",
             linestyle="None",
             markersize=3,
@@ -99,10 +99,10 @@ def plot_dw_potential(potential, traj, start, goal, epoch):
 
     # Plot start and goal states
     ax.scatter(
-        start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=100, s=160
+        start[0], start[1], edgecolors="black", c="w", zorder=100, s=160
     )
     ax.scatter(
-        goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=100, s=500, marker="*"
+        goal[0], goal[1], edgecolors="black", c="w", zorder=100, s=500, marker="*"
     )
     
     # Plot the Ramachandran plot
@@ -116,7 +116,7 @@ def plot_dw_potential(potential, traj, start, goal, epoch):
     output_dir = hydra.core.hydra_config.HydraConfig.get().run.dir
     if os.path.exists(f"{output_dir}/img") is False:
         os.mkdir(f"{output_dir}/img")
-    img_path = f"{output_dir}/img/ram-{epoch}.png"
+    img_path = f"{output_dir}/img/dw-pot-{epoch}.png"
     plt.savefig(f"{img_path}")
     plt.close()
     

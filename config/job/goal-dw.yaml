@@ -6,8 +6,8 @@ goal_state: right
 sample_num: 16
 temperature: 300
 save: True
-time_horizon: 200
-thp_cv_bound: 0.75
+time_horizon: 400
+thp_cv_bound: 0.4
 metrics:
 - epd
 - thp

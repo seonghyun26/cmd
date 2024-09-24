@@ -3,22 +3,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class MLP(nn.Module):
-    def __init__(self, cfg, input_dim):
+    def __init__(self, cfg, input_dim, output_dim):
         super(MLP, self).__init__()
-        
-        assert cfg.model.layers == len(cfg.model.hidden_dim), "The number of layers should be the same as the number of hidden dimensions"
-        
+
         self.input_dim = input_dim
-        self.output_dim = cfg.model.hidden_dim[-1]
+        self.output_dim = output_dim
+        self.residual = cfg.model.residual
         
-        self.layers = nn.ModuleList([
-            nn.Linear(self.input_dim, cfg.model.hidden_dim[0]),
-            nn.ReLU()
-        ])
-        for i in range(cfg.model.layers-1):
-            self.layers.append(nn.Linear(cfg.model.hidden_dim[i], cfg.model.hidden_dim[i+1]))
+        self.encoder = nn.Linear(self.input_dim, cfg.model.hidden_dim)
+        self.layers = nn.ModuleList()
+        for i in range(cfg.model.layers):
+            self.layers.append(nn.Linear(cfg.model.hidden_dim, cfg.model.hidden_dim))
             self.layers.append(nn.ReLU())
-        self.layers.append(nn.Linear(cfg.model.hidden_dim[-1], self.output_dim))
+        self.decoder = nn.Linear(cfg.model.hidden_dim, self.output_dim)
         
         if cfg.model.init == "xavier":
             for layer in self.layers:
@@ -27,7 +24,16 @@ class MLP(nn.Module):
                     nn.init.zeros_(layer.bias)
     
     def forward(self, x):
-        for layer in self.layers:
-            x = layer(x)
+        x = self.encoder(x)
+        
+        for idx, layer in enumerate(self.layers):
+            if  self.residual:
+                x_input = x
+                x = layer(x)
+                x = x + x_input
+            else:
+                x = layer(x)
+        
+        x = self.decoder(x)
         
         return x
