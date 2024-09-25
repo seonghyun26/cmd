@@ -30,7 +30,10 @@ class ModelWrapper(nn.Module):
             self.representation_dim = cfg.data.atom 
         else:
             raise ValueError(f"Transform {cfg.model.transform} not found")
-        self.condition_dim = self.representation_dim * 2 + 2
+        if cfg.training.repeat:
+            self.condition_dim = self.representation_dim * 4
+        else:
+            self.condition_dim = self.representation_dim * 2 + 2
             
         model_name = cfg.model.name.lower() 
         if model_name in model_dict.keys():
@@ -44,6 +47,7 @@ class ModelWrapper(nn.Module):
         
         self.mu = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
         self.log_var = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
+        # self.test = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
         
         return model
     
@@ -69,9 +73,10 @@ class ModelWrapper(nn.Module):
         latent = self.model(conditions)
         
         mu = self.mu(latent)
-        log_var = self.log_var(latent)
-        log_var = torch.clamp(log_var, max=10)
+        log_var = torch.clamp(self.log_var(latent), max=10)
         state_offset = self.reparameterize(mu, log_var)
+        # state_offset = latent
+        # mu, log_var = 0, 0
         
         # Reshape state_offset by molecule type
         if self.cfg.data.molecule == "alanine":

@@ -17,8 +17,8 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     scale = cfg.training.scale
     sample_num = cfg.job.sample_num
     time_horizon = cfg.job.time_horizon
-    inital_states = load_state_file(cfg, cfg.job.start_state, device)
-    inital_states *= scale
+    inital_state = load_state_file(cfg, cfg.job.start_state, device)
+    inital_state *= scale
     
 
     # Set conditions by task
@@ -26,56 +26,64 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     if task == "simulation":
         raise NotImplementedError("Simulation task TBA")
     elif task == "tps":
-        goal_states = load_state_file(cfg, cfg.job.goal_state, device)
-        goal_states *= scale
+        goal_state = load_state_file(cfg, cfg.job.goal_state, device)
+        goal_state *= scale
     else:
         raise ValueError(f"Task {task} not found")
     
     
     # Generate trajectories
-    state_list = [inital_states]
-    current_states = inital_states
+    state_list = [inital_state]
+    current_state = inital_state
     model_wrapper.eval()
     with torch.no_grad():
         for t in tqdm(
             range(time_horizon),
-            desc=f"Epoch {epoch}, genearting {sample_num} trajectories for {task}"
+            desc=f"Epoch {epoch}, genearting {sample_num} trajectories for {task}",
+            leave=False
         ):
             # Generate next state offset
-            step = torch.tensor(time_horizon - t).to(current_states.device).repeat(sample_num, 1)
-            temperature = torch.tensor(cfg.job.temperature).to(current_states.device).repeat(sample_num, 1)
-            states_offset, mu, log_var = model_wrapper(
-                current_state=current_states,
-                goal_state=goal_states,
+            step = torch.tensor(time_horizon - t).to(current_state.device).repeat(sample_num, 1)
+            temperature = torch.tensor(cfg.job.temperature).to(current_state.device).repeat(sample_num, 1)
+            if cfg.training.state_representation == "difference":
+                goal_representation = goal_state - current_state
+            elif cfg.training.state_representation == "original":
+                goal_representation = goal_state
+            else:
+                raise ValueError(f"State representation {cfg.training.state_representation} not found")
+            if cfg.training.repeat:
+                step = step.repeat(1, current_state.shape[1])
+                temperature = temperature.repeat(1, current_state.shape[1])
+            state_offset, mu, log_var = model_wrapper(
+                current_state=current_state,
+                goal_state=goal_representation,
                 step=step,
-                temperature=temperature
+                temperature=temperature,
             )
             
-            # Reshape states_offset
+            # Reshape 
             if cfg.data.molecule == "alanine":
-                states_offset = states_offset.reshape(
+                state_offset = state_offset.reshape(
                     sample_num,
                     atom_num,
                     3
                 )
             elif cfg.data.molecule == "double-well":
-                states_offset = states_offset.reshape(
+                state_offset = state_offset.reshape(
                     sample_num,
                     atom_num
                 )
             else:
                 raise ValueError(f"Molecule {cfg.data.molecule} not found")
                 
-            # Compute next state by transform type
-            if cfg.model.transform == "ic2" or cfg.model.transform == "ic4":
-                next_states = states_offset
-            else: 
-                next_states = current_states + states_offset
-            state_list.append(next_states)
-            current_states = next_states
+            # Compute next frame
+            next_state = current_state + state_offset
+            state_list.append(next_state)
+            current_state = next_state
     
     trajectory_list = torch.stack(state_list, dim=1)
     trajectory_list /= scale
+    
     if cfg.job.save:
         save_trajectory(cfg, trajectory_list, epoch, logger)
     
@@ -95,6 +103,6 @@ def save_trajectory(cfg, trajectory_list, epoch, logger):
         except Exception as e:
             logger.error(f"Error in saving trajectory: {e}")
     
-    logger.info(f"{trajectory_list.shape[0]} trajectories saved at: {trajectory_dir}")
+    logger.info(f"Epoch {epoch}: {trajectory_list.shape[0]} trajectories saved at: {trajectory_dir}")
     
     return

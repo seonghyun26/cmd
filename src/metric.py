@@ -27,13 +27,12 @@ def compute_epd(cfg, trajectory_list, goal_state):
         matrix_f_norm = torch.sqrt(torch.square(
             pairwise_distance(last_state, last_state) - pairwise_distance(goal_state, goal_state)
         ).sum((1, 2)))
+        epd = matrix_f_norm / (atom_num ** 2) * unit_scale_factor
     elif molecule == "double-well":
-        matrix_f_norm = torch.sqrt(torch.square(
-            pairwise_distance(last_state, last_state) - pairwise_distance(goal_state, goal_state)
-        ).sum((1)))
+        # RMSD for double well
+        epd = torch.sqrt(torch.mean(torch.square(last_state - goal_state), dim=1)).mean()
     else:
         raise ValueError(f"EPD for molecule {molecule} TBA")
-    epd = matrix_f_norm / (atom_num ** 2) * unit_scale_factor
     
     return epd.mean().item()
 
@@ -285,7 +284,7 @@ class DoubleWellPotential():
         with open(landscape_path) as f:
             lines = f.readlines()
 
-        spacing = 341
+        spacing = 68
         dims = [spacing, spacing]
 
         self.locations = torch.zeros((int(dims[0]), int(dims[1]), 2))
@@ -314,3 +313,5 @@ class DoubleWellPotential():
 
         z = self.data[x, y]
         return z
+    
+    

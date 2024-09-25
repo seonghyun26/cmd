@@ -4,6 +4,8 @@ shuffle: True
 epoch: 200
 scale: 100.0
 step_scale: False
+# state_representation: original
+state_representation: difference
 loss:
   name: mse
   reduction: mean
@@ -16,7 +18,7 @@ scheduler:
   name: CosineAnnealingLR
   params: {
     T_max: 200,
-    eta_min: 1e-5
+    eta_min: 1e-3
   }
 num_workers: 8
 train: True

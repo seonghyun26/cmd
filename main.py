@@ -22,11 +22,12 @@ def main(cfg):
     with open_dict(cfg):
         cfg.logging.dir = hydra.core.hydra_config.HydraConfig.get().run.dir
     device = torch.device(cfg.logging.device if "device" in cfg.logging else "cpu")
-    
+
     # Load logger, model, data
     logger = logging.getLogger("CMD")
+    logger.info(">> Configs")
+    logger.info(OmegaConf.to_yaml(cfg))
     model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
-    logger.info(f"Model: {cfg.model.name}")
     if cfg.logging.wandb:
         wandb.init(
             project=cfg.logging.project,
@@ -36,22 +37,17 @@ def main(cfg):
                 cfg, resolve=True, throw_on_missing=True
             )
         )
-        wandb.log({"param": sum([p.numel() for p in model_wrapper.parameters()])})
+        wandb.config.update({"Model Parameters": sum([p.numel() for p in model_wrapper.parameters() if p.requires_grad])})
     
     # Train or load model from checkpoint
     if cfg.training.train:
         # Load dataset
         logger.info(">> Loading dataset...")
         train_loader, test_loader = load_data(cfg)
-        criteria = load_loss(cfg)
-        # if cfg.training.test:
-        #     temperature = train_loader.dataset.dataset.temperature
-        # else:
-        #     temperature = train_loader.dataset.temperature
-        data_num = len(train_loader.dataset)
+        criteria, loss_names = load_loss(cfg)
         scale = cfg.training.scale
         batch_size = cfg.training.batch_size
-        logger.info(f">> Dataset size: {data_num}")
+        logger.info(f">> Dataset size: {len(train_loader.dataset)}")
         
         # Train model
         logger.info(">> Training...")
@@ -61,10 +57,8 @@ def main(cfg):
         )
         for epoch in pbar:
             model_wrapper.train()
-            total_loss = 0
-            total_mse = 0
-            total_reg = 0
-            total_log_var = 0
+            loss_list = { f"loss/{name}": 0 for name in loss_names }
+            loss_list.update({"loss/total": 0})
             
             for i, data in tqdm(
                 enumerate(train_loader),
@@ -77,59 +71,43 @@ def main(cfg):
                 optimizer.zero_grad()
                 
                 # Predict next state
+                if cfg.training.state_representation == "difference":
+                    goal_representation = goal_state - current_state
+                elif cfg.training.state_representation == "original":
+                    goal_representation = goal_state
+                else:
+                    raise ValueError(f"State representation {cfg.training.state_representation} not found")
+                if cfg.training.repeat:
+                    step = step.repeat(1, current_state.shape[1])
+                    temperature = temperature.repeat(1, current_state.shape[1])
                 state_offset, mu, log_var = model_wrapper(
-                    current_state, goal_state, step, temperature
+                    current_state=current_state,
+                    goal_state=goal_representation,
+                    step=step,
+                    temperature=temperature,
                 )
                 
                 # Compute loss
-                predicted_next_state = current_state + state_offset
-                mse_loss, reg_loss = criteria(next_state, predicted_next_state, mu, log_var, step)
-                loss = mse_loss + reg_loss
-                total_mse += mse_loss
-                total_reg += reg_loss
-                total_loss += loss
-                total_log_var += log_var.mean()
+                loss_list_batch = criteria(next_state, current_state + state_offset, mu, log_var, step)
+                for name in loss_list_batch.keys():
+                    loss_list[f"loss/{name}"] += loss_list_batch[name]
+                
+                loss = sum(loss_list_batch.values())
+                loss_list["loss/total"] += loss
                 loss.backward()
                 optimizer.step()
             
             # Update results
             scheduler.step()
-            result = {
-                "lr": optimizer.param_groups[0]["lr"],
-                "loss/total": total_loss / len(train_loader),   
-                "loss/mse": total_mse / len(train_loader),
-                "loss/reg": total_reg / len(train_loader),
-                "train/log_var": total_log_var / len(train_loader)
-            }
-            pbar.set_description(f"Training (loss: {total_loss / len(train_loader):8f})")
+            loss_list = {k: v / (len(train_loader) * scale) for k, v in loss_list.items()}
+            loss_list.update({"lr": optimizer.param_groups[0]["lr"]})
+            pbar.set_description(f"Training (loss: {loss_list['loss/total']:8f})")
             pbar.refresh() 
-            
-            # Test dataset if available
-            if cfg.training.test:
-                model_wrapper.eval()
-                test_loss = 0
-                test_loss_mse = 0
-                test_loss_reg = 0
-                for i, test_data in enumerate(test_loader):
-                    data = [d.to(device) for d in data]
-                    current_state, next_state, goal_state, step = data
-                    state_offset, mu, log_var = model_wrapper(current_state, goal_state, step, temperature)
-                    mse_loss, reg_loss = criteria(next_state, current_state + state_offset, mu, log_var)
-                    loss = mse_loss + reg_loss
-                    test_loss_mse += mse_loss
-                    test_loss_reg += reg_loss
-                    test_loss += loss
-                model_wrapper.train()
-                result.update({
-                    "test/loss": test_loss / len(test_loader),
-                    "test/mse": test_loss_mse / len(test_loader),
-                    "test/reg": test_loss_reg / len(test_loader),
-                })
 
             # Wandb loggging
             if cfg.logging.wandb:
                 wandb.log(
-                    result,
+                    loss_list,
                     step=epoch
                 )
                 
@@ -137,8 +115,9 @@ def main(cfg):
             if epoch * cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
                 model_wrapper.save_model(output_dir, epoch)
-                logger.info(f"Epcoh {epoch}, model weights saved at: {output_dir}")
+                logger.info(f"Epoch {epoch}, model weights saved at: {output_dir}")
                 model_wrapper.eval()
+                logger.info(">> Evaluating...")
                 trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
                 evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=epoch)
                 model_wrapper.train()
@@ -149,31 +128,6 @@ def main(cfg):
             output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
             model_wrapper.save_model(output_dir, "final")
             logger.info(f"Final model weights saved at: {output_dir}")
-        
-        if cfg.training.test:
-            model_wrapper.eval()
-            test_loss = 0
-            test_loss_mse = 0
-            test_loss_reg = 0
-            for i, test_data in enumerate(test_loader):
-                data = [d.to(device) for d in data]
-                current_state, next_state, goal_state, step = data
-                state_offset, mu, log_var = model_wrapper(current_state, goal_state, step, temperature)
-                mse_loss, reg_loss = criteria(next_state, current_state + state_offset, mu, log_var)
-                loss = mse_loss + reg_loss
-                test_loss_mse += mse_loss
-                test_loss_reg += reg_loss
-                test_loss += loss
-            model_wrapper.train()
-            result.update({
-                "test/loss": test_loss / len(test_loader),
-                "test/mse": test_loss_mse / len(test_loader),
-                "test/reg": test_loss_reg / len(test_loader),
-            })
-            wandb.log(
-                result,
-                step=epoch
-            )
     else:
         # Load trainined model from checkpoint
         ckpt_path = f"model/{cfg.data.molecule}/{cfg.training.ckpt_name}"

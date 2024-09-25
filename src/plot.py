@@ -97,13 +97,15 @@ def plot_dw_potential(potential, traj, start, goal, epoch):
             zorder=101
         )
 
-    # Plot start and goal states
+    # Plot start, goal state, and square for cv bound
     ax.scatter(
         start[0], start[1], edgecolors="black", c="w", zorder=100, s=160
     )
     ax.scatter(
         goal[0], goal[1], edgecolors="black", c="w", zorder=100, s=500, marker="*"
     )
+    square = plt.Rectangle((1.118 - 0.2, -0.2), 0.4, 0.4, color='r', fill=False, linewidth=2)
+    plt.gca().add_patch(square)
     
     # Plot the Ramachandran plot
     plt.xlim([-bound, bound])

@@ -98,34 +98,33 @@ def load_scheduler(cfg, optimizer):
     return scheduler
 
 
-def load_loss(cfg):
-    loss_name = cfg.training.loss.name.lower()
-    
+def load_loss(cfg):    
     def mse_loss(y_true, y_pred, *args):
-        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
-
-        return mse_loss, 0
+        loss_list = {
+            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "reg": torch.square(log_var.exp())
+        }
+        
+        return loss_list
 
     def mse_reg_loss(y_true, y_pred, mu, log_var, *args):
-        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
-        reg_loss = -0.5 * torch.sum(1 + log_var - log_var.exp())
-
-        return mse_loss, reg_loss.mean()
+        loss_list = {
+            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "reg": -0.5 * torch.sum(1 + log_var - log_var.exp())
+        }
+        
+        return loss_list
 
     def mse_reg2_loss(y_true, y_pred, mu, log_var, *args):
-        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
-        reg_loss = torch.square(log_var.exp())
+        loss_list = {
+            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "reg": torch.square(log_var.exp())
+        }
+        
+        return loss_list
 
-        return mse_loss, reg_loss.mean()
-
-    def mse_reg3_loss(y_true, y_pred, mu, log_var, *args):
-        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
-        reg_loss = torch.square(log_var)
-
-        return mse_loss, reg_loss.mean()
-
-    def mse_reg4_loss(y_true, y_pred, mu, log_var, step, *args):
-        mse_loss = nn.MSELoss(reduction="none")(y_pred, y_true).mean(dim=(1,2))
+    def mse_reg3_loss(y_true, y_pred, mu, log_var, step, *args):
+        mse_loss = nn.MSELoss(reduction="none")(y_pred, y_true).mean(dim=(1))
         reg_loss = torch.square(log_var).mean(dim=(1))
         step_div = torch.sqrt(step).squeeze()
         mse_loss /= step_div
@@ -140,14 +139,69 @@ def load_loss(cfg):
         else:
             raise ValueError(f"Reduction {cfg.training.loss.reduction} not found")
 
-        return mse_loss, reg_loss
+        loss_list = {
+            "mse": mse_loss,
+            "reg": torch.square(log_var)
+        }
+        
+        return loss_list
+    
+    def mse_reg4_loss(y_true, y_pred, mu, log_var, *args):
+        loss_list = {
+            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "reg": torch.square(log_var)
+        }
+        
+        return loss_list
     
     def mse_reg5_loss(y_true, y_pred, mu, log_var, *args):
-        mse_loss = nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
-        reg_loss = torch.square(mu) + torch.square(log_var)
-
-        return mse_loss, reg_loss.mean()
+        loss_list = {
+            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "reg": torch.square(mu) + torch.square(log_var)
+        }
+        
+        return loss_list
     
+    def mse_reg6_loss(y_true, y_pred, mu, log_var, step, *args):
+        mse_loss = nn.MSELoss(reduction="none")(y_pred, y_true).mean(dim=(1))
+        reg_loss = torch.square(log_var).mean(dim=(1))
+        step_div = step.squeeze()
+        mse_loss /= step_div
+        reg_loss /= step_div
+        
+        if cfg.training.loss.reduction == "mean":
+            mse_loss = mse_loss.mean()
+            reg_loss = reg_loss.mean()
+        elif cfg.training.loss.reduction == "sum":
+            mse_loss = mse_loss.sum()
+            reg_loss = reg_loss.sum()
+        else:
+            raise ValueError(f"Reduction {cfg.training.loss.reduction} not found")
+
+        loss_list = {
+            "mae": mse_loss,
+            "reg": reg_loss
+        }
+        
+        return loss_list
+        
+    
+    def mae_loss(y_true, y_pred, *args):
+        loss_list = {
+            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+        }
+        
+        return loss_list
+    
+    def mae_reg4_loss(y_true, y_pred, mu, log_var, *args):
+        loss_list = {
+            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "reg": torch.square(log_var)
+        }
+
+        return loss_list
+    
+    loss_name = cfg.training.loss.name.lower()
     loss_func_list = {
         "mse": mse_loss,
         "mse+reg": mse_reg_loss,
@@ -155,6 +209,8 @@ def load_loss(cfg):
         "mse+reg3": mse_reg3_loss,
         "mse+reg4": mse_reg4_loss,
         "mse+reg5": mse_reg5_loss,
+        "mae": mae_loss,
+        "mae+reg4": mae_reg4_loss,
     }
     
     if loss_name in loss_func_list.keys():
@@ -162,7 +218,9 @@ def load_loss(cfg):
     else:
         raise ValueError(f"Loss {loss_name} not found")
     
-    return loss_func
+    loss_names = ["mse", "mae", "reg"]
+    
+    return loss_func, loss_names
 
 
 def load_state_file(cfg, state, device):
@@ -176,6 +234,8 @@ def load_state_file(cfg, state, device):
             state = torch.tensor([-1.118, 0], dtype=torch.float32).to(device)
         elif state == "right":
             state = torch.tensor([1.118, 0], dtype=torch.float32).to(device)
+        else:
+            raise ValueError(f"State {state} not found")
         states = state.repeat(cfg.job.sample_num, 1)
     else:
         raise ValueError(f"Molecule {cfg.job.molecule} not found")

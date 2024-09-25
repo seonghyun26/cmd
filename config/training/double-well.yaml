@@ -1,11 +1,11 @@
-batch_size: 4096
-# batch_size: 8192
+batch_size: 65536
 shuffle: True
 epoch: 200
 scale: 100.0
 step_scale: False
+state_representation: difference
 loss:
-  name: mse+reg5
+  name: mse+reg4
   reduction: mean
 optimizer:
   name: Adam

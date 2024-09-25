@@ -10,7 +10,7 @@ class SyntheticDataset(Dataset):
         args,
         sanity_check=False
     ):
-        super(MD_Dataset, self).__init__()
+        super(SyntheticDataset, self).__init__()
         
         self.molecule = args.molecule
         self.state = args.state

@@ -6,7 +6,7 @@
         "type": "debugpy",
         "request": "launch",
         "env": {
-            "CUDA_VISIBLE_DEVICES": "6,7"
+            "CUDA_VISIBLE_DEVICES": "0,1"
         },
         "cwd": "/home/shpark/prj-cmd/cmd/",
         "program": "main.py",
@@ -29,8 +29,16 @@
         "cwd": "/home/shpark/prj-cmd/cmd/",
         "program": "main.py",
         "args": [
-          "--config-name",
-          "double-well",
+            "--config-name",
+            "debug-double-well",
+            "hydra.run.dir=outputs/debug",
+            "++training.repeat=True",
+            "++training.loss.name=mae",
+            // "++logging.wandb=False",
+            // "++training.loss.name=mse+reg4",
+            // "++training.epoch=100",
+            // "++training.scale=1.0",
+            // "++logging.ckpt_freq=20",
         ],
         "console": "integratedTerminal"
     },

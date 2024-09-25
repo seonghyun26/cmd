@@ -1,6 +1,6 @@
 name: MLP
 layers: 8
-hidden_dim: [256, 256, 256, 256, 256, 256, 256, 256]
+hidden_dim: 256
 init: xavier
 transform: xyz
-residual: True
+residual: False

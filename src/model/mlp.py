@@ -10,12 +10,19 @@ class MLP(nn.Module):
         self.output_dim = output_dim
         self.residual = cfg.model.residual
         
-        self.encoder = nn.Linear(self.input_dim, cfg.model.hidden_dim)
+        # self.encoder = nn.Linear(self.input_dim, cfg.model.hidden_dim)
+        self.encoder = nn.Sequential(
+            nn.Linear(self.input_dim, cfg.model.hidden_dim),
+            nn.ReLU()
+        )
         self.layers = nn.ModuleList()
         for i in range(cfg.model.layers):
             self.layers.append(nn.Linear(cfg.model.hidden_dim, cfg.model.hidden_dim))
             self.layers.append(nn.ReLU())
-        self.decoder = nn.Linear(cfg.model.hidden_dim, self.output_dim)
+        self.decoder = nn.Sequential(
+            nn.Linear(cfg.model.hidden_dim, self.output_dim),
+            nn.ReLU()
+        )
         
         if cfg.model.init == "xavier":
             for layer in self.layers:
@@ -27,7 +34,7 @@ class MLP(nn.Module):
         x = self.encoder(x)
         
         for idx, layer in enumerate(self.layers):
-            if  self.residual:
+            if self.residual:
                 x_input = x
                 x = layer(x)
                 x = x + x_input
@@ -35,5 +42,6 @@ class MLP(nn.Module):
                 x = layer(x)
         
         x = self.decoder(x)
+        # x = nn.ReLU()(x)
         
         return x

@@ -1,0 +1,6 @@
+defaults:
+- model: debug-mlp
+- data: debug-double-well
+- training: debug-double-well
+- logging: debug-log
+- job: goal-double-well
