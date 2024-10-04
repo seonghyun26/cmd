@@ -1,0 +1,5 @@
+name: EGNN
+layers: 4
+hidden_dim: 64
+transform: xyz
+residual: False

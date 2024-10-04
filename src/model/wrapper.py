@@ -22,6 +22,7 @@ class ModelWrapper(nn.Module):
         model_dict = {
             "mlp": MLP,
             "egnn": EGNN,
+            "sdenet": SDENet,
         }
         
         if cfg.model.transform == "xyz" and cfg.data.molecule == "alanine":
@@ -35,19 +36,18 @@ class ModelWrapper(nn.Module):
         else:
             self.condition_dim = self.representation_dim * 2 + 2
             
-        model_name = cfg.model.name.lower() 
-        if model_name in model_dict.keys():
-            model = model_dict[model_name](
+        self.model_name = cfg.model.name.lower() 
+        if self.model_name in model_dict.keys():
+            model = model_dict[self.model_name](
                 cfg=cfg,
                 input_dim=self.condition_dim,
                 output_dim=self.representation_dim
             )
         else:
-            raise ValueError(f"Model {model_name} not found")
+            raise ValueError(f"Model {self.model_name} not found")
         
         self.mu = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
         self.log_var = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
-        # self.test = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
         
         return model
     
@@ -72,11 +72,14 @@ class ModelWrapper(nn.Module):
         ], dim=1)
         latent = self.model(conditions)
         
-        mu = self.mu(latent)
-        log_var = torch.clamp(self.log_var(latent), max=10)
-        state_offset = self.reparameterize(mu, log_var)
-        # state_offset = latent
-        # mu, log_var = 0, 0
+        if self.model_name == "sdenet":
+            mu, log_var = latent
+            log_var = torch.clamp(log_var, max=10)
+            state_offset = self.reparameterize(mu, log_var)
+        else:
+            mu = self.mu(latent)
+            log_var = torch.clamp(self.log_var(latent), max=10)
+            state_offset = self.reparameterize(mu, log_var)
         
         # Reshape state_offset by molecule type
         if self.cfg.data.molecule == "alanine":

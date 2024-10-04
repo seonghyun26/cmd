@@ -30,7 +30,7 @@ def compute_epd(cfg, trajectory_list, goal_state):
         epd = matrix_f_norm / (atom_num ** 2) * unit_scale_factor
     elif molecule == "double-well":
         # RMSD for double well
-        epd = torch.sqrt(torch.mean(torch.square(last_state - goal_state), dim=1)).mean()
+        epd = torch.sqrt(torch.sum(torch.square(last_state - goal_state), dim=1)).mean()
     else:
         raise ValueError(f"EPD for molecule {molecule} TBA")
     
@@ -53,7 +53,7 @@ def compute_thp(cfg, trajectory_list, goal_state):
         psi_goal = compute_dihedral(goal_state[:, psi_angle])
         
         hit = (np.abs(psi - psi_goal) < cv_bound) & (np.abs(phi - phi_goal) < cv_bound)
-        hit_rate = torch.all(hit) / hit.shape[0]
+        hit_rate = hit.sum() / hit.shape[0]
     elif molecule == "double-well":
         hit = (np.abs(last_state[:, 0] - goal_state[:, 0]) < cv_bound) & (np.abs(last_state[:, 1] - goal_state[:, 1]) < cv_bound)
         hit_rate = torch.all(hit) / hit.shape[0]

@@ -1,7 +1,10 @@
-batch_size: 4096
+batch_size: 2048
 shuffle: True
 epoch: 8
 scale: 100.0
+step_scale: False
+state_representation: difference
+repeat: False
 loss:
   name: MSE+reg3
   reduction: mean
@@ -37,4 +40,4 @@ scheduler:
 num_workers: 8
 train: True
 test: False
-noise_scale: 0.01
+noise_scale: 0.04

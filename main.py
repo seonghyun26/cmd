@@ -67,7 +67,19 @@ def main(cfg):
                 leave=False
             ):
                 # Load data
-                current_state, next_state, goal_state, step, temperature = (d.to(device) * scale for d in data)
+                if cfg.data.molecule == "double-well":
+                    current_state, next_state, goal_state, step, temperature = (d.to(device) for d in data)
+                    current_state *= scale
+                    next_state *= scale
+                    goal_state *= scale
+                elif cfg.data.molecule == "alanine":
+                    current_state, next_state, goal_state, step = (d.to(device) for d in data)
+                    current_state *= scale
+                    next_state *= scale
+                    goal_state *= scale
+                    temperature = torch.tensor([300] * current_state.shape[0]).unsqueeze(1).to(device)
+                else:
+                    raise ValueError(f"Molecule {cfg.molecule} not found")
                 optimizer.zero_grad()
                 
                 # Predict next state

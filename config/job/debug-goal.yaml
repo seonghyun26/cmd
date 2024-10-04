@@ -6,7 +6,7 @@ goal_state: c7ax
 sample_num: 4
 temperature: 300
 save: True
-time_horizon: 200
+time_horizon: 400
 thp_cv_bound: 0.75
 simulation:
   force_field: ["amber99sbildn.xml", "tip3p.xml"]

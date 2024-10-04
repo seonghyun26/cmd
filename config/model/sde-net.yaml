@@ -1,6 +1,6 @@
-name: MLP
+name: SDENet
 layers: 4
 hidden_dim: 64
 init: xavier
 transform: xyz
-residual: True
+residual: False

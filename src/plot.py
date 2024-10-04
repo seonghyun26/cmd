@@ -94,7 +94,7 @@ def plot_dw_potential(potential, traj, start, goal, epoch):
             linestyle="None",
             markersize=3,
             alpha=1.0,
-            zorder=101
+            zorder=1
         )
 
     # Plot start, goal state, and square for cv bound

@@ -125,10 +125,12 @@ def load_loss(cfg):
 
     def mse_reg3_loss(y_true, y_pred, mu, log_var, step, *args):
         mse_loss = nn.MSELoss(reduction="none")(y_pred, y_true).mean(dim=(1))
-        reg_loss = torch.square(log_var).mean(dim=(1))
-        step_div = torch.sqrt(step).squeeze()
+        reg_loss = torch.square(log_var)
+        if cfg.training.repeat:
+            step_div = torch.sqrt(step[:, 0]).squeeze()
+        else:
+            step_div = torch.sqrt(step).squeeze()
         mse_loss /= step_div
-        reg_loss /= step_div
         
         if cfg.training.loss.reduction == "mean":
             mse_loss = mse_loss.mean()
@@ -141,7 +143,7 @@ def load_loss(cfg):
 
         loss_list = {
             "mse": mse_loss,
-            "reg": torch.square(log_var)
+            "reg": reg_loss
         }
         
         return loss_list
@@ -149,7 +151,7 @@ def load_loss(cfg):
     def mse_reg4_loss(y_true, y_pred, mu, log_var, *args):
         loss_list = {
             "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
-            "reg": torch.square(log_var)
+            "reg": torch.square(log_var).mean()
         }
         
         return loss_list
@@ -184,6 +186,19 @@ def load_loss(cfg):
         }
         
         return loss_list
+    
+    def mse_reg7_loss(y_true, y_pred, mu, log_var, step, *args):
+        mse_loss = nn.MSELoss(reduction="none")(y_pred, y_true)
+        mse_loss /= torch.exp(log_var)
+        mse_loss = mse_loss.mean()
+        reg_loss = torch.square(log_var).mean()
+
+        loss_list = {
+            "mse": mse_loss,
+            "reg": reg_loss
+        }
+        
+        return loss_list
         
     
     def mae_loss(y_true, y_pred, *args):
@@ -196,9 +211,18 @@ def load_loss(cfg):
     def mae_reg4_loss(y_true, y_pred, mu, log_var, *args):
         loss_list = {
             "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
-            "reg": torch.square(log_var)
+            "reg": torch.square(log_var).mean()
         }
 
+        return loss_list
+    
+    def mae_reg5_loss(y_true, y_pred, mu, log_var, *args):
+        loss_list = {
+            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "reg": torch.square(log_var).mean(),
+            "mu": -torch.square(mu).mean(),
+        }
+        
         return loss_list
     
     loss_name = cfg.training.loss.name.lower()
@@ -209,8 +233,10 @@ def load_loss(cfg):
         "mse+reg3": mse_reg3_loss,
         "mse+reg4": mse_reg4_loss,
         "mse+reg5": mse_reg5_loss,
+        "mse+reg7": mse_reg7_loss,
         "mae": mae_loss,
         "mae+reg4": mae_reg4_loss,
+        "mae+reg5": mae_reg5_loss,
     }
     
     if loss_name in loss_func_list.keys():
@@ -218,7 +244,7 @@ def load_loss(cfg):
     else:
         raise ValueError(f"Loss {loss_name} not found")
     
-    loss_names = ["mse", "mae", "reg"]
+    loss_names = ["mse", "mae", "reg", "mu"]
     
     return loss_func, loss_names
 
