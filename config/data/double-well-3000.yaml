@@ -1,5 +1,5 @@
 molecule: double-well
 atom: 2
-temperature: mix
+temperature: 3000.0
 state: left
-version: multi-temp-v1
+version: random-v1

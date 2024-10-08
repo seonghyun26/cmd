@@ -2,4 +2,4 @@ molecule: double-well
 atom: 2
 temperature: mix
 state: left
-index: multi-temp-v3
+version: multi-temp-v3

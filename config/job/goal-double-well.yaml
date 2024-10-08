@@ -6,7 +6,7 @@ start_state: left
 goal_state: right
 sample_num: 8
 temperature: 1200
-time_horizon: 400
+time_horizon: 500
 thp_cv_bound: 0.4
 metrics:
 - epd

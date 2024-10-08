@@ -110,7 +110,8 @@ def main(cfg):
                 optimizer.step()
             
             # Update results
-            scheduler.step()
+            if scheduler is not None:
+                scheduler.step()
             loss_list = {k: v / (len(train_loader) * scale) for k, v in loss_list.items()}
             loss_list.update({"lr": optimizer.param_groups[0]["lr"]})
             pbar.set_description(f"Training (loss: {loss_list['loss/total']:8f})")

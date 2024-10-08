@@ -12,7 +12,7 @@ from .data import *
 from .model import ModelWrapper
 
 def load_data(cfg):
-    data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.index}.pt"
+    data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.version}.pt"
     dataset = torch.load(f"{data_path}")
     
     if cfg.data.molecule == "double-well":
@@ -84,7 +84,8 @@ def load_scheduler(cfg, optimizer):
         "MultiStepLR": MultiStepLR,
         "ExponentialLR": ExponentialLR,
         "CosineAnnealingLR": CosineAnnealingLR,
-        "CosineAnnealingWarmRestarts": CosineAnnealingWarmRestarts
+        "CosineAnnealingWarmRestarts": CosineAnnealingWarmRestarts,
+        "None": None,
     }
     
     if cfg.training.scheduler.name in scheduler_dict.keys():
@@ -101,15 +102,14 @@ def load_scheduler(cfg, optimizer):
 def load_loss(cfg):    
     def mse_loss(y_true, y_pred, *args):
         loss_list = {
-            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
-            "reg": torch.square(log_var.exp())
+            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
         }
         
         return loss_list
 
     def mse_reg_loss(y_true, y_pred, mu, log_var, *args):
         loss_list = {
-            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
             "reg": -0.5 * torch.sum(1 + log_var - log_var.exp())
         }
         
@@ -117,7 +117,7 @@ def load_loss(cfg):
 
     def mse_reg2_loss(y_true, y_pred, mu, log_var, *args):
         loss_list = {
-            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
             "reg": torch.square(log_var.exp())
         }
         
@@ -150,7 +150,7 @@ def load_loss(cfg):
     
     def mse_reg4_loss(y_true, y_pred, mu, log_var, *args):
         loss_list = {
-            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
             "reg": torch.square(log_var).mean()
         }
         
@@ -158,7 +158,7 @@ def load_loss(cfg):
     
     def mse_reg5_loss(y_true, y_pred, mu, log_var, *args):
         loss_list = {
-            "mae": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
             "reg": torch.square(mu) + torch.square(log_var)
         }
         
@@ -181,7 +181,7 @@ def load_loss(cfg):
             raise ValueError(f"Reduction {cfg.training.loss.reduction} not found")
 
         loss_list = {
-            "mae": mse_loss,
+            "mse": mse_loss,
             "reg": reg_loss
         }
         

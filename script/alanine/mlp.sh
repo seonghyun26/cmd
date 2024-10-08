@@ -7,4 +7,4 @@ CUDA_VISIBLE_DEVICES=$1 python main.py \
     ++training.noise_scale=0.4 \
     ++training.scale=1000.0 \
     ++data.temperature=500.0 \
-    ++data.index=random-v2 \
+    ++data.version=random-v2 \

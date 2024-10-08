@@ -14,7 +14,7 @@ do
             ++job.time_horizon=$horizon \
             ++data.temperature=mix-both \
             ++data.state=both \
-            ++data.index=multi-temp-v3
+            ++data.version=multi-temp-v3
         sleep 1
     done
 done
