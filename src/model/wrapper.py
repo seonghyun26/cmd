@@ -6,6 +6,17 @@ import bgflow as bg
 
 from . import *
 
+
+model_dict = {
+    "mlp": MLP,
+    "egnn": EGNN,
+    "sdenet": SDENet,
+    "lsde": LSDE,
+    "lnsde": LNSDE,
+    "cv-mlp": CVMLP
+}
+
+
 class ModelWrapper(nn.Module):
     def __init__(self, cfg, device):
         super(ModelWrapper, self).__init__()
@@ -19,12 +30,6 @@ class ModelWrapper(nn.Module):
         self.model = self.load_model(cfg).to(device)
     
     def load_model(self, cfg):
-        model_dict = {
-            "mlp": MLP,
-            "egnn": EGNN,
-            "sdenet": SDENet,
-        }
-        
         if cfg.model.transform == "xyz" and cfg.data.molecule == "alanine":
             self.representation_dim = cfg.data.atom * 3
         elif cfg.model.transform == "xyz" and cfg.data.molecule == "double-well":
@@ -46,8 +51,9 @@ class ModelWrapper(nn.Module):
         else:
             raise ValueError(f"Model {self.model_name} not found")
         
-        self.mu = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
-        self.log_var = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
+        if self.model_name != "cv-mlp":
+            self.mu = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
+            self.log_var = nn.Linear(self.representation_dim, self.representation_dim).to(self.device)
         
         return model
     
@@ -72,10 +78,13 @@ class ModelWrapper(nn.Module):
         ], dim=1)
         latent = self.model(conditions)
         
-        if self.model_name == "sdenet":
+        if self.model_name in ["sdenet", "lsde", "lnsde"]:
             mu, log_var = latent
             log_var = torch.clamp(log_var, max=10)
             state_offset = self.reparameterize(mu, log_var)
+        elif self.model_name == "cv-mlp":
+            state_offset = latent
+            mu, log_var = 0, 0
         else:
             mu = self.mu(latent)
             log_var = torch.clamp(self.log_var(latent), max=10)

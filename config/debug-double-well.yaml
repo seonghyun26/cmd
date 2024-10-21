@@ -1,5 +1,5 @@
 defaults:
-- model: sde-net
+- model: lnsde
 - data: debug-double-well
 - training: debug-double-well
 - logging: debug-log

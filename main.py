@@ -28,6 +28,7 @@ def main(cfg):
     logger.info(">> Configs")
     logger.info(OmegaConf.to_yaml(cfg))
     model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
+    # simulation_list = load_simulation(cfg, cfg.job.sample_num, device)
     if cfg.logging.wandb:
         wandb.init(
             project=cfg.logging.project,
@@ -82,7 +83,7 @@ def main(cfg):
                     raise ValueError(f"Molecule {cfg.molecule} not found")
                 optimizer.zero_grad()
                 
-                # Predict next state
+                # Shape shifting for different molecules
                 if cfg.training.state_representation == "difference":
                     goal_representation = goal_state - current_state
                 elif cfg.training.state_representation == "original":
@@ -92,6 +93,8 @@ def main(cfg):
                 if cfg.training.repeat:
                     step = step.repeat(1, current_state.shape[1])
                     temperature = temperature.repeat(1, current_state.shape[1])
+                
+                # Predict next state
                 state_offset, mu, log_var = model_wrapper(
                     current_state=current_state,
                     goal_state=goal_representation,
@@ -100,6 +103,12 @@ def main(cfg):
                 )
                 
                 # Compute loss
+                # simulation_dummy = load_simulation(cfg, current_state.shape[0], device)
+                # simulation_dummy.set_position(current_state)
+                # simulation_dummy.step(state_offset)
+                # next_state_predicted = simulation_dummy.report()[0]
+                
+                # force = -torch.autograd.grad(out.sum(), pos, create_graph=True)[0]
                 loss_list_batch = criteria(next_state, current_state + state_offset, mu, log_var, step)
                 for name in loss_list_batch.keys():
                     loss_list[f"loss/{name}"] += loss_list_batch[name]
@@ -124,15 +133,26 @@ def main(cfg):
                     step=epoch
                 )
                 
-            # Save checkpoint 
+            # Save checkpoint and test
             if epoch * cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
                 model_wrapper.save_model(output_dir, epoch)
                 logger.info(f"Epoch {epoch}, model weights saved at: {output_dir}")
                 model_wrapper.eval()
                 logger.info(">> Evaluating...")
-                trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
-                evaluate(cfg=cfg, trajectory_list=trajectory_list, logger=logger, epoch=epoch)
+                trajectory_list = generate(
+                    cfg=cfg,
+                    model_wrapper=model_wrapper,
+                    epoch=epoch,
+                    device=device,
+                    logger=logger
+                )
+                evaluate(
+                    cfg=cfg, 
+                    trajectory_list=trajectory_list,
+                    logger=logger,
+                    epoch=epoch
+                )
                 model_wrapper.train()
     
         # Save model
@@ -151,7 +171,13 @@ def main(cfg):
     # Test model on downstream task (generation)
     if cfg.job.evaluate:
         logger.info("Evaluating...")
-        trajectory_list = generate(cfg, model_wrapper, epoch, device, logger)
+        trajectory_list = generate(
+            cfg=cfg,
+            model_wrapper=model_wrapper,
+            epoch=epoch,
+            device=device,
+            logger=logger
+        )
         evaluate(
             cfg=cfg, 
             trajectory_list=trajectory_list,

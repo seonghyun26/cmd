@@ -1,5 +1,5 @@
-name: SDENet
-layers: 8
+name: lnsde
+layers: 4
 hidden_dim: 128
 init: xavier
 transform: xyz

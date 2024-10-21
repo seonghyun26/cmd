@@ -1,5 +1,6 @@
-name: EGNN
+name: cv-mlp
 layers: 4
-hidden_dim: 64
+hidden_dim: 16
 transform: xyz
 residual: False
+init: xavier

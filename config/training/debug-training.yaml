@@ -1,12 +1,12 @@
-batch_size: 2048
+batch_size: 128
 shuffle: True
-epoch: 8
+epoch: 4
 scale: 100.0
 step_scale: False
 state_representation: difference
 repeat: False
 loss:
-  name: MSE+reg3
+  name: cvmse
   reduction: mean
 optimizer:
   name: Adam

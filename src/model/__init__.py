@@ -1,5 +1,6 @@
-from .mlp import MLP
+from .mlp import MLP, CVMLP
 from .egnn import EGNN
 from .sdenet import SDENet
+from .nsde import LSDE, LNSDE
 
 from .wrapper import ModelWrapper

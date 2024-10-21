@@ -13,10 +13,7 @@
         "args": [
           "--config-name",
           "debug",
-          "++logging.wandb=False",
           "hydra.run.dir=outputs/debug",
-          "++model.name=egnn",
-          "++training.loss.name=mse+reg4",
         ],
         "console": "integratedTerminal"
     },
@@ -35,10 +32,7 @@
             "++logging.wandb=False",
             "hydra.run.dir=outputs/debug",
             "++training.repeat=True",
-            "++training.loss.name=mse+reg7",
-            "++data.temperature=mix-both",
-            "++data.state=both",
-            "++data.version=multi-temp-v3",
+            "++training.loss.name=mse+reg4",
         ],
         "console": "integratedTerminal"
     },

@@ -46,7 +46,7 @@ class SDENet(nn.Module):
         noise = z
         
         for idx in range(self.layer):
-            if self.residual:
+            if self.residual and idx != self.layer-1:
                 drift = drift + self.drift_layers[idx](drift)
                 noise = noise + self.noise_layers[idx](noise)
             else:

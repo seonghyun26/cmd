@@ -1,0 +1,6 @@
+name: DEEPCV
+layers: 8
+hidden_dim: 256
+init: xavier
+transform: xyz
+residual: False

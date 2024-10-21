@@ -5,11 +5,25 @@ import mdtraj as md
 import torch.nn as nn
 
 from torch.optim import Adam, SGD
-from torch.optim.lr_scheduler import LambdaLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, CosineAnnealingWarmRestarts
+from torch.optim.lr_scheduler import LambdaLR, MultiplicativeLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader, Dataset, random_split
 
 from .data import *
 from .model import ModelWrapper
+from .mds import MDSimulation, SteeredMDSimulation
+
+
+scheduler_dict = {
+    "None": None,
+    "LambdaLR": LambdaLR,
+    "MultiplicativeLR": MultiplicativeLR,
+    "StepLR": StepLR,
+    "MultiStepLR": MultiStepLR,
+    "ExponentialLR": ExponentialLR,
+    "CosineAnnealingLR": CosineAnnealingLR,
+    "CosineAnnealingWarmRestarts": CosineAnnealingWarmRestarts,
+}
+
 
 def load_data(cfg):
     data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.version}.pt"
@@ -77,18 +91,20 @@ def load_optimizer(cfg, model_param):
     return optimizer
 
 
-def load_scheduler(cfg, optimizer):
-    scheduler_dict = {
-        # "LambdaLR": LambdaLR,
-        "StepLR": StepLR,
-        "MultiStepLR": MultiStepLR,
-        "ExponentialLR": ExponentialLR,
-        "CosineAnnealingLR": CosineAnnealingLR,
-        "CosineAnnealingWarmRestarts": CosineAnnealingWarmRestarts,
-        "None": None,
-    }
-    
-    if cfg.training.scheduler.name in scheduler_dict.keys():
+def load_scheduler(cfg, optimizer):   
+    if cfg.training.scheduler.name == "None":
+        scheduler = None
+    elif cfg.training.scheduler.name == "LambdaLR":
+        scheduler = LambdaLR(
+            optimizer=optimizer,
+            lr_lambda=lambda epoch: cfg.training.scheduler.lr_lambda ** epoch
+        )
+    elif cfg.training.scheduler.name == "MultiplicativeLR":
+        scheduler = MultiplicativeLR(
+            optimizer=optimizer,
+            lr_lambda=lambda epoch: 0.95 ** epoch
+        )
+    elif cfg.training.scheduler.name in scheduler_dict.keys():
         scheduler = scheduler_dict[cfg.training.scheduler.name](
             optimizer,
             **cfg.training.scheduler.params
@@ -225,7 +241,14 @@ def load_loss(cfg):
         
         return loss_list
     
-    loss_name = cfg.training.loss.name.lower()
+    def cvmse_loss(y_true, y_pred, *args):
+        loss_list = {
+            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+        }
+        
+        return loss_list
+    
+    
     loss_func_list = {
         "mse": mse_loss,
         "mse+reg": mse_reg_loss,
@@ -237,8 +260,10 @@ def load_loss(cfg):
         "mae": mae_loss,
         "mae+reg4": mae_reg4_loss,
         "mae+reg5": mae_reg5_loss,
+        "cvmse": cvmse_loss,
     }
     
+    loss_name = cfg.training.loss.name.lower()
     if loss_name in loss_func_list.keys():
         loss_func = loss_func_list[loss_name]
     else:
@@ -269,3 +294,12 @@ def load_state_file(cfg, state, device):
     return states
 
 
+def load_simulation(cfg, sample_num, device):
+    simulation_list = MDSimulation(cfg, sample_num, device)
+    
+    return simulation_list
+
+def load_steered_simulation(cfg, sample_num, device):
+    simulation_list = SteeredMDSimulation(cfg, sample_num, device)
+
+    return simulation_list

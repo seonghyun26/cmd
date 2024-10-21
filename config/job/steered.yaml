@@ -4,17 +4,15 @@ molecule: alanine
 start_state: c5
 goal_state: c7ax
 sample_num: 8
-temperature: 300
 save: True
-time_horizon: 500
 thp_cv_bound: 0.75
-simulation:
-  force_field: ["amber99sbildn.xml", "tip3p.xml"]
-  platform: OpenCL
-  precision: mixed
-  temperature: 300
+steered_simulation:
+  k: 0
   friction: 0.001
   timestep: 1
+  force_field: ["amber99sbildn.xml", "tip3p.xml"]
+  time_horizon: 500
+  temperature: 300
 metrics:
 - epd
 - thp
