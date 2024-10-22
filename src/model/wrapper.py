@@ -13,7 +13,8 @@ model_dict = {
     "sdenet": SDENet,
     "lsde": LSDE,
     "lnsde": LNSDE,
-    "cv-mlp": CVMLP
+    "cv-mlp": CVMLP,
+    "deeplda": DeepLDA
 }
 
 

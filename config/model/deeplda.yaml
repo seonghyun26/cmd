@@ -1,0 +1,7 @@
+name: deeplda
+layers: 4
+hidden_dim: 30
+nodes: [45, 30, 30, 2]
+n_states: 2
+transform: xyz
+residual: False

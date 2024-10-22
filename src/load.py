@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 
 from .data import *
 from .model import ModelWrapper
-from .mds import MDSimulation, SteeredMDSimulation
+from .md import MDSimulation, SteeredMDSimulation
 
 
 scheduler_dict = {

@@ -11,13 +11,13 @@ from .load import load_state_file
 from .metric import *
 
 
-def evaluate(cfg, trajectory_list, logger, epoch):
+def evaluate(cfg, trajectory_list, logger, epoch, device):
     task = cfg.job.name
     
     if task == "simulation":
-        evaluate_sim(cfg, trajectory_list, logger)
+        raise ValueError(f"Task {task} not supported")
     elif task == "tps":
-        evaluate_tps(cfg, trajectory_list, logger, epoch)
+        evaluate_tps(cfg, trajectory_list, logger, epoch, device)
     else:
         raise ValueError(f"Task {task} not found")
     
@@ -34,9 +34,11 @@ def evaluate_sim(cfg, trajectory_list, logger):
 
 
 # Trajectory list shape: (sample_num, time_horizon, atom_num, 3)
-def evaluate_tps(cfg, trajectory_list, logger, epoch):
-    goal_state = load_state_file(cfg, cfg.job.goal_state, trajectory_list.device)
+def evaluate_tps(cfg, trajectory_list, logger, epoch, device):
+    goal_state = load_state_file(cfg, cfg.job.goal_state, device)
     goal_state = goal_state.to("cpu")
+    if isinstance(trajectory_list, np.ndarray):
+        trajectory_list = torch.tensor(trajectory_list, dtype=torch.float32, device=device)
     trajectory_list = trajectory_list.to("cpu")
     eval_result = {}
     

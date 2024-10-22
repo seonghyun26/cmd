@@ -1,9 +1,11 @@
 train: False
+ckpt_file: deeplda-v1
 batch_size: 8192
 shuffle: True
-epoch: 200
+epoch: 0
 scale: 100.0
 step_scale: False
+repeat: True
 state_representation: difference
 loss:
   name: mse

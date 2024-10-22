@@ -2,17 +2,20 @@ evaluate: True
 name: tps
 molecule: alanine
 start_state: c5
-goal_state: c7ax
-sample_num: 8
+goal_state: c7ax-minimized
+sample_num: 16
 save: True
 thp_cv_bound: 0.75
+time_horizon: 500
 steered_simulation:
-  k: 0
+  force_type: deeplda
+  k: 40000
   friction: 0.001
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]
-  time_horizon: 500
   temperature: 300
+  platform: OpenCL
+  precision: mixed
 metrics:
 - epd
 - thp

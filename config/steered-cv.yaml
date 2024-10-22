@@ -1,6 +1,6 @@
 defaults:
-- model: mlp
+- model: deeplda
 - data: alanine
-- training: basic
+- training: pretrain
 - logging: basic
 - job: steered

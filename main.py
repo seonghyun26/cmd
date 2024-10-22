@@ -151,7 +151,8 @@ def main(cfg):
                     cfg=cfg, 
                     trajectory_list=trajectory_list,
                     logger=logger,
-                    epoch=epoch
+                    epoch=epoch,
+                    device=device
                 )
                 model_wrapper.train()
     
@@ -163,10 +164,12 @@ def main(cfg):
             logger.info(f"Final model weights saved at: {output_dir}")
     else:
         # Load trainined model from checkpoint
-        ckpt_path = f"model/{cfg.data.molecule}/{cfg.training.ckpt_name}"
-        logger.info(f"Loading checkpoint from {ckpt_path}")
-        model_wrapper.load_from_checkpoint(ckpt_path)
         epoch = cfg.training.epoch
+        pass
+        # ckpt_path = f"model/{cfg.data.molecule}/{cfg.training.ckpt_name}"
+        # logger.info(f"Loading checkpoint from {ckpt_path}")
+        # model_wrapper.load_from_checkpoint(ckpt_path)
+        # epoch = cfg.training.epoch
 
     # Test model on downstream task (generation)
     if cfg.job.evaluate:
@@ -182,7 +185,8 @@ def main(cfg):
             cfg=cfg, 
             trajectory_list=trajectory_list,
             logger=logger,
-            epoch=cfg.training.epoch
+            epoch=epoch,
+            device=device
         )
         logger.info("Evaluation complete!!!")
         
