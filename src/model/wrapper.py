@@ -14,7 +14,9 @@ model_dict = {
     "lsde": LSDE,
     "lnsde": LNSDE,
     "cv-mlp": CVMLP,
-    "deeplda": DeepLDA
+    "deeplda": Dummy,
+    "aecv": Dummy,
+    "vaecv": Dummy
 }
 
 

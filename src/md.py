@@ -108,18 +108,30 @@ class SteeredMDSimulation:
     def _load_dynamics(self, cfg):
         dynamics = None
         
-        force_type = cfg.job.steered_simulation.force_type.lower()
+        force_type = cfg.job.steered_simulation.force_type
         if force_type == "deeplda":
             from mlcolvar.cvs import DeepLDA
             
-            # model = DeepLDA(cfg.model.nodes, n_states=cfg.model.n_states, options=dict)
-            model = DeepLDA(cfg.model.nodes, n_states=cfg.model.n_states)
+            model = DeepLDA(cfg.model.nodes, n_states=cfg.model.n_states, options=cfg.model.options)
+            # model = DeepLDA(cfg.model.nodes, n_states=cfg.model.n_states)
+        elif force_type == "deeptda":
+            pass
+        elif force_type == "aecv":
+            from mlcolvar.cvs import AutoEncoderCV
+            
+            # model = AutoEncoderCV(encoder_layers=cfg.encoder_layers, decoder_layers=cfg.decoder_layers, , options=cfg.model.options)
+            model = AutoEncoderCV(encoder_layers=cfg.model.encoder_layers, options=cfg.model.options)
+        elif force_type == "vaecv":
+            pass
+        
+        else:
+            model = None
+        if model is not None:
             model = model.to(self.device)
             ckpt_file = cfg.training.ckpt_file
             model.load_state_dict(torch.load(f"./model/{cfg.job.molecule}/{cfg.model.name}/{ckpt_file}.pt"))
             model.eval()
-        else:
-            model = None
+        
         
         molecule = cfg.data.molecule
         if molecule == "alanine":

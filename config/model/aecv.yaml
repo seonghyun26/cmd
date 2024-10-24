@@ -1,0 +1,16 @@
+name: aecv
+layers: 4
+encoder_layers: [45, 10, 10, 1]
+options: {
+  encoder: {
+    activation: "relu"
+  },
+  decoder: {
+    activation: "relu"
+  },
+  norm_in: {
+
+  }
+}
+transform: xyz
+residual: False
