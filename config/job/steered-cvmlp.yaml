@@ -30,3 +30,6 @@ metrics:
     use: True
     gridsize: 400
     cmap: viridis
+    divide_plot: True
+    cv_index: 0
+    number_of_bins: 10

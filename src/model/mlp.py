@@ -4,6 +4,12 @@ import torch.nn.functional as F
 
 from ..metric import compute_phi_psi, compute_dihedral_torch
 
+
+ALANINE_HEAVY_ATOM_IDX = [
+    1, 4, 5, 6, 8, 10, 14, 15, 16, 18
+]
+
+
 class MLP(nn.Module):
     def __init__(self, cfg, input_dim, output_dim):
         super(MLP, self).__init__()
@@ -115,11 +121,6 @@ class CVMLPDep(nn.Module):
         return 10 * (phi_force + psi_force)
     
 
-
-ALANINE_HEAVY_ATOM_IDX = [
-    1, 4, 5, 6, 8, 10, 14, 15, 16, 18
-]    
-
 class CVMLP(nn.Module):
     def __init__(self, data_dim, **kwargs):
         super(CVMLP, self).__init__()
@@ -180,7 +181,7 @@ class CVMLP(nn.Module):
             heavy_atom_position = position[ALANINE_HEAVY_ATOM_IDX]
             distance = []
             for i in range(num_heavy_atoms):
-                for j in range(i+1, num_heavy_atoms):
+                for j in range(i + 1, num_heavy_atoms):
                     distance.append(torch.norm(heavy_atom_position[i] - heavy_atom_position[j]))
             distance = torch.stack(distance)
             distances.append(distance)

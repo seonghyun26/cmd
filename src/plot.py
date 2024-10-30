@@ -118,6 +118,14 @@ class DoubleWellPotential():
         return z
 
 
+def save_plot(dir, name, fig):
+    if os.path.exists(f"{dir}/img") is False:
+        os.mkdir(f"{dir}/img")
+    img_path = f"{dir}/img/{name}"
+    fig.savefig(f"{img_path}")
+    plt.close()
+
+
 def plot_ad_potential(traj_dihedral, start_dihedral, goal_dihedral, epoch):
     plt.clf()
     fig = plt.figure(figsize=(7, 7))
@@ -252,14 +260,51 @@ def plot_ad_cv(
     df['phi'] = phi
     for i in range (number_of_cvs):
         fig, ax = plt.subplots(1, 1, figsize = ( 5, 4 ) )
-        df.plot.hexbin('phi','psi',C=f"CV{i}", cmap=cfg_plot.cmap,ax=ax, gridsize=cfg_plot.gridsize)
+        df.plot.hexbin(
+            'phi','psi', C=f"CV{i}",
+            cmap=cfg_plot.cmap, ax=ax,
+            gridsize=cfg_plot.gridsize
+        )
     
         # Save plot
-        output_dir = hydra.core.hydra_config.HydraConfig.get().run.dir
-        if os.path.exists(f"{output_dir}/img") is False:
-            os.mkdir(f"{output_dir}/img")
-        img_path = f"{output_dir}/img/ad-cv{i}-{epoch}.png"
-        plt.savefig(f"{img_path}")
-        plt.close()
+        # output_dir = hydra.core.hydra_config.HydraConfig.get().run.dir
+        # if os.path.exists(f"{output_dir}/img") is False:
+        #     os.mkdir(f"{output_dir}/img")
+        # img_path = f"{output_dir}/img/ad-cv{i}-{epoch}.png"
+        # plt.savefig(f"{img_path}")
+        # plt.close()
+        save_plot(
+            dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
+            name = f"ad-cv{i}-{epoch}.png",
+            fig = fig
+        )
+    
+    if cfg_plot.divide_plot:
+        cv_index = cfg_plot.cv_index
+        fig,axs = plt.subplots(3, 3, figsize = ( 12, 11 ) )
+        axs = axs.ravel()
+        max_cv0 = df[f'CV{cv_index}'].max()
+        min_cv0 = df[f'CV{cv_index}'].min()
+        boundary = np.linspace(min_cv0, max_cv0, cfg_plot.number_of_bins)
+        
+        for i in range(0, min(len(boundary)-1, 9)):
+            ax = axs[i]
+            df_selected = df[(df[f'CV{cv_index}'] <= boundary[i+1]) & (df[f'CV{cv_index}'] >= boundary[i])]
+            if len(df_selected) == 0:
+                continue
+            df_selected.plot.hexbin(
+                'phi', 'psi', C=f'CV{cv_index}',
+                vmin = boundary[0], vmax = boundary[-1],
+                cmap = cfg_plot.cmap, ax = ax
+            )
+            ax.set_xlim(-3.2, 3.2)
+            ax.set_ylim(-3.2, 3.2)
+        plt.tight_layout()
+        
+        save_plot(
+            dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
+            name = f"ad-cv{i}-div-{epoch}.png",
+            fig = fig
+        )
     
     return fig

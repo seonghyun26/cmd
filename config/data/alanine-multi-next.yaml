@@ -1,6 +1,0 @@
-molecule: alanine
-atom: 22
-temperature: 500.0
-state: c5
-index: multi-next-v2
-train_test_split: [0.8, 0.2]

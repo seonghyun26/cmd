@@ -1,6 +1,0 @@
-molecule: alanine
-atom: 22
-temperature: 300.0
-state: c7ax
-index: 10000000-goal
-train_test_split: [0.8, 0.2]
