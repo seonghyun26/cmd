@@ -123,6 +123,7 @@ def save_plot(dir, name, fig):
         os.mkdir(f"{dir}/img")
     img_path = f"{dir}/img/{name}"
     fig.savefig(f"{img_path}")
+    print(f"Saved plot at {img_path}")
     plt.close()
 
 

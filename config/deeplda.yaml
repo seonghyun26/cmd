@@ -1,6 +1,0 @@
-defaults:
-- model: deeplda
-- data: alanine
-- training: deeplda-pretrained
-- logging: log
-- job: steered

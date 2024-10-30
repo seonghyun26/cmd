@@ -15,10 +15,11 @@ model_dict = {
     "sdenet": SDENet,
     "lsde": LSDE,
     "lnsde": LNSDE,
-    "cv-mlp": CVMLP,
+    "cvmlp": CVMLP,
     "deeplda": DeepLDA,
     "aecv": AutoEncoderCV,
-    "vaecv": VariationalAutoEncoderCV
+    "vaecv": VariationalAutoEncoderCV,
+    "betavae": VariationalAutoEncoderCVBeta
 }
 
 
@@ -31,22 +32,22 @@ class ModelWrapper(nn.Module):
         self.model = self.load_model(cfg).to(device)
     
     def load_model(self, cfg):
-        if cfg.data.molecule == "alanine":
+        if cfg.data.molecule in ["alanine", "chignolin"]:
             self.data_dim = cfg.data.atom * 3
         elif cfg.data.molecule == "double-well":
             self.data_dim = cfg.data.atom 
         else:
-            raise ValueError(f"Transform {cfg.model.transform} not found")
+            raise ValueError(f"Molecule {cfg.data.molecule} not defined")
         
         self.model_name = cfg.model.name.lower() 
-        if self.model_name in ["deeplda", "aecv", "vaecv"]:
+        if self.model_name in ["deeplda", "aecv", "vaecv", "beta-vae"]:
             model = model_dict[self.model_name](**cfg.model.params)
         elif self.model_name in model_dict.keys():
             model = model_dict[self.model_name](self.data_dim, **cfg.model.params)
         else:
             raise ValueError(f"Model {self.model_name} not found")
         
-        if self.model_name != "cv-mlp":
+        if self.model_name != "cvmlp":
             self.mu = nn.Linear(self.data_dim, self.data_dim).to(self.device)
             self.log_var = nn.Linear(self.data_dim, self.data_dim).to(self.device)
         
@@ -67,7 +68,12 @@ class ModelWrapper(nn.Module):
     ) -> torch.Tensor:
         # prediction by model
         batch_size = current_state.shape[0]
-        if self.model_name in ["cv-mlp"]:
+        if self.model_name in ["cvmlp"]:
+            if self.cfg.model.input == "distance":
+                current_state = x[:, :-1].reshape(batch_size, -1)
+                temperature = x[:, -1].unsqueeze(-1)
+                current_state= self.coordinate2distance(current_state)                
+            
             current_state_conditions = torch.cat([
                 current_state.reshape(batch_size, -1),
                 temperature.reshape(batch_size, -1)
@@ -78,6 +84,7 @@ class ModelWrapper(nn.Module):
                 temperature.reshape(batch_size, -1)
             ], dim=1)
             next_state_latent = self.model(next_state_conditions)
+        
         else:
             conditions = torch.cat([
                 current_state.reshape(batch_size, -1),
@@ -86,9 +93,9 @@ class ModelWrapper(nn.Module):
             ], dim=1)
             latent = self.model(conditions)
         
-        # processing
+        # Process results
         result_dict = {}
-        if self.model_name == "cv-mlp":
+        if self.model_name == "cvmlp":
             result_dict["current_state_rep"] = current_state_latent
             result_dict["next_state_rep"] = next_state_latent
         elif self.model_name in ["sdenet", "lsde", "lnsde"]:

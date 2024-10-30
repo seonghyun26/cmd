@@ -1,6 +1,7 @@
 name: deeplda
+input: distance
 params: {
-  nodes: [45, 30, 30, 2],
+  layers: [45, 30, 30, 2],
   n_states: 2,
   options: {
     norm_in: {

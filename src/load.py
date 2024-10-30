@@ -25,7 +25,7 @@ scheduler_dict = {
 }
 
 
-def load_data(cfg):
+def load_data(cfg):   
     data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.version}.pt"
     dataset = torch.load(f"{data_path}")
     
@@ -37,6 +37,7 @@ def load_data(cfg):
             num_workers=cfg.training.loader.num_workers
         )
         test_loader = None
+    
     elif cfg.data.molecule == "alanine":
         if cfg.training.loader.test:
             train_dataset, test_dataset = random_split(dataset, cfg.data.train_test_split)
@@ -60,6 +61,10 @@ def load_data(cfg):
                 num_workers=cfg.training.loader.num_workers
             )
             test_loader = None
+    
+    elif cfg.data.molecule == "chignolin":
+        raise NotImplementedError("Chignolin dataset TBA")
+    
     else:
         raise ValueError(f"Molecule {cfg.data.molecule} not found")
     

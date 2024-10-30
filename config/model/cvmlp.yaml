@@ -1,4 +1,4 @@
-name: cv-mlp
+name: cvmlp
 params: {
   hidden_dim: [64, 64, 64, 64],
   output_dim: 1,

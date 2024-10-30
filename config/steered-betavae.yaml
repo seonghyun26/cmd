@@ -2,5 +2,5 @@ defaults:
 - model: betavae
 - data: alanine
 - training: betavae-pretrained
-- logging: debug-log
+- logging: config/logging/basic.yaml
 - job: steered-aldp-betavae

@@ -2,5 +2,5 @@ defaults:
 - model: deeplda
 - data: alanine
 - training: deeplda-pretrained
-- logging: basic
-- job: steered
+- logging: baseline
+- job: steered-aldp-deeplda

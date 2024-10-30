@@ -1,6 +1,6 @@
 wandb: True
 tags:
-- test
+- baseline
 project: cmd
 entity: eddy26
 device: cuda

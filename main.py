@@ -85,7 +85,7 @@ def main(cfg):
                 
                 # Copmpute loss
                 optimizer.zero_grad()
-                if cfg.model.name in ["cv-mlp"]:
+                if cfg.model.name in ["cvmlp"]:
                     loss_list_batch = criteria(result_dict)
                 else:
                     loss_list_batch = criteria(next_state, current_state + result_dict["state_offset"], mu, log_var, step)
@@ -147,7 +147,7 @@ def main(cfg):
             logger.info(f"Final model weights saved at: {output_dir}")
     else:
         # Load trainined model from checkpoint
-        epoch = "final"
+        epoch = 0
         model_wrapper.load_from_checkpoint(f"./model/{cfg.job.molecule}/{cfg.model.name}/{cfg.training.ckpt_file}.pt")
         model_wrapper.eval()
 

@@ -7,9 +7,9 @@ sample_num: 16
 save: True
 simulation:
   steered: True
-  k: 100
+  k: 2000
   time_horizon: 500
-  force_type: cvmlp
+  force_type: vaecv-beta
   friction: 0.001
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]

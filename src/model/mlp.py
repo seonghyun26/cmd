@@ -155,14 +155,7 @@ class CVMLP(nn.Module):
         Returns:
             cv (batch x 1): machined learned collective variables for given molecular configuration
         """        
-        batch_size = x.shape[0]
-        if self.params["input"] == "distance" and not transformed:
-            current_state = x[:, :-1].reshape(batch_size, -1)
-            temperature = x[:, -1].unsqueeze(-1)
-            z = self.coordinate2distance(current_state)
-            z = torch.cat([z, temperature], dim=1)
-        else:
-            z = x
+        z = x
         
         for idx, layer in enumerate(self.layers):
             z = layer(z)

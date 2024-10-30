@@ -15,6 +15,9 @@ from ..utils import kabsch_rmsd
 from ..utils import compute_dihedral, compute_dihedral_torch
 from ..simulation import load_forcefield, load_system
 
+
+MLCOLVAR_METHODS = ["deeplda", "aecv", "vaecv-beta"]
+
 class Alanine(BaseDynamics):
     def __init__(self, cfg, state):
         super().__init__(cfg, state)
@@ -63,10 +66,10 @@ class SteeredAlanine:
         self.friction = cfg.job.simulation.friction / unit.femtoseconds
         self.timestep = cfg.job.simulation.timestep * unit.femtoseconds
         self.molecule = cfg.job.molecule
-        self.time_horizon = cfg.job.time_horizon
+        self.time_horizon = cfg.job.simulation.time_horizon
         self.force_type = cfg.job.simulation.force_type
 
-        if self.force_type in ["deeplda", "aecv"]:
+        if self.force_type in MLCOLVAR_METHODS:
             from mlcolvar.core import Normalization
             self.preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
         
@@ -91,7 +94,7 @@ class SteeredAlanine:
     
     def step(self, time):
         self.simulation.context.setParameter("time", time)
-        if self.force_type in ["aecv"]:
+        if self.force_type in MLCOLVAR_METHODS:
             # # Update parameter
             # mlcv_global_param_idx = 0
             # assert "mlcv" == mlcv_force.getGlobalParameterName(mlcv_global_param_idx), f"Global parameter name mismatch, got {mlcv_force.getGlobalParameterName(0)} instead of mlcv"
@@ -305,7 +308,7 @@ class SteeredAlanine:
             custom_cv_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             self.system.addForce(custom_cv_force)
         
-        elif self.force_type == "deeplda" or self.force_type == "aecv":
+        elif self.force_type in MLCOLVAR_METHODS:
             # Get positions
             start_position = torch.tensor(
                 [list(p) for p in self.start_position.value_in_unit(unit.nanometer)],
@@ -362,7 +365,7 @@ class SteeredAlanine:
             # print(f"Start mlcv: {start_mlcv}")
             # print(f"Goal mlcv: {goal_mlcv}")
             
-        elif self.force_type in ["cv-mlp"]:
+        elif self.force_type in ["cvmlp"]:
             # Get positions
             start_position = torch.tensor(
                 [list(p) for p in self.start_position.value_in_unit(unit.nanometer)],

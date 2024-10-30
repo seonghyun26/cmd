@@ -1,5 +1,5 @@
 defaults:
-- model: cv-mlp
+- model: cvmlp
 - data: debug-alanine-cl
 - training: contrastive-learning
 - logging: debug-log

@@ -15,7 +15,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     # Load configs for generation
     atom_num = cfg.data.atom
     sample_num = cfg.job.sample_num
-    time_horizon = cfg.job.time_horizon
+    time_horizon = cfg.job.simulation.time_horizon
     inital_state = load_state_file(cfg, cfg.job.start_state, device)
     steered_simulation_list = load_steered_simulation(cfg, cfg.job.sample_num, model_wrapper.model, device)
     
@@ -53,7 +53,7 @@ def generate_v1(cfg, model_wrapper, epoch, device, logger):
     # Load configs for generation
     atom_num = cfg.data.atom
     sample_num = cfg.job.sample_num
-    time_horizon = cfg.job.time_horizon
+    time_horizon = cfg.job.simulation.time_horizon
     inital_state = load_state_file(cfg, cfg.job.start_state, device)
     
 

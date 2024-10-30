@@ -1,0 +1,18 @@
+name: vaecv
+params: {
+  n_cvs: 1,
+  encoder_layers: [45, 128, 128, 1],
+  decoder_layers: [128, 128, 45],
+  options: {
+    encoder: {
+      activation: "shifted_softplus",
+      last_layer_activation: True,
+    },
+    decoder: {
+      activation: "shifted_softplus",
+      last_layer_activation: True,
+    },
+    norm_in: {
+    }
+  }
+}

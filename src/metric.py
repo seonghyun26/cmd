@@ -44,7 +44,7 @@ def compute_thp(cfg, trajectory_list, goal_state):
     molecule = cfg.job.molecule
     sample_num = cfg.job.sample_num
     last_state = trajectory_list[:, -1]
-    cv_bound = cfg.job.thp_cv_bound
+    cv_bound = cfg.job.metrics.thp.cv_bound
     
     if molecule == "alanine":
         phi_angle = [1, 6, 8, 14]
@@ -237,12 +237,16 @@ def compute_projection(cfg, model_wrapper, epoch):
     device = model_wrapper.device
     
     if molecule == "alanine":
-        if cfg.model.params["input"] == "distance":
+        if cfg.model.input == "distance":
             heavy_atom_distance = torch.load("./data/alanine/heavy_atom_distance.pt").to(device)
             psis = np.load("./data/alanine/heavy_atom_distance_psis.npy")
             phis = np.load("./data/alanine/heavy_atom_distance_phis.npy")
-            temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
-            projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1), transformed=True)
+            if cfg.model.name in ["cvmlp"]:
+                temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
+                projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1))
+            elif cfg.model.name in ["deeplda", "aecv", "vaecv", "beta-vae"]:
+                projected_cv = model_wrapper.model(heavy_atom_distance)
+        
         else:
             data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.version}.pt"
             data = torch.load(f"{data_path}")
@@ -265,7 +269,10 @@ def compute_projection(cfg, model_wrapper, epoch):
             cfg_plot = cfg.job.metrics.projection
         )
     
-    else:
+    elif molecule == "chignolin":
         raise ValueError(f"Projection for molecule {molecule} TBA...")
+    
+    else:
+        raise ValueError(f"Projection for molecule {molecule} not supported")
     
     return wandb.Image(projection_img)
