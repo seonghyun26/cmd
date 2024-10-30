@@ -1,0 +1,6 @@
+defaults:
+- model: cv-mlp
+- data: debug-alanine
+- training: contrastive-learning
+- logging: debug-log
+- job: steered-cvmlp

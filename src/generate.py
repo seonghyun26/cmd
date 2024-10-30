@@ -17,7 +17,7 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     sample_num = cfg.job.sample_num
     time_horizon = cfg.job.time_horizon
     inital_state = load_state_file(cfg, cfg.job.start_state, device)
-    steered_simulation_list = load_steered_simulation(cfg, cfg.job.sample_num, device)
+    steered_simulation_list = load_steered_simulation(cfg, cfg.job.sample_num, model_wrapper.model, device)
     
     # Set conditions by task
     task = cfg.job.name
@@ -52,11 +52,9 @@ def generate(cfg, model_wrapper, epoch, device, logger):
 def generate_v1(cfg, model_wrapper, epoch, device, logger):
     # Load configs for generation
     atom_num = cfg.data.atom
-    # scale = cfg.training.scale
     sample_num = cfg.job.sample_num
     time_horizon = cfg.job.time_horizon
     inital_state = load_state_file(cfg, cfg.job.start_state, device)
-    # inital_state *= scale
     
 
     # Set conditions by task
@@ -65,7 +63,6 @@ def generate_v1(cfg, model_wrapper, epoch, device, logger):
         raise NotImplementedError("Simulation task TBA")
     elif task == "tps":
         goal_state = load_state_file(cfg, cfg.job.goal_state, device)
-        # goal_state *= scale
     else:
         raise ValueError(f"Task {task} not found")
     

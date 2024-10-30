@@ -1,18 +1,15 @@
 name: deeplda
-layers: 4
-hidden_dim: 30
-nodes: [45, 30, 30, 2]
-n_states: 2
-options: {
-  norm_in: {
+params: {
+  nodes: [45, 30, 30, 2],
+  n_states: 2,
+  options: {
+    norm_in: {
+    },
+    nn: {
+      activation: "relu"
+    },
+    lda: {
+      mode: "standard"
+    },
   },
-  nn: {
-    activation: "relu"
-  },
-  lda: {
-    mode: "standard"
-  },
-
 }
-transform: xyz
-residual: False

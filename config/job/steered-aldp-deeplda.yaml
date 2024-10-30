@@ -8,8 +8,8 @@ save: True
 thp_cv_bound: 0.75
 time_horizon: 500
 steered_simulation:
-  k: 4000
-  force_type: aecv
+  k: 2000
+  force_type: deeplda
   friction: 0.001
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]

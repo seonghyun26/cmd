@@ -47,9 +47,9 @@ class MLP(nn.Module):
         return x
     
     
-class CVMLP(nn.Module):
+class CVMLPDep(nn.Module):
     def __init__(self, cfg, input_dim, output_dim):
-        super(CVMLP, self).__init__()
+        super(CVMLPDep, self).__init__()
 
         # Output dimension is the same as the representation dimension
         self.cfg = cfg
@@ -113,3 +113,77 @@ class CVMLP(nn.Module):
         
     
         return 10 * (phi_force + psi_force)
+    
+
+
+ALANINE_HEAVY_ATOM_IDX = [
+    1, 4, 5, 6, 8, 10, 14, 15, 16, 18
+]    
+
+class CVMLP(nn.Module):
+    def __init__(self, data_dim, **kwargs):
+        super(CVMLP, self).__init__()
+
+        # Output dimension is the same as the representation dimension
+        self.params = kwargs
+        self.data_dim = data_dim
+        self.output_dim = self.params["output_dim"]
+        self.params["layer_num"] = len(self.params["hidden_dim"])
+        if self.params["input"] == "xyz":
+            self.input_dim = data_dim + 1
+        elif self.params["input"] == "distance":
+            self.input_dim = 45 + 1
+        else:
+            raise ValueError(f"Input type {self.params['input']} not found")
+        
+        self.layers = nn.ModuleList()
+        self.layers.append(nn.Linear(self.input_dim, self.params["hidden_dim"][0]))
+        self.layers.append(nn.ReLU())
+        for i in range(self.params["layer_num"] - 1):
+            self.layers.append(nn.Linear(self.params["hidden_dim"][i], self.params["hidden_dim"][i+1]))
+            self.layers.append(nn.ReLU())
+        self.layers.append(nn.Linear(self.params["hidden_dim"][-1], self.output_dim))
+    
+    def forward(self,
+            x: torch.Tensor,
+            transformed: bool = False
+        ) -> torch.Tensor:
+        """
+        Args:
+            x (batch x representation): state, temperature
+        Returns:
+            cv (batch x 1): machined learned collective variables for given molecular configuration
+        """        
+        batch_size = x.shape[0]
+        if self.params["input"] == "distance" and not transformed:
+            current_state = x[:, :-1].reshape(batch_size, -1)
+            temperature = x[:, -1].unsqueeze(-1)
+            z = self.coordinate2distance(current_state)
+            z = torch.cat([z, temperature], dim=1)
+        else:
+            z = x
+        
+        for idx, layer in enumerate(self.layers):
+            z = layer(z)
+        
+        return z
+
+    
+    def coordinate2distance(self,
+            positions: torch.Tensor
+        ) -> torch.Tensor:
+        
+        num_heavy_atoms = 10
+        distances = []
+        
+        for position in positions:
+            heavy_atom_position = position[ALANINE_HEAVY_ATOM_IDX]
+            distance = []
+            for i in range(num_heavy_atoms):
+                for j in range(i+1, num_heavy_atoms):
+                    distance.append(torch.norm(heavy_atom_position[i] - heavy_atom_position[j]))
+            distance = torch.stack(distance)
+            distances.append(distance)
+        distances = torch.stack(distances)
+            
+        return distances

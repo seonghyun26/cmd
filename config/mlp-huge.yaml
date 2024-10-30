@@ -1,6 +1,0 @@
-defaults:
-- model: mlp-huge
-- data: alanine
-- training: basic
-- logging: basic
-- job: goal

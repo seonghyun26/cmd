@@ -28,7 +28,7 @@ def main(cfg):
     logger.info(">> Configs")
     logger.info(OmegaConf.to_yaml(cfg))
     model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
-    # simulation_list = load_simulation(cfg, cfg.job.sample_num, device)
+    
     if cfg.logging.wandb:
         wandb.init(
             project=cfg.logging.project,
@@ -46,8 +46,6 @@ def main(cfg):
         logger.info(">> Loading dataset...")
         train_loader, test_loader = load_data(cfg)
         criteria, loss_names = load_loss(cfg)
-        scale = cfg.training.scale
-        batch_size = cfg.training.batch_size
         logger.info(f">> Dataset size: {len(train_loader.dataset)}")
         
         # Train model
@@ -70,50 +68,34 @@ def main(cfg):
                 # Load data
                 if cfg.data.molecule == "double-well":
                     current_state, next_state, goal_state, step, temperature = (d.to(device) for d in data)
-                    current_state *= scale
-                    next_state *= scale
-                    goal_state *= scale
                 elif cfg.data.molecule == "alanine":
                     current_state, next_state, goal_state, step = (d.to(device) for d in data)
-                    current_state *= scale
-                    next_state *= scale
-                    goal_state *= scale
                     temperature = torch.tensor([300] * current_state.shape[0]).unsqueeze(1).to(device)
                 else:
                     raise ValueError(f"Molecule {cfg.molecule} not found")
-                optimizer.zero_grad()
-                
-                # Shape shifting for different molecules
-                if cfg.training.state_representation == "difference":
-                    goal_representation = goal_state - current_state
-                elif cfg.training.state_representation == "original":
-                    goal_representation = goal_state
-                else:
-                    raise ValueError(f"State representation {cfg.training.state_representation} not found")
-                if cfg.training.repeat:
-                    step = step.repeat(1, current_state.shape[1])
-                    temperature = temperature.repeat(1, current_state.shape[1])
-                
-                # Predict next state
-                state_offset, mu, log_var = model_wrapper(
+
+                # Self-supervised learning
+                result_dict = model_wrapper(
                     current_state=current_state,
-                    goal_state=goal_representation,
+                    next_state=next_state,
+                    goal_state=goal_state,
                     step=step,
-                    temperature=temperature,
+                    temperature=temperature
                 )
                 
-                # Compute loss
-                # simulation_dummy = load_simulation(cfg, current_state.shape[0], device)
-                # simulation_dummy.set_position(current_state)
-                # simulation_dummy.step(state_offset)
-                # next_state_predicted = simulation_dummy.report()[0]
+                # Copmpute loss
+                optimizer.zero_grad()
+                if cfg.model.name in ["cv-mlp"]:
+                    loss_list_batch = criteria(result_dict)
+                else:
+                    loss_list_batch = criteria(next_state, current_state + result_dict["state_offset"], mu, log_var, step)
                 
-                # force = -torch.autograd.grad(out.sum(), pos, create_graph=True)[0]
-                loss_list_batch = criteria(next_state, current_state + state_offset, mu, log_var, step)
                 for name in loss_list_batch.keys():
                     loss_list[f"loss/{name}"] += loss_list_batch[name]
+                loss = 0
+                for values in loss_list_batch.values():
+                    loss += values
                 
-                loss = sum(loss_list_batch.values())
                 loss_list["loss/total"] += loss
                 loss.backward()
                 optimizer.step()
@@ -121,7 +103,7 @@ def main(cfg):
             # Update results
             if scheduler is not None:
                 scheduler.step()
-            loss_list = {k: v / (len(train_loader) * scale) for k, v in loss_list.items()}
+            loss_list = {k: v / (len(train_loader) ) for k, v in loss_list.items()}
             loss_list.update({"lr": optimizer.param_groups[0]["lr"]})
             pbar.set_description(f"Training (loss: {loss_list['loss/total']:8f})")
             pbar.refresh() 
@@ -133,7 +115,7 @@ def main(cfg):
                     step=epoch
                 )
                 
-            # Save checkpoint and test
+            # Save checkpoint
             if epoch * cfg.logging.ckpt_freq != 0 and epoch % cfg.logging.ckpt_freq == 0:
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
                 model_wrapper.save_model(output_dir, epoch)
@@ -149,6 +131,7 @@ def main(cfg):
                 )
                 evaluate(
                     cfg=cfg, 
+                    model_wrapper=model_wrapper,
                     trajectory_list=trajectory_list,
                     logger=logger,
                     epoch=epoch,
@@ -164,12 +147,9 @@ def main(cfg):
             logger.info(f"Final model weights saved at: {output_dir}")
     else:
         # Load trainined model from checkpoint
-        epoch = cfg.training.epoch
-        pass
-        # ckpt_path = f"model/{cfg.data.molecule}/{cfg.training.ckpt_name}"
-        # logger.info(f"Loading checkpoint from {ckpt_path}")
-        # model_wrapper.load_from_checkpoint(ckpt_path)
-        # epoch = cfg.training.epoch
+        epoch = "final"
+        model_wrapper.load_from_checkpoint(f"./model/{cfg.job.molecule}/{cfg.model.name}/{cfg.training.ckpt_file}.pt")
+        model_wrapper.eval()
 
     # Test model on downstream task (generation)
     if cfg.job.evaluate:
@@ -182,7 +162,8 @@ def main(cfg):
             logger=logger
         )
         evaluate(
-            cfg=cfg, 
+            cfg=cfg,
+            model_wrapper=model_wrapper,
             trajectory_list=trajectory_list,
             logger=logger,
             epoch=epoch,

@@ -9,13 +9,16 @@ import numpy as np
 import mdtraj as md
 
 from tqdm import tqdm
-from .plot import plot_ad_potential, plot_dw_potential
-from .data import Synthetic
-from .simulation import init_simulation, set_simulation
 from mdtraj.geometry import indices_phi, indices_psi
 
-pairwise_distance = torch.cdist
+from .data import Synthetic
+from .utils import compute_dihedral_torch
+from .simulation import init_simulation, set_simulation
+from .plot import plot_ad_potential, plot_dw_potential, plot_ad_cv
 
+pairwise_distance = torch.cdist
+ALDP_PHI_ANGLE = [1, 6, 8, 14]
+ALDP_PSI_ANGLE = [6, 8, 14, 16]
 
 def compute_epd(cfg, trajectory_list, goal_state):
     molecule = cfg.job.molecule
@@ -188,8 +191,6 @@ def potential_energy(cfg, trajectory):
 def compute_ram(cfg, trajectory_list, epoch):
     molecule = cfg.job.molecule
     if molecule == "alanine":
-        landscape_path = f"./data/{cfg.job.molecule}/final_frame.dat"
-        ad_potential = AlaninePotential(landscape_path)
         phi_angle = [1, 6, 8, 14]
         psi_angle = [6, 8, 14, 16]
         
@@ -208,21 +209,18 @@ def compute_ram(cfg, trajectory_list, epoch):
         psi_traj_list = np.array([compute_dihedral(trajectory[:, psi_angle]) for trajectory in trajectory_list])
         
         ram_plot_img = plot_ad_potential(
-            potential = ad_potential,
             traj_dihedral = (phi_traj_list, psi_traj_list),
             start_dihedral = (phi_start, psi_start),
             goal_dihedral = (phi_goal, psi_goal),
             epoch = epoch
         )
+        
     elif molecule == "double-well":
         device = trajectory_list.device
-        dw_potential_path = f"./data/{cfg.job.molecule}/potential.dat"
-        dw_potential = DoubleWellPotential(dw_potential_path)
         start_state = torch.tensor([-1.118, 0], dtype=torch.float32).to(device)
         goal_state = torch.tensor([1.118, 0], dtype=torch.float32).to(device)
         
         ram_plot_img = plot_dw_potential(
-            potential = dw_potential,
             traj = trajectory_list,
             start = start_state,
             goal = goal_state,
@@ -234,116 +232,40 @@ def compute_ram(cfg, trajectory_list, epoch):
     
     return wandb.Image(ram_plot_img)
 
-
-class AlaninePotential():
-    def __init__(self, landscape_path):
-        super().__init__()
-        self.open_file(landscape_path)
-
-    def open_file(self, landscape_path):
-        with open(landscape_path) as f:
-            lines = f.readlines()
-
-        dims = [90, 90]
-
-        self.locations = torch.zeros((int(dims[0]), int(dims[1]), 2))
-        self.data = torch.zeros((int(dims[0]), int(dims[1])))
-
-        i = 0
-        for line in lines[1:]:
-            splits = line[0:-1].split(" ")
-            vals = [y for y in splits if y != '']
-
-            x = float(vals[0])
-            y = float(vals[1])
-            val = float(vals[-1])
-
-            self.locations[i // 90, i % 90, :] = torch.tensor(np.array([x, y]))
-            self.data[i // 90, i % 90] = (val)  # / 503.)
-            i = i + 1
-
-    def potential(self, inp):
-        loc = self.locations.view(-1, 2)
-        distances = torch.cdist(inp, loc.double(), p=2)
-        index = distances.argmin(dim=1)
-
-        x = torch.div(index, self.locations.shape[0], rounding_mode='trunc')  # index // self.locations.shape[0]
-        y = index % self.locations.shape[0]
-
-        z = self.data[x, y]
-        return z
-
-    def drift(self, inp):
-        loc = self.locations.view(-1, 2)
-        distances = torch.cdist(inp[:, :2].double(), loc.double(), p=2)
-        index = distances.argsort(dim=1)[:, :3]
-
-        x = index // self.locations.shape[0]
-        y = index % self.locations.shape[0]
-
-        dims = torch.stack([x, y], 2)
-
-        min = dims.argmin(dim=1)
-        max = dims.argmax(dim=1)
-
-        min_x = min[:, 0]
-        min_y = min[:, 1]
-        max_x = max[:, 0]
-        max_y = max[:, 1]
-
-        min_x_dim = dims[range(dims.shape[0]), min_x, :]
-        min_y_dim = dims[range(dims.shape[0]), min_y, :]
-        max_x_dim = dims[range(dims.shape[0]), max_x, :]
-        max_y_dim = dims[range(dims.shape[0]), max_y, :]
-
-        min_x_val = self.data[min_x_dim[:, 0], min_x_dim[:, 1]]
-        min_y_val = self.data[min_y_dim[:, 0], min_y_dim[:, 1]]
-        max_x_val = self.data[max_x_dim[:, 0], max_x_dim[:, 1]]
-        max_y_val = self.data[max_y_dim[:, 0], max_y_dim[:, 1]]
-
-        grad = -1 * torch.stack([max_y_val - min_y_val, max_x_val - min_x_val], dim=1)
-
-        return grad
+def compute_projection(cfg, model_wrapper, epoch):
+    molecule = cfg.job.molecule
+    device = model_wrapper.device
     
+    if molecule == "alanine":
+        if cfg.model.params["input"] == "distance":
+            heavy_atom_distance = torch.load("./data/alanine/heavy_atom_distance.pt").to(device)
+            psis = np.load("./data/alanine/heavy_atom_distance_psis.npy")
+            phis = np.load("./data/alanine/heavy_atom_distance_phis.npy")
+            temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
+            projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1), transformed=True)
+        else:
+            data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.version}.pt"
+            data = torch.load(f"{data_path}")
+            
+            data_list = []
+            for i in range(len(data)):
+                data_list.append(data[i][0].to(device))
+            data_list = torch.stack(data_list)
+            phis = compute_dihedral_torch(data_list[:, ALDP_PHI_ANGLE]).unsqueeze(1).detach().cpu().numpy()
+            psis = compute_dihedral_torch(data_list[:, ALDP_PSI_ANGLE]).unsqueeze(1).detach().cpu().numpy()
+            data_list = data_list.reshape(data_list.shape[0], -1)
+            temperature = torch.tensor(cfg.job.simulation.temperature).repeat(data_list.shape[0], 1).to(device)
+            projected_cv = model_wrapper.model(torch.cat([data_list, temperature], dim=1), transformed=False)
 
-
-class DoubleWellPotential():
-    def __init__(self, landscape_path):
-        super().__init__()
-        self.open_file(landscape_path)
-
-    def open_file(self, landscape_path):
-        with open(landscape_path) as f:
-            lines = f.readlines()
-
-        spacing = 68
-        dims = [spacing, spacing]
-
-        self.locations = torch.zeros((int(dims[0]), int(dims[1]), 2))
-        self.data = torch.zeros((int(dims[0]), int(dims[1])))
-
-        i = 0
-        for line in lines[1:]:
-            splits = line[0:-1].split(" ")
-            vals = [y for y in splits if y != '']
-
-            x = float(vals[0])
-            y = float(vals[1])
-            val = float(vals[-1])
-
-            self.locations[i // spacing, i % spacing, :] = torch.tensor(np.array([x, y]))
-            self.data[i // spacing, i % spacing] = (val)  # / 503.)
-            i = i + 1
-
-    def potential(self, inp):
-        loc = self.locations.view(-1, 2)
-        distances = torch.cdist(inp, loc.double(), p=2)
-        index = distances.argmin(dim=1)
-
-        x = torch.div(index, self.locations.shape[0], rounding_mode='trunc')  # index // self.locations.shape[0]
-        y = index % self.locations.shape[0]
-
-        z = self.data[x, y]
-        return z
+        projection_img = plot_ad_cv(
+            phi = phis,
+            psi = psis,
+            cv = projected_cv,
+            epoch = epoch,
+            cfg_plot = cfg.job.metrics.projection
+        )
     
+    else:
+        raise ValueError(f"Projection for molecule {molecule} TBA...")
     
+    return wandb.Image(projection_img)

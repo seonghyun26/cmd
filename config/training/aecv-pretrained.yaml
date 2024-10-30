@@ -1,12 +1,11 @@
 train: False
 ckpt_file: aecv-v1
-batch_size: 8192
-shuffle: True
 epoch: 0
-scale: 100.0
-step_scale: False
-repeat: True
-state_representation: difference
+loader:
+  batch_size: 8192
+  shuffle: True
+  num_workers: 8
+  test: False
 loss:
   name: mse
   reduction: mean
@@ -21,6 +20,3 @@ scheduler:
     T_max: 200,
     eta_min: 1e-3
   }
-num_workers: 8
-test: False
-noise_scale: 1

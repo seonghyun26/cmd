@@ -1,6 +1,0 @@
-name: MLP
-layers: 4
-hidden_dim: 128
-transform: xyz
-init: xavier
-residual: False

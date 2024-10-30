@@ -12,13 +12,13 @@ import openmm.unit as unit
 
 def load_forcefield(cfg, molecule):
     if molecule == "alanine":
-        forcefield = app.ForceField(*cfg.job.steered_simulation.force_field)
+        forcefield = app.ForceField(*cfg.job.simulation.force_field)
     elif molecule == "chignolin":
         path = os.path.join(
             os.getcwd(),
             "openmmforcefields/openmmforcefields/ffxml/amber/protein.ff14SBonlysc.xml",
         )
-        forcefield = app.ForceField(*cfg.job.steered_simulation.force_field)
+        forcefield = app.ForceField(*cfg.job.simulation.force_field)
     else:
         raise ValueError(f"Molecule {molecule} not found")
         
@@ -44,25 +44,19 @@ def load_system(cfg, molecule, pdb, forcefield):
     return system
 
 
-def init_simulation(cfg, pbb_file_path, frame=None):
-    pdb = PDBFile(pbb_file_path)
-    
-    # Set force field
-    # force_field = ForceField(*cfg.job.simulation.force_field)
-    # system = force_field.createSystem(
-    #     pdb.topology,
-    #     nonbondedCutoff=3 * nanometer,
-    #     constraints=HBonds
-    # )
+def init_simulation(cfg, pdb_file_path, frame=None):
+    pdb = PDBFile(pdb_file_path)
     force_field = load_forcefield(cfg, cfg.job.molecule)
     system = load_system(cfg, cfg.job.molecule, pdb, force_field)
+    
+    cfg_simulation = cfg.job.simulation
     integrator = LangevinIntegrator(
-        cfg.job.simulation.temperature * kelvin,
-        1 / picosecond,
-        1 * femtoseconds
+        cfg_simulation.temperature * kelvin,
+        cfg_simulation.friction / femtoseconds,
+        cfg_simulation.timestep * femtoseconds
     )
-    platform = Platform.getPlatformByName(cfg.job.simulation.platform)
-    properties = {'Precision': cfg.job.simulation.precision}
+    platform = Platform.getPlatformByName(cfg_simulation.platform)
+    properties = {'Precision': cfg_simulation.precision}
 
     simulation = Simulation(
         pdb.topology,

@@ -1,0 +1,7 @@
+name: cv-mlp
+params: {
+  hidden_dim: [64, 64, 64, 64],
+  output_dim: 1,
+  residual: False,
+  input: xyz
+}

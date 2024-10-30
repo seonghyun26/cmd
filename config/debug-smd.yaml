@@ -1,0 +1,6 @@
+defaults:
+- model: aecv
+- data: alanine
+- training: aecv-pretrained
+- logging: debug-log
+- job: steered

@@ -97,7 +97,8 @@ class MDSimulation:
             
             
 class SteeredMDSimulation:
-    def __init__(self, cfg, sample_num, device):
+    def __init__(self, cfg, sample_num, model, device):
+        self.model = model
         self.device = device
         self.molecule = cfg.data.molecule
         self.start_state = cfg.job.start_state
@@ -107,35 +108,9 @@ class SteeredMDSimulation:
 
     def _load_dynamics(self, cfg):
         dynamics = None
-        
-        force_type = cfg.job.steered_simulation.force_type
-        if force_type == "deeplda":
-            from mlcolvar.cvs import DeepLDA
-            
-            model = DeepLDA(cfg.model.nodes, n_states=cfg.model.n_states, options=cfg.model.options)
-            # model = DeepLDA(cfg.model.nodes, n_states=cfg.model.n_states)
-        elif force_type == "deeptda":
-            pass
-        elif force_type == "aecv":
-            from mlcolvar.cvs import AutoEncoderCV
-            
-            # model = AutoEncoderCV(encoder_layers=cfg.encoder_layers, decoder_layers=cfg.decoder_layers, , options=cfg.model.options)
-            model = AutoEncoderCV(encoder_layers=cfg.model.encoder_layers, options=cfg.model.options)
-        elif force_type == "vaecv":
-            pass
-        
-        else:
-            model = None
-        if model is not None:
-            model = model.to(self.device)
-            ckpt_file = cfg.training.ckpt_file
-            model.load_state_dict(torch.load(f"./model/{cfg.job.molecule}/{cfg.model.name}/{ckpt_file}.pt"))
-            model.eval()
-        
-        
         molecule = cfg.data.molecule
         if molecule == "alanine":
-            dynamics = SteeredAlanine(cfg, model)
+            dynamics = SteeredAlanine(cfg, self.model, self.device)
         else:
             raise ValueError(f"Molecule {molecule} not found")
         

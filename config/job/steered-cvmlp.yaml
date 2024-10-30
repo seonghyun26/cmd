@@ -7,9 +7,10 @@ sample_num: 16
 save: True
 thp_cv_bound: 0.75
 time_horizon: 500
-steered_simulation:
-  k: 4000
-  force_type: aecv
+simulation:
+  steered: True
+  k: 100
+  force_type: cv-mlp
   friction: 0.001
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]
@@ -17,7 +18,15 @@ steered_simulation:
   platform: OpenCL
   precision: mixed
 metrics:
-- epd
-- thp
-- ram
-# - energy
+  epd:
+    use: True
+  thp:
+    use: True
+  ram:
+    use: True
+  energy:
+    use: True
+  projection:
+    use: True
+    gridsize: 400
+    cmap: viridis

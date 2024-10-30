@@ -1,0 +1,21 @@
+train: True
+epoch: 200
+loader:
+  batch_size: 2048
+  shuffle: True
+  num_workers: 8
+  test: False
+loss:
+  name: cl
+  reduction: mean
+optimizer:
+  name: Adam
+  params: {
+    lr: 1e-4
+  }
+scheduler:
+  name: CosineAnnealingLR
+  params: {
+    T_max: 200,
+    eta_min: 1e-3
+  }

@@ -24,7 +24,9 @@ import numpy as np
 #     angles = np.array(list(map(dihedral, positions)))
 #     return angles
 
-def compute_dihedral(position):
+def compute_dihedral(
+        position: np.ndarray,
+    ):
     v = position[:-1] - position[1:]
     v0 = -v[0]
     v1 = v[2]

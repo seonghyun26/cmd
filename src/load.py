@@ -32,32 +32,32 @@ def load_data(cfg):
     if cfg.data.molecule == "double-well":
         train_loader = DataLoader(
             dataset=dataset,
-            batch_size=cfg.training.batch_size,
-            shuffle=cfg.training.shuffle,
-            num_workers=cfg.training.num_workers
+            batch_size=cfg.training.loader.batch_size,
+            shuffle=cfg.training.loader.shuffle,
+            num_workers=cfg.training.loader.num_workers
         )
         test_loader = None
     elif cfg.data.molecule == "alanine":
-        if cfg.training.test:
+        if cfg.training.loader.test:
             train_dataset, test_dataset = random_split(dataset, cfg.data.train_test_split)
             train_loader = DataLoader(
                 dataset=train_dataset,
-                batch_size=cfg.training.batch_size,
-                shuffle=cfg.training.shuffle,
-                num_workers=cfg.training.num_workers
+                batch_size=cfg.training.loader.batch_size,
+                shuffle=cfg.training.loader.shuffle,
+                num_workers=cfg.training.loader.num_workers
             )
             test_loader = DataLoader(
                 dataset=test_dataset,
-                batch_size=cfg.training.batch_size,
-                shuffle=cfg.training.shuffle,
-                num_workers=cfg.training.num_workers
+                batch_size=cfg.training.loader.batch_size,
+                shuffle=cfg.training.loader.shuffle,
+                num_workers=cfg.training.loader.num_workers
             )
         else:
             train_loader = DataLoader(
                 dataset=dataset,
-                batch_size=cfg.training.batch_size,
-                shuffle=cfg.training.shuffle,
-                num_workers=cfg.training.num_workers
+                batch_size=cfg.training.loader.batch_size,
+                shuffle=cfg.training.loader.shuffle,
+                num_workers=cfg.training.loader.num_workers
             )
             test_loader = None
     else:
@@ -232,7 +232,9 @@ def load_loss(cfg):
 
         return loss_list
     
-    def mae_reg5_loss(y_true, y_pred, mu, log_var, *args):
+    def mae_reg5_loss(result_dict):
+        y_pred = result_dict["pred"]
+        y_true = result_dict["true"]
         loss_list = {
             "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
             "reg": torch.square(log_var).mean(),
@@ -241,9 +243,17 @@ def load_loss(cfg):
         
         return loss_list
     
-    def cvmse_loss(y_true, y_pred, *args):
+    def cl_loss(result_dict):
+        current_state_rep = result_dict["current_state_rep"]
+        next_state_rep = result_dict["next_state_rep"]
+        
+        positive_pairs = torch.sum(current_state_rep * next_state_rep, dim=-1)
+        negative_pairs = torch.sum(current_state_rep * torch.roll(next_state_rep, shifts=1, dims=0), dim=-1)
+        contrastive_loss = -torch.log(torch.exp(positive_pairs) / (torch.exp(positive_pairs) + torch.exp(negative_pairs)))
+        contrastive_loss = contrastive_loss.mean()
+        
         loss_list = {
-            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
+            "CL": contrastive_loss
         }
         
         return loss_list
@@ -260,7 +270,13 @@ def load_loss(cfg):
         "mae": mae_loss,
         "mae+reg4": mae_reg4_loss,
         "mae+reg5": mae_reg5_loss,
-        "cvmse": cvmse_loss,
+        "cl": cl_loss,
+    }
+    
+    loss_type_list = {
+        "mse": ["mse"],
+        "mse+reg": ["mse", "reg"],
+        "cl": ["CL"],
     }
     
     loss_name = cfg.training.loss.name.lower()
@@ -269,9 +285,12 @@ def load_loss(cfg):
     else:
         raise ValueError(f"Loss {loss_name} not found")
     
-    loss_names = ["mse", "mae", "reg", "mu"]
+    if loss_name in loss_type_list.keys():
+        loss_type = loss_type_list[loss_name]
+    else:
+        raise ValueError(f"Loss type {loss_name} not found")
     
-    return loss_func, loss_names
+    return loss_func, loss_type
 
 
 def load_state_file(cfg, state, device):
@@ -299,7 +318,7 @@ def load_simulation(cfg, sample_num, device):
     
     return simulation_list
 
-def load_steered_simulation(cfg, sample_num, device):
-    simulation_list = SteeredMDSimulation(cfg, sample_num, device)
+def load_steered_simulation(cfg, sample_num, model, device):
+    simulation_list = SteeredMDSimulation(cfg, sample_num, model, device)
 
     return simulation_list

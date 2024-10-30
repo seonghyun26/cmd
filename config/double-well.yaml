@@ -1,6 +1,0 @@
-defaults:
-- model: lnsde
-- data: double-well-3000
-- training: double-well
-- logging: double-well
-- job: goal-double-well-3000
