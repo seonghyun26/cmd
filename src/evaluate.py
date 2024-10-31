@@ -16,8 +16,26 @@ def evaluate(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     
     if task == "simulation":
         raise ValueError(f"Task {task} not supported")
+    
     elif task == "tps":
-        evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device)
+        evaluate_tps(
+            cfg = cfg,
+            model_wrapper = model_wrapper, 
+            trajectory_list = trajectory_list,
+            logger = logger, 
+            epoch = epoch,
+            device = device
+        )
+    
+    elif task == "cv":
+        evaluate_cv(
+            cfg = cfg,
+            model_wrapper = model_wrapper, 
+            logger = logger, 
+            epoch = epoch,
+            device = device
+        )
+    
     else:
         raise ValueError(f"Task {task} not found")
     
@@ -33,8 +51,8 @@ def evaluate_sim(cfg, trajectory_list, logger):
     return
 
 
-# Trajectory list shape: (sample_num, time_horizon, atom_num, 3)
 def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
+    # Trajectory list shape: (sample_num, time_horizon, atom_num, 3)
     goal_state = load_state_file(cfg, cfg.job.goal_state, device)
     goal_state = goal_state.to("cpu")
     if isinstance(trajectory_list, np.ndarray):
@@ -54,6 +72,22 @@ def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     if cfg.job.metrics.ram.use:
         logger.info(">> Plotting Ramachandran plot")
         eval_result["eval/ram"] = compute_ram(cfg, trajectory_list, epoch)
+    if cfg.job.metrics.projection.use:
+        logger.info(">> Plotting projected CV values")
+        eval_result["eval/projection"] = compute_projection(cfg, model_wrapper, epoch)
+    
+    for key in eval_result.keys():
+        logger.info(f"{key}: {eval_result[key]}")
+    
+    if cfg.logging.wandb:
+        wandb.log(eval_result)
+    
+    return
+
+
+def evaluate_cv(cfg, model_wrapper, logger, epoch, device):
+    eval_result = {}
+    
     if cfg.job.metrics.projection.use:
         logger.info(">> Plotting projected CV values")
         eval_result["eval/projection"] = compute_projection(cfg, model_wrapper, epoch)

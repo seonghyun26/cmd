@@ -115,7 +115,7 @@ class CL_dataset(Dataset):
         data_augmented_list,
         temperature_list,
     ):
-        super(MD_Dataset_Distance, self).__init__()
+        super(CL_dataset, self).__init__()
         self.device = "cpu"
         
         self.x = data_list.to(self.device)

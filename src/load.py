@@ -166,7 +166,7 @@ def load_loss(cfg):
         next_state_rep = result_dict["next_state_rep"]
         
         positive_pairs = torch.sum(current_state_rep * next_state_rep, dim=-1)
-        negative_pairs = torch.sum(current_state_rep * torch.roll(next_state_rep, shifts=1, dims=0), dim=-1)
+        negative_pairs = torch.sum(current_state_rep * torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0), dim=-1)
         contrastive_loss = -torch.log(torch.exp(positive_pairs) / (torch.exp(positive_pairs) + torch.exp(negative_pairs)))
         contrastive_loss = contrastive_loss.mean()
         
@@ -181,6 +181,7 @@ def load_loss(cfg):
         current_state_rep = result_dict["current_state_rep"]
         next_state_rep = result_dict["next_state_rep"]
         batch_size = current_state_rep.shape[0]
+        temperature = cfg.training.loss.temperature
         
         positive_pairs = torch.sigmoid(similarity(current_state_rep, next_state_rep))
         # mat = similarity(current_state_rep.reshape(-1, 1, 1), next_state_rep.reshape(1, 1, -1))
@@ -193,7 +194,24 @@ def load_loss(cfg):
             "CL": contrastive_loss / batch_size
         }
         
-        return contrastive_loss / batch_size
+        return loss_list
+    
+    def triplet_loss(result_dict):
+        margin = cfg.training.loss.margin
+        anchor = result_dict["current_state_rep"]
+        positive = result_dict["next_state_rep"]
+        batch_size = anchor.shape[0]
+        negative = torch.roll(positive, shifts=random.randint(1, batch_size), dims=0)
+
+        distance_positive = torch.nn.functional.pairwise_distance(anchor, positive, p=2)
+        distance_negative = torch.nn.functional.pairwise_distance(anchor, negative, p=2)
+        triplet_loss = torch.nn.functional.relu(distance_positive - distance_negative + margin)
+
+        loss_list = {
+            "CL": triplet_loss.mean()
+        }
+        
+        return  loss_list
     
     loss_func_list = {
         "mse": mse_loss,
@@ -202,6 +220,7 @@ def load_loss(cfg):
         "mae+reg": mae_reg_loss,
         "cl": cl_loss,
         "nce": nce_loss,
+        "triplet": triplet_loss,
     }
     
     loss_type_list = {
@@ -211,6 +230,7 @@ def load_loss(cfg):
         "mae+reg": ["mae", "reg"],
         "cl": ["CL"],
         "nce": ["CL"],
+        "triplet": ["CL"],
     }
     
     loss_name = cfg.training.loss.name.lower()
@@ -221,6 +241,7 @@ def load_loss(cfg):
     
     if loss_name in loss_type_list.keys():
         loss_type = loss_type_list[loss_name]
+        loss_type.append("total")
     else:
         raise ValueError(f"Loss type {loss_name} not found")
     

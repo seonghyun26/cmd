@@ -279,6 +279,7 @@ def plot_ad_cv(
             name = f"ad-cv{i}-{epoch}.png",
             fig = fig
         )
+        log_fig = fig
     
     if cfg_plot.divide_plot:
         cv_index = cfg_plot.cv_index
@@ -310,19 +311,29 @@ def plot_ad_cv(
         )
     
     if cfg_plot.contour_plot:
-        cv_index = cfg_plot.cv_index
-        fig, ax = plt.subplots(1, 1, figsize = ( 5, 4 ) )
-        combined_df = pd.concat([df[(df[f'CV{cv_index}'] <= boundary[i] * 1.01) & (df[f'CV{cv_index}'] >= boundary[i] * 0.99)] for i in range(0, min(len(boundary)-1, 9))])
-        combined_df.plot.hexbin(
-            'phi', 'psi', C=f'CV{cv_index}',
-            vmin=boundary[0], vmax=boundary[-1],
-            cmap=cfg_plot.cmap, ax=ax,
-            gridsize=cfg_plot.gridsize,
-        )
-        save_plot(
-            dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
-            name = f"ad-cv{cv_index}-contour-{epoch}.png",
-            fig = fig
-        )
+        try:
+            cv_index = cfg_plot.cv_index
+            threshold = cfg_plot.threshold
+            fig, ax = plt.subplots(1, 1, figsize = ( 5, 4 ) )
+            combined_df = pd.concat([
+                df[
+                    (df[f'CV{cv_index}'] <= boundary[i] * (1 + threshold)) &
+                    (df[f'CV{cv_index}'] >= boundary[i] * (1 - threshold))
+                ]
+                    for i in range(0, min(len(boundary)-1, 9))
+                ])
+            combined_df.plot.hexbin(
+                'phi', 'psi', C=f'CV{cv_index}',
+                vmin=boundary[0], vmax=boundary[-1],
+                cmap=cfg_plot.cmap, ax=ax,
+                gridsize=cfg_plot.gridsize,
+            )
+            save_plot(
+                dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
+                name = f"ad-cv{cv_index}-contour-{epoch}.png",
+                fig = fig
+            )
+        except Exception as e:
+            print(f"Error in plotting contour plot: {e}")
     
-    return fig
+    return log_fig

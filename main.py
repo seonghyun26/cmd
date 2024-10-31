@@ -45,19 +45,20 @@ def main(cfg):
         # Load dataset
         logger.info(">> Loading dataset...")
         train_loader, test_loader = load_data(cfg)
-        criteria, loss_names = load_loss(cfg)
+        criteria, loss_type = load_loss(cfg)
+        loss_dict = { f"loss/{name}": 0 for name in loss_type }
         logger.info(f">> Dataset size: {len(train_loader.dataset)}")
         
         # Train model
         logger.info(">> Training...")
         pbar = trange(
             cfg.training.epoch,
-            desc="Training (Loss: ----)"
+            desc=f"Training (loss: {loss_dict['loss/total']})"
         )
         for epoch in pbar:
             model_wrapper.train()
-            loss_list = { f"loss/{name}": 0 for name in loss_names }
-            loss_list.update({"loss/total": 0})
+            for key in loss_dict.keys():
+                loss_dict[key] = 0
             
             for i, data in tqdm(
                 enumerate(train_loader),
@@ -69,7 +70,7 @@ def main(cfg):
                 if cfg.data.molecule == "double-well":
                     current_state, next_state, goal_state, step, temperature = (d.to(device) for d in data)
                 elif cfg.data.molecule == "alanine":
-                    current_state, next_state, goal_state, step = (d.to(device) for d in data)
+                    current_state, next_state, _, _ = (d.to(device) for d in data)
                     temperature = torch.tensor([300] * current_state.shape[0]).unsqueeze(1).to(device)
                 else:
                     raise ValueError(f"Molecule {cfg.molecule} not found")
@@ -78,25 +79,22 @@ def main(cfg):
                 result_dict = model_wrapper(
                     current_state=current_state,
                     next_state=next_state,
-                    goal_state=goal_state,
-                    step=step,
                     temperature=temperature
                 )
                 
                 # Copmpute loss
                 if cfg.model.name in ["cvmlp"]:
-                    loss_list_batch = criteria(result_dict)
+                    loss_dict_batch = criteria(result_dict)
                 else:
-                    loss_list_batch = criteria(next_state, current_state + result_dict["state_offset"], mu, log_var, step)
+                    loss_dict_batch = criteria(next_state, current_state + result_dict["state_offset"], mu, log_var, step)
                 
-                loss = loss_list_batch
-                loss_list["loss/CL"] += loss
-                # for name in loss_list_batch.keys():
-                #     loss_list[f"loss/{name}"] += loss_list_batch[name]
-                # loss = 0
-                # for values in loss_list_batch.values():
-                #     loss += values
-                loss_list["loss/total"] += loss.item()
+                for name in loss_dict_batch.keys():
+                    loss_dict[f"loss/{name}"] += loss_dict_batch[name]
+                
+                loss = 0
+                for values in loss_dict_batch.values():
+                    loss += values
+                loss_dict["loss/total"] += loss.item()
                 
                 optimizer.zero_grad()
                 loss.backward()
@@ -105,15 +103,15 @@ def main(cfg):
             # Update results
             if scheduler is not None:
                 scheduler.step()
-            loss_list = {k: v / (len(train_loader) ) for k, v in loss_list.items()}
-            loss_list.update({"lr": optimizer.param_groups[0]["lr"]})
-            pbar.set_description(f"Training (loss: {loss_list['loss/total']:12f})")
+            loss_dict = {k: v / (len(train_loader) ) for k, v in loss_dict.items()}
+            loss_dict.update({"lr": optimizer.param_groups[0]["lr"]})
+            pbar.set_description(f"Training (loss: {loss_dict['loss/total']})")
             pbar.refresh() 
 
             # Wandb loggging
             if cfg.logging.wandb:
                 wandb.log(
-                    loss_list,
+                    loss_dict,
                     step=epoch
                 )
                 

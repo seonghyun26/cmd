@@ -53,9 +53,9 @@ class MLP(nn.Module):
         return x
     
     
-class CVMLPDep(nn.Module):
+class CVMLP_V1(nn.Module):
     def __init__(self, cfg, input_dim, output_dim):
-        super(CVMLPDep, self).__init__()
+        super(CVMLP_V1, self).__init__()
 
         # Output dimension is the same as the representation dimension
         self.cfg = cfg

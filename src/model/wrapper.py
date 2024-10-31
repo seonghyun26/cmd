@@ -87,13 +87,9 @@ class ModelWrapper(nn.Module):
         goal_state: torch.Tensor = None,
         step: torch.Tensor = None,
     ) -> torch.Tensor:
-        # prediction by model
         batch_size = current_state.shape[0]
+        
         if self.model_name in ["cvmlp"]:
-            # if self.cfg.model.input == "distance":
-            #     current_state = coordinate2distance_batch(self.cfg.data.molecule, current_state)
-            #     next_state = coordinate2distance_batch(self.cfg.data.molecule, next_state)
-            
             current_state_conditions = torch.cat([
                 current_state.reshape(batch_size, -1),
                 temperature.reshape(batch_size, -1)
