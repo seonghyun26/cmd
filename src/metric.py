@@ -258,12 +258,19 @@ def compute_projection(cfg, model_wrapper, epoch):
             data = torch.load(f"{data_path}")
             
             data_list = []
+            phi_list = []
+            psi_list = []
             for i in range(len(data)):
                 data_list.append(data[i][0].to(device))
+                data_list.append(data[i][1].to(device))
+                phi_list.append(data[i][2])
+                psi_list.append(data[i][3])
+            # phis = compute_dihedral_torch(data_list[:, ALDP_PHI_ANGLE]).unsqueeze(1).detach().cpu().numpy()
+            # psis = compute_dihedral_torch(data_list[:, ALDP_PSI_ANGLE]).unsqueeze(1).detach().cpu().numpy()
             data_list = torch.stack(data_list)
-            phis = compute_dihedral_torch(data_list[:, ALDP_PHI_ANGLE]).unsqueeze(1).detach().cpu().numpy()
-            psis = compute_dihedral_torch(data_list[:, ALDP_PSI_ANGLE]).unsqueeze(1).detach().cpu().numpy()
             data_list = data_list.reshape(data_list.shape[0], -1)
+            phis = torch.stack(phi_list).unsqueeze(1).detach().cpu().numpy()
+            psis = torch.stack(psi_list).unsqueeze(1).detach().cpu().numpy()
             temperature = torch.tensor(cfg.job.simulation.temperature).repeat(data_list.shape[0], 1).to(device)
             projected_cv = model_wrapper.model(torch.cat([data_list, temperature], dim=1), transformed=False)
 

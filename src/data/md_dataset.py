@@ -89,23 +89,23 @@ class MD_Dataset_Distance(Dataset):
         self,
         current_state_distance_list,
         next_state_distance_list,
-        goal_state_distance_list,
-        delta_list,
-        sanity_check=False
+		phi_list,
+    	psi_list,
     ):
         super(MD_Dataset_Distance, self).__init__()
         self.device = "cpu"
         
         self.x = current_state_distance_list.to(self.device)
         self.y = next_state_distance_list.to(self.device)
-        self.goal = goal_state_distance_list.to(self.device)
-        self.delta_time = delta_list.to(self.device)
+        self.phi = phi_list.to(self.device)
+        self.psi = psi_list.to(self.device)
         
     def __getitem__(self, index):
-	    return self.x[index], self.y[index], self.goal[index], self.delta_time[index]
+	    return self.x[index], self.y[index], self.phi[index], self.psi[index]
  
     def __len__(self):
 	    return self.x.shape[0]
+
 
 
 class CL_dataset(Dataset):

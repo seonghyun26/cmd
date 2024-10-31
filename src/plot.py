@@ -296,7 +296,8 @@ def plot_ad_cv(
             df_selected.plot.hexbin(
                 'phi', 'psi', C=f'CV{cv_index}',
                 vmin = boundary[0], vmax = boundary[-1],
-                cmap = cfg_plot.cmap, ax = ax
+                cmap = cfg_plot.cmap, ax = ax,
+                gridsize=cfg_plot.gridsize,
             )
             ax.set_xlim(-3.2, 3.2)
             ax.set_ylim(-3.2, 3.2)
@@ -305,6 +306,22 @@ def plot_ad_cv(
         save_plot(
             dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
             name = f"ad-cv{cv_index}-div-{epoch}.png",
+            fig = fig
+        )
+    
+    if cfg_plot.contour_plot:
+        cv_index = cfg_plot.cv_index
+        fig, ax = plt.subplots(1, 1, figsize = ( 5, 4 ) )
+        combined_df = pd.concat([df[(df[f'CV{cv_index}'] <= boundary[i] * 1.01) & (df[f'CV{cv_index}'] >= boundary[i] * 0.99)] for i in range(0, min(len(boundary)-1, 9))])
+        combined_df.plot.hexbin(
+            'phi', 'psi', C=f'CV{cv_index}',
+            vmin=boundary[0], vmax=boundary[-1],
+            cmap=cfg_plot.cmap, ax=ax,
+            gridsize=cfg_plot.gridsize,
+        )
+        save_plot(
+            dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
+            name = f"ad-cv{cv_index}-contour-{epoch}.png",
             fig = fig
         )
     

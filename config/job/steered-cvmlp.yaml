@@ -25,7 +25,7 @@ metrics:
   ram:
     use: True
   energy:
-    use: True
+    use: False
   projection:
     use: True
     gridsize: 400
@@ -33,3 +33,4 @@ metrics:
     divide_plot: True
     cv_index: 0
     number_of_bins: 10
+    contour_plot: True
