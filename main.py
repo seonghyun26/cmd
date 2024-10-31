@@ -84,19 +84,21 @@ def main(cfg):
                 )
                 
                 # Copmpute loss
-                optimizer.zero_grad()
                 if cfg.model.name in ["cvmlp"]:
                     loss_list_batch = criteria(result_dict)
                 else:
                     loss_list_batch = criteria(next_state, current_state + result_dict["state_offset"], mu, log_var, step)
                 
-                for name in loss_list_batch.keys():
-                    loss_list[f"loss/{name}"] += loss_list_batch[name]
-                loss = 0
-                for values in loss_list_batch.values():
-                    loss += values
+                loss = loss_list_batch
+                loss_list["loss/CL"] += loss
+                # for name in loss_list_batch.keys():
+                #     loss_list[f"loss/{name}"] += loss_list_batch[name]
+                # loss = 0
+                # for values in loss_list_batch.values():
+                #     loss += values
+                loss_list["loss/total"] += loss.item()
                 
-                loss_list["loss/total"] += loss
+                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
             
@@ -105,7 +107,7 @@ def main(cfg):
                 scheduler.step()
             loss_list = {k: v / (len(train_loader) ) for k, v in loss_list.items()}
             loss_list.update({"lr": optimizer.param_groups[0]["lr"]})
-            pbar.set_description(f"Training (loss: {loss_list['loss/total']:8f})")
+            pbar.set_description(f"Training (loss: {loss_list['loss/total']:12f})")
             pbar.refresh() 
 
             # Wandb loggging

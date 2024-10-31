@@ -1,13 +1,13 @@
-train: True
-epoch: 200
+train: False
+ckpt_file: aecv-v1
+epoch: 0
 loader:
-  batch_size: 1024
+  batch_size: 8192
   shuffle: True
   num_workers: 8
   test: False
 loss:
-  name: nce
-  similarity: cosine
+  name: mse
   reduction: mean
 optimizer:
   name: Adam
@@ -18,5 +18,5 @@ scheduler:
   name: CosineAnnealingLR
   params: {
     T_max: 200,
-    eta_min: 1e-5
+    eta_min: 1e-3
   }

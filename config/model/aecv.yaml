@@ -1,4 +1,5 @@
 name: aecv
+input: distance
 params: {
   encoder_layers: [45, 10, 10, 1],
   options: {

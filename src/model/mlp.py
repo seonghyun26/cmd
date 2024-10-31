@@ -122,20 +122,14 @@ class CVMLPDep(nn.Module):
     
 
 class CVMLP(nn.Module):
-    def __init__(self, data_dim, **kwargs):
+    def __init__(self, input_dim, data_dim, **kwargs):
         super(CVMLP, self).__init__()
 
-        # Output dimension is the same as the representation dimension
         self.params = kwargs
         self.data_dim = data_dim
+        self.input_dim = input_dim
         self.output_dim = self.params["output_dim"]
         self.params["layer_num"] = len(self.params["hidden_dim"])
-        if self.params["input"] == "xyz":
-            self.input_dim = data_dim + 1
-        elif self.params["input"] == "distance":
-            self.input_dim = 45 + 1
-        else:
-            raise ValueError(f"Input type {self.params['input']} not found")
         
         self.layers = nn.ModuleList()
         self.layers.append(nn.Linear(self.input_dim, self.params["hidden_dim"][0]))

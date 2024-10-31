@@ -1,5 +1,6 @@
 import wandb
 import torch
+import random
 
 import mdtraj as md
 import torch.nn as nn
@@ -119,131 +120,43 @@ def load_scheduler(cfg, optimizer):
     
     return scheduler
 
+def load_similarity(similarity_type):
+    
+    if similarity_type == "cosine":
+        similarity = nn.CosineSimilarity(dim=1)
+    else:
+        raise ValueError(f"Similarity {similarity_type} not found")
+
+    return similarity
 
 def load_loss(cfg):    
-    def mse_loss(y_true, y_pred, *args):
+    def mse_loss(result_dict):
         loss_list = {
-            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
+            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(result_dict["pred"], result_dict["true"]),
         }
         
         return loss_list
 
-    def mse_reg_loss(y_true, y_pred, mu, log_var, *args):
+    def mse_reg_loss(result_dict):
         loss_list = {
-            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
-            "reg": -0.5 * torch.sum(1 + log_var - log_var.exp())
-        }
-        
-        return loss_list
-
-    def mse_reg2_loss(y_true, y_pred, mu, log_var, *args):
-        loss_list = {
-            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
-            "reg": torch.square(log_var.exp())
-        }
-        
-        return loss_list
-
-    def mse_reg3_loss(y_true, y_pred, mu, log_var, step, *args):
-        mse_loss = nn.MSELoss(reduction="none")(y_pred, y_true).mean(dim=(1))
-        reg_loss = torch.square(log_var)
-        if cfg.training.repeat:
-            step_div = torch.sqrt(step[:, 0]).squeeze()
-        else:
-            step_div = torch.sqrt(step).squeeze()
-        mse_loss /= step_div
-        
-        if cfg.training.loss.reduction == "mean":
-            mse_loss = mse_loss.mean()
-            reg_loss = reg_loss.mean()
-        elif cfg.training.loss.reduction == "sum":
-            mse_loss = mse_loss.sum()
-            reg_loss = reg_loss.sum()
-        else:
-            raise ValueError(f"Reduction {cfg.training.loss.reduction} not found")
-
-        loss_list = {
-            "mse": mse_loss,
-            "reg": reg_loss
+            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(result_dict["pred"], result_dict["true"]),
+            "reg": torch.square(result_dict["log_var"]).mean()
         }
         
         return loss_list
     
-    def mse_reg4_loss(y_true, y_pred, mu, log_var, *args):
+    def mae_loss(result_dict):
         loss_list = {
-            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
-            "reg": torch.square(log_var).mean()
+            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(result_dict["pred"], result_dict["true"])
         }
         
         return loss_list
     
-    def mse_reg5_loss(y_true, y_pred, mu, log_var, *args):
+    def mae_reg_loss(result_dict):
         loss_list = {
-            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
-            "reg": torch.square(mu) + torch.square(log_var)
-        }
-        
-        return loss_list
-    
-    def mse_reg6_loss(y_true, y_pred, mu, log_var, step, *args):
-        mse_loss = nn.MSELoss(reduction="none")(y_pred, y_true).mean(dim=(1))
-        reg_loss = torch.square(log_var).mean(dim=(1))
-        step_div = step.squeeze()
-        mse_loss /= step_div
-        reg_loss /= step_div
-        
-        if cfg.training.loss.reduction == "mean":
-            mse_loss = mse_loss.mean()
-            reg_loss = reg_loss.mean()
-        elif cfg.training.loss.reduction == "sum":
-            mse_loss = mse_loss.sum()
-            reg_loss = reg_loss.sum()
-        else:
-            raise ValueError(f"Reduction {cfg.training.loss.reduction} not found")
-
-        loss_list = {
-            "mse": mse_loss,
-            "reg": reg_loss
-        }
-        
-        return loss_list
-    
-    def mse_reg7_loss(y_true, y_pred, mu, log_var, step, *args):
-        mse_loss = nn.MSELoss(reduction="none")(y_pred, y_true)
-        mse_loss /= torch.exp(log_var)
-        mse_loss = mse_loss.mean()
-        reg_loss = torch.square(log_var).mean()
-
-        loss_list = {
-            "mse": mse_loss,
-            "reg": reg_loss
-        }
-        
-        return loss_list
-        
-    
-    def mae_loss(y_true, y_pred, *args):
-        loss_list = {
-            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(y_pred, y_true)
-        }
-        
-        return loss_list
-    
-    def mae_reg4_loss(y_true, y_pred, mu, log_var, *args):
-        loss_list = {
-            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
-            "reg": torch.square(log_var).mean()
-        }
-
-        return loss_list
-    
-    def mae_reg5_loss(result_dict):
-        y_pred = result_dict["pred"]
-        y_true = result_dict["true"]
-        loss_list = {
-            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(y_pred, y_true),
-            "reg": torch.square(log_var).mean(),
-            "mu": -torch.square(mu).mean(),
+            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(result_dict["pred"], result_dict["true"]),
+            "reg": torch.square(result_dict["log_var"]).mean(),
+            "mu": -torch.square(result_dict["mu"]).mean(),
         }
         
         return loss_list
@@ -263,25 +176,41 @@ def load_loss(cfg):
         
         return loss_list
     
+    def nce_loss(result_dict):
+        similarity = load_similarity(cfg.training.loss.similarity)
+        current_state_rep = result_dict["current_state_rep"]
+        next_state_rep = result_dict["next_state_rep"]
+        batch_size = current_state_rep.shape[0]
+        
+        positive_pairs = torch.sigmoid(similarity(current_state_rep, next_state_rep))
+        # mat = similarity(current_state_rep.reshape(-1, 1, 1), next_state_rep.reshape(1, 1, -1))
+        # indices = torch.triu_indices(batch_size, batch_size, offset=1)
+        negative_pairs = torch.sigmoid(similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0)))
+        negative_pairs = 1 - torch.sigmoid(negative_pairs)
+        contrastive_loss = - torch.sum(torch.log(positive_pairs)) - torch.sum(torch.log(negative_pairs))
+        
+        loss_list = {
+            "CL": contrastive_loss / batch_size
+        }
+        
+        return contrastive_loss / batch_size
     
     loss_func_list = {
         "mse": mse_loss,
         "mse+reg": mse_reg_loss,
-        "mse+reg2": mse_reg2_loss,
-        "mse+reg3": mse_reg3_loss,
-        "mse+reg4": mse_reg4_loss,
-        "mse+reg5": mse_reg5_loss,
-        "mse+reg7": mse_reg7_loss,
         "mae": mae_loss,
-        "mae+reg4": mae_reg4_loss,
-        "mae+reg5": mae_reg5_loss,
+        "mae+reg": mae_reg_loss,
         "cl": cl_loss,
+        "nce": nce_loss,
     }
     
     loss_type_list = {
         "mse": ["mse"],
         "mse+reg": ["mse", "reg"],
+        "mae": ["mae"],
+        "mae+reg": ["mae", "reg"],
         "cl": ["CL"],
+        "nce": ["CL"],
     }
     
     loss_name = cfg.training.loss.name.lower()

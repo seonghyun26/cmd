@@ -138,30 +138,36 @@ def compute_energy(cfg, trajectory_list, goal_state):
     sample_num = trajectory_list.shape[0]
     path_length = trajectory_list.shape[1]
     
-    if molecule == "alanine":
-        goal_state_file_path = f"data/{cfg.data.molecule}/{cfg.job.goal_state}.pdb"
-        goal_simulation = init_simulation(cfg, goal_state_file_path)
-        goal_state_energy = goal_simulation.context.getState(getEnergy=True).getPotentialEnergy()._value
-        
-        path_energy_list = []
-        for trajectory in tqdm(
-            trajectory_list,
-            desc=f"Computing energy for {trajectory_list.shape[0]} trajectories"
-        ):
-            energy_trajectory = potential_energy(cfg, trajectory)
-            path_energy_list.append(energy_trajectory)
-        path_energy_list = np.array(path_energy_list)
-        
-        path_maximum_energy = np.max(path_energy_list, axis=1)
-        path_final_energy_error = np.array(path_energy_list[:, -1]) - goal_state_energy
-    elif molecule == "double-well":
-        synthetic = Synthetic()
-        path_energy_list = [synthetic.potential(trajectory) for trajectory in trajectory_list]
-        path_energy_list = np.array(path_energy_list)
-        path_maximum_energy = np.max(path_energy_list, axis=1)
-        path_final_energy_error = np.array(path_energy_list[:, -1]) - synthetic.potential(goal_state)
-    else: 
-        raise ValueError(f"Energy for molecule {molecule} TBA")
+    try:
+        if molecule == "alanine":
+            goal_state_file_path = f"data/{cfg.data.molecule}/{cfg.job.goal_state}.pdb"
+            goal_simulation = init_simulation(cfg, goal_state_file_path)
+            goal_state_energy = goal_simulation.context.getState(getEnergy=True).getPotentialEnergy()._value
+            
+            path_energy_list = []
+            for trajectory in tqdm(
+                trajectory_list,
+                desc=f"Computing energy for {trajectory_list.shape[0]} trajectories"
+            ):
+                energy_trajectory = potential_energy(cfg, trajectory)
+                path_energy_list.append(energy_trajectory)
+            path_energy_list = np.array(path_energy_list)
+            
+            path_maximum_energy = np.max(path_energy_list, axis=1)
+            path_final_energy_error = np.array(path_energy_list[:, -1]) - goal_state_energy
+        elif molecule == "double-well":
+            synthetic = Synthetic()
+            path_energy_list = [synthetic.potential(trajectory) for trajectory in trajectory_list]
+            path_energy_list = np.array(path_energy_list)
+            path_maximum_energy = np.max(path_energy_list, axis=1)
+            path_final_energy_error = np.array(path_energy_list[:, -1]) - synthetic.potential(goal_state)
+        else: 
+            raise ValueError(f"Energy for molecule {molecule} TBA")
+    except Exception as e:
+        print(f"Error in computing energy: {e}")
+        path_maximum_energy = np.ones(sample_num) * 10000
+        path_energy_list = np.ones((sample_num, path_length)) * 10000
+        path_final_energy_error = np.ones(sample_num) * 10000
     
     return path_maximum_energy.mean(), path_energy_list[:, -1].mean(), path_final_energy_error.mean()
 

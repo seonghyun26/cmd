@@ -2,12 +2,10 @@ import torch
 import torch.nn as nn
 
 import numpy as np
-import bgflow as bg
 
 from mlcolvar.cvs import DeepLDA, AutoEncoderCV, VariationalAutoEncoderCV
 
 from . import *
-
 
 model_dict = {
     "mlp": MLP,
@@ -31,6 +29,25 @@ class ModelWrapper(nn.Module):
         self.device = device
         self.model = self.load_model(cfg).to(device)
     
+    def _set_input_dim(self, cfg, data_dim):
+        input_dim = None
+        
+        if cfg.data.molecule == "alanine":
+            if cfg.model.input == "distance":
+                input_dim = 45 + 1
+            else:
+                input_dim = data_dim + 1
+        
+        elif cfg.data.moelcule == "chignolin":
+            raise ValueError(f"Molecule {cfg.data.molecule} TBA...")
+        
+        else:
+            raise ValueError(f"Molecule {cfg.data.molecule} not found")
+        
+        assert input_dim is not None, f"Input dimension not set for {cfg.data.molecule}"
+        
+        return input_dim
+    
     def load_model(self, cfg):
         if cfg.data.molecule in ["alanine", "chignolin"]:
             self.data_dim = cfg.data.atom * 3
@@ -43,7 +60,11 @@ class ModelWrapper(nn.Module):
         if self.model_name in ["deeplda", "aecv", "vaecv", "beta-vae"]:
             model = model_dict[self.model_name](**cfg.model.params)
         elif self.model_name in model_dict.keys():
-            model = model_dict[self.model_name](self.data_dim, **cfg.model.params)
+            model = model_dict[self.model_name](
+                input_dim = self._set_input_dim(cfg, self.data_dim),
+                data_dim = self.data_dim,
+                **cfg.model.params
+            )
         else:
             raise ValueError(f"Model {self.model_name} not found")
         
@@ -69,10 +90,9 @@ class ModelWrapper(nn.Module):
         # prediction by model
         batch_size = current_state.shape[0]
         if self.model_name in ["cvmlp"]:
-            if self.cfg.model.input == "distance":
-                current_state = x[:, :-1].reshape(batch_size, -1)
-                temperature = x[:, -1].unsqueeze(-1)
-                current_state= self.coordinate2distance(current_state)                
+            # if self.cfg.model.input == "distance":
+            #     current_state = coordinate2distance_batch(self.cfg.data.molecule, current_state)
+            #     next_state = coordinate2distance_batch(self.cfg.data.molecule, next_state)
             
             current_state_conditions = torch.cat([
                 current_state.reshape(batch_size, -1),

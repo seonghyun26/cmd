@@ -304,7 +304,7 @@ def plot_ad_cv(
         
         save_plot(
             dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
-            name = f"ad-cv{i}-div-{epoch}.png",
+            name = f"ad-cv{cv_index}-div-{epoch}.png",
             fig = fig
         )
     

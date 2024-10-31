@@ -1,6 +1,6 @@
 defaults:
 - model: cvmlp
-- data: alanine-distance
+- data: alanine
 - training: contrastive-learning
-- logging: debug-log
+- logging: basic
 - job: steered-cvmlp

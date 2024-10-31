@@ -1,4 +1,5 @@
 name: vaecv
+input: distance
 params: {
   n_cvs: 1,
   encoder_layers: [45, 128, 128, 1],

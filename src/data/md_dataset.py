@@ -82,3 +82,49 @@ class MD_Dataset(Dataset):
  
     def __len__(self):
 	    return self.x.shape[0]
+
+
+class MD_Dataset_Distance(Dataset):
+    def __init__(
+        self,
+        current_state_distance_list,
+        next_state_distance_list,
+        goal_state_distance_list,
+        delta_list,
+        sanity_check=False
+    ):
+        super(MD_Dataset_Distance, self).__init__()
+        self.device = "cpu"
+        
+        self.x = current_state_distance_list.to(self.device)
+        self.y = next_state_distance_list.to(self.device)
+        self.goal = goal_state_distance_list.to(self.device)
+        self.delta_time = delta_list.to(self.device)
+        
+    def __getitem__(self, index):
+	    return self.x[index], self.y[index], self.goal[index], self.delta_time[index]
+ 
+    def __len__(self):
+	    return self.x.shape[0]
+
+
+class CL_dataset(Dataset):
+    def __init__(
+        self,
+        data_list,
+        data_augmented_list,
+        temperature_list,
+    ):
+        super(MD_Dataset_Distance, self).__init__()
+        self.device = "cpu"
+        
+        self.x = data_list.to(self.device)
+        self.x_augmented = data_augmented_list.to(self.device)
+        self.temperature = temperature_list.to(self.device)
+        
+    def __getitem__(self, index):
+	    return self.x[index], self.x_augmented[index], self.temperature[index]
+ 
+    def __len__(self):
+	    return self.x.shape[0]
+
