@@ -14,10 +14,7 @@ from .metric import *
 def evaluate(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     task = cfg.job.name
     
-    if task == "simulation":
-        raise ValueError(f"Task {task} not supported")
-    
-    elif task == "tps":
+    if task == "tps":
         evaluate_tps(
             cfg = cfg,
             model_wrapper = model_wrapper, 

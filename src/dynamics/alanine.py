@@ -16,7 +16,7 @@ from ..utils import compute_dihedral, compute_dihedral_torch
 from ..simulation import load_forcefield, load_system
 
 
-MLCOLVAR_METHODS = ["deeplda", "aecv", "betavae"]
+MLCOLVAR_METHODS = ["deeplda", "deeptda", "aecv", "betavae"]
 
 class Alanine(BaseDynamics):
     def __init__(self, cfg, state):
@@ -108,8 +108,8 @@ class SteeredAlanine:
             [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
             dtype=torch.float32, device = self.device
         ).reshape(-1)
-        position.requires_grad = True
-        heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, position))
+        goal_position.requires_grad = True
+        heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
         mlcv = self.model(heavy_atom_distance)
         
         return mlcv
@@ -118,23 +118,23 @@ class SteeredAlanine:
         self.simulation.context.setParameter("time", time)
         if self.force_type in MLCOLVAR_METHODS:
             # Get position
-            # current_position = torch.tensor(
-            #     [list(p) for p in self.simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
-            #     dtype=torch.float32, device = self.device
-            # ).reshape(-1)
-            # current_position.requires_grad = True
-            # heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
-            # mlcv = self.model(heavy_atom_distance)
-            current_mlcv = self._current_position_2_mlcv()
+            current_position = torch.tensor(
+                [list(p) for p in self.simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
+                dtype=torch.float32, device = self.device
+            ).reshape(-1)
+            current_position.requires_grad = True
+            heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
+            current_mlcv = self.model(heavy_atom_distance)
+            # current_mlcv = self._current_position_2_mlcv()
             
-            # goal_position = torch.tensor(
-            #     [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
-            #     dtype=torch.float32, device = self.device
-            # ).reshape(-1)
-            # goal_position.requires_grad = True
-            # goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
-            # goal_mlcv = self.model(goal_heavy_atom_distance)    
-            goal_mlcv = self._goal_position_2_mlcv()        
+            goal_position = torch.tensor(
+                [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
+                dtype=torch.float32, device = self.device
+            ).reshape(-1)
+            goal_position.requires_grad = True
+            goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
+            goal_mlcv = self.model(goal_heavy_atom_distance)    
+            # goal_mlcv = self._goal_position_2_mlcv()        
             
             mlcv_difference = torch.linalg.norm(goal_mlcv - current_mlcv, ord=2)
 

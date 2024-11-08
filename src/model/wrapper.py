@@ -3,7 +3,7 @@ import torch.nn as nn
 
 import numpy as np
 
-from mlcolvar.cvs import DeepLDA, AutoEncoderCV, VariationalAutoEncoderCV
+from mlcolvar.cvs import DeepLDA, DeepTDA, AutoEncoderCV, VariationalAutoEncoderCV
 
 from . import *
 
@@ -15,11 +15,13 @@ model_dict = {
     "lnsde": LNSDE,
     "cvmlp": CVMLP,
     "deeplda": DeepLDA,
+    "deeptda": DeepTDA,
     "aecv": AutoEncoderCV,
     "vaecv": VariationalAutoEncoderCV,
     "betavae": VariationalAutoEncoderCVBeta
 }
 
+COLVAR_METHODS = ["deeplda", "deeptda", "aecv", "vaecv", "beta-vae"]
 
 class ModelWrapper(nn.Module):
     def __init__(self, cfg, device):
@@ -57,7 +59,7 @@ class ModelWrapper(nn.Module):
             raise ValueError(f"Molecule {cfg.data.molecule} not defined")
         
         self.model_name = cfg.model.name.lower() 
-        if self.model_name in ["deeplda", "aecv", "vaecv", "beta-vae"]:
+        if self.model_name in COLVAR_METHODS:
             model = model_dict[self.model_name](**cfg.model.params)
         elif self.model_name in model_dict.keys():
             model = model_dict[self.model_name](

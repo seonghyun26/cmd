@@ -177,21 +177,17 @@ def load_loss(cfg):
         return loss_list
     
     def nce_loss(result_dict):
-        similarity = load_similarity(cfg.training.loss.similarity)
         current_state_rep = result_dict["current_state_rep"]
         next_state_rep = result_dict["next_state_rep"]
         batch_size = current_state_rep.shape[0]
-        temperature = cfg.training.loss.temperature
+        similarity = load_similarity(cfg.training.loss.similarity)
         
         positive_pairs = torch.sigmoid(similarity(current_state_rep, next_state_rep))
-        # mat = similarity(current_state_rep.reshape(-1, 1, 1), next_state_rep.reshape(1, 1, -1))
-        # indices = torch.triu_indices(batch_size, batch_size, offset=1)
-        negative_pairs = torch.sigmoid(similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0)))
-        negative_pairs = 1 - torch.sigmoid(negative_pairs)
-        contrastive_loss = - torch.sum(torch.log(positive_pairs)) - torch.sum(torch.log(negative_pairs))
+        negative_pairs = 1 - torch.sigmoid(similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0)))
+        contrastive_loss = torch.log(positive_pairs / negative_pairs)
         
         loss_list = {
-            "CL": contrastive_loss / batch_size
+            "CL": contrastive_loss.mean()
         }
         
         return loss_list

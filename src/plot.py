@@ -283,7 +283,7 @@ def plot_ad_cv(
     
     if cfg_plot.divide_plot:
         cv_index = cfg_plot.cv_index
-        fig,axs = plt.subplots(3, 3, figsize = ( 12, 11 ) )
+        fig,axs = plt.subplots(3, 3, figsize = ( 15, 12 ) )
         axs = axs.ravel()
         max_cv0 = df[f'CV{cv_index}'].max()
         min_cv0 = df[f'CV{cv_index}'].min()

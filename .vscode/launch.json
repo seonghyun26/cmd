@@ -14,6 +14,8 @@
           "--config-name",
           "debug-cl",
           "hydra.run.dir=outputs/debug",
+          // "++model.params.output_dim=4",
+          // "++job.simulation.k=10000",
         ],
         "console": "integratedTerminal"
     },

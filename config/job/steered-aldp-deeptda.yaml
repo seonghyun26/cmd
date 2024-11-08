@@ -7,9 +7,9 @@ sample_num: 16
 save: True
 simulation:
   steered: True
-  k: 200
+  k: 90
   time_horizon: 500
-  force_type: aecv
+  force_type: deeptda
   friction: 0.001
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]
@@ -34,4 +34,3 @@ metrics:
     cv_index: 0
     number_of_bins: 10
     contour_plot: False
-    threshold: 0.01

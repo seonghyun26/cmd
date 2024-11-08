@@ -1,0 +1,16 @@
+name: deeptda
+input: distance
+params: {
+  n_states: 2,
+  n_cvs: 1,
+  target_centers: [-7, 7],
+  target_sigmas: [0.2, 0.2],
+  layers: [45, 24, 12, 1],
+  options: {
+    norm_in: {
+    },
+    nn: {
+      activation: "relu"
+    },
+  },
+}

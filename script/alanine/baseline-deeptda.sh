@@ -1,4 +1,4 @@
 cd ../../
 
 CUDA_VISIBLE_DEVICES=$1 python main.py \
-    --config-name steered-aecv2
+    --config-name steered-deeptda

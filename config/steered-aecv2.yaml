@@ -1,0 +1,6 @@
+defaults:
+- model: aecv2
+- data: alanine
+- training: aecv2-pretrained
+- logging: baseline
+- job: steered-aldp-aecv

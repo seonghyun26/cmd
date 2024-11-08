@@ -1,0 +1,15 @@
+name: aecv
+input: distance
+params: {
+  encoder_layers: [45, 10, 10, 4],
+  options: {
+    encoder: {
+      activation: "relu"
+    },
+    decoder: {
+      activation: "relu"
+    },
+    norm_in: {
+    }
+  }
+}

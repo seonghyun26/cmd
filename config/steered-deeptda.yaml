@@ -1,0 +1,6 @@
+defaults:
+- model: deeptda
+- data: alanine
+- training: deeptda-pretrained
+- logging: baseline
+- job: steered-aldp-deeptda

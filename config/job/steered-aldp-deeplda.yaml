@@ -33,3 +33,4 @@ metrics:
     divide_plot: True
     cv_index: 0
     number_of_bins: 10
+    contour_plot: False
