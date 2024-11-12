@@ -1,5 +1,5 @@
 molecule: double-well
 atom: 2
 dir: /home/shpark/prj-cmd/simulation/dataset
-temperature: mix
-version: left-multi-temp-v1
+temperature: 3000.0
+version: left-random-v1

@@ -1,0 +1,6 @@
+defaults:
+- model: deepticaa
+- data: alanine
+- training: deeptica-pretrained
+- logging: baseline
+- job: steered-aldp-deeptica

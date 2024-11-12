@@ -1,5 +1,5 @@
+dir: /home/shpark/prj-cmd/simulation/dataset-CL
 molecule: alanine
+temperature: 600.0
+version: cl-distance-v1
 atom: 22
-temperature: 273.0
-state: c5
-version: random-distance

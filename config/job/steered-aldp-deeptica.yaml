@@ -1,0 +1,36 @@
+evaluate: True
+name: tps
+molecule: alanine
+start_state: c5
+goal_state: c7ax-minimized
+sample_num: 16
+save: True
+simulation:
+  steered: True
+  k: 2000
+  time_horizon: 500
+  force_type: deeptica
+  friction: 0.001
+  timestep: 1
+  force_field: ["amber99sbildn.xml", "tip3p.xml"]
+  temperature: 300
+  platform: OpenCL
+  precision: mixed
+metrics:
+  epd:
+    use: True
+  thp:
+    use: True
+    cv_bound: 0.75
+  ram:
+    use: True
+  energy:
+    use: True
+  projection:
+    use: True
+    gridsize: 400
+    cmap: viridis
+    divide_plot: True
+    cv_index: 0
+    number_of_bins: 10
+    contour_plot: False

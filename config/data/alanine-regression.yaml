@@ -1,6 +1,0 @@
-molecule: alanine
-atom: 22
-temperature: 500.0
-state: c5
-index: regression-v1
-train_test_split: [0.8, 0.2]

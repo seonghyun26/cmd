@@ -1,6 +1,6 @@
 molecule: alanine
 atom: 22
+dir: /home/shpark/prj-cmd/simulation/dataset
 temperature: 273.0
-state: c5
-version: random
+version: c5-random
 train_test_split: [0.8, 0.2]

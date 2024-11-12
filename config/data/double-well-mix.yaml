@@ -1,5 +1,0 @@
-molecule: double-well
-atom: 2
-temperature: mix
-state: left
-version: multi-temp-v3

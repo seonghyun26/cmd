@@ -3,7 +3,7 @@ import torch.nn as nn
 
 import numpy as np
 
-from mlcolvar.cvs import DeepLDA, DeepTDA, AutoEncoderCV, VariationalAutoEncoderCV
+from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA, AutoEncoderCV, VariationalAutoEncoderCV
 
 from . import *
 
@@ -16,12 +16,13 @@ model_dict = {
     "cvmlp": CVMLP,
     "deeplda": DeepLDA,
     "deeptda": DeepTDA,
+    "deeptica": DeepTICA,
     "aecv": AutoEncoderCV,
     "vaecv": VariationalAutoEncoderCV,
     "betavae": VariationalAutoEncoderCVBeta
 }
 
-COLVAR_METHODS = ["deeplda", "deeptda", "aecv", "vaecv", "beta-vae"]
+COLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]
 
 class ModelWrapper(nn.Module):
     def __init__(self, cfg, device):

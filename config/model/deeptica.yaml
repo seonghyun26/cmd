@@ -1,0 +1,13 @@
+name: deeptica
+input: distance
+params: {
+  layers: [45, 24, 12, 1],
+  n_cvs: 1,
+  options: {
+    norm_in: {
+    },
+    nn: {
+      activation: "shifted_softplus"
+    },
+  },
+}
