@@ -127,7 +127,7 @@ def save_plot(dir, name, fig):
     plt.close()
 
 
-def plot_ad_potential(traj_dihedral, start_dihedral, goal_dihedral, epoch):
+def plot_ad_potential(traj_dihedral, start_dihedral, goal_dihedral, cv_bound_use, cv_bound, epoch):
     plt.clf()
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111)
@@ -167,6 +167,13 @@ def plot_ad_potential(traj_dihedral, start_dihedral, goal_dihedral, epoch):
     ax.scatter(
         goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=101, s=500, marker="*"
     )
+    if cv_bound_use and cv_bound > 0:
+        square = plt.Rectangle(
+            (goal_dihedral[0] - cv_bound / 2, goal_dihedral[1] - cv_bound /2),
+            cv_bound, cv_bound,
+            color='r', fill=False, linewidth=2
+        )
+        plt.gca().add_patch(square)
     
     # Plot the Ramachandran plot
     plt.xlim([-np.pi, np.pi])
@@ -266,14 +273,6 @@ def plot_ad_cv(
             cmap=cfg_plot.cmap, ax=ax,
             gridsize=cfg_plot.gridsize
         )
-    
-        # Save plot
-        # output_dir = hydra.core.hydra_config.HydraConfig.get().run.dir
-        # if os.path.exists(f"{output_dir}/img") is False:
-        #     os.mkdir(f"{output_dir}/img")
-        # img_path = f"{output_dir}/img/ad-cv{i}-{epoch}.png"
-        # plt.savefig(f"{img_path}")
-        # plt.close()
         save_plot(
             dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
             name = f"ad-cv{i}-{epoch}.png",
@@ -315,24 +314,24 @@ def plot_ad_cv(
             cv_index = cfg_plot.cv_index
             threshold = cfg_plot.threshold
             fig, ax = plt.subplots(1, 1, figsize = ( 5, 4 ) )
-            combined_df = pd.concat([
-                df[
-                    (df[f'CV{cv_index}'] <= boundary[i] * (1 + threshold)) &
-                    (df[f'CV{cv_index}'] >= boundary[i] * (1 - threshold))
-                ]
-                    for i in range(0, min(len(boundary)-1, 9))
-                ])
-            combined_df.plot.hexbin(
-                'phi', 'psi', C=f'CV{cv_index}',
-                vmin=boundary[0], vmax=boundary[-1],
-                cmap=cfg_plot.cmap, ax=ax,
-                gridsize=cfg_plot.gridsize,
-            )
-            save_plot(
-                dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
-                name = f"ad-cv{cv_index}-contour-{epoch}.png",
-                fig = fig
-            )
+            # combined_df = pd.concat([
+            #     df[
+            #         (df[f'CV{cv_index}'] <= boundary[i] * (1 + threshold)) &
+            #         (df[f'CV{cv_index}'] >= boundary[i] * (1 - threshold))
+            #     ]
+            #         for i in range(0, min(len(boundary)-1, 9))
+            #     ])
+            # combined_df.plot.hexbin(
+            #     'phi', 'psi', C=f'CV{cv_index}',
+            #     vmin=boundary[0], vmax=boundary[-1],
+            #     cmap=cfg_plot.cmap, ax=ax,
+            #     gridsize=cfg_plot.gridsize,
+            # )
+            # save_plot(
+            #     dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
+            #     name = f"ad-cv{cv_index}-contour-{epoch}.png",
+            #     fig = fig
+            # )
         except Exception as e:
             print(f"Error in plotting contour plot: {e}")
     

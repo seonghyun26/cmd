@@ -70,17 +70,26 @@ def main(cfg):
                 if cfg.data.molecule == "double-well":
                     current_state, next_state, goal_state, step, temperature = (d.to(device) for d in data)
                 elif cfg.data.molecule == "alanine":
-                    current_state, next_state, _, _ = (d.to(device) for d in data)
+                    current_state, next_state, next_state_hard, _ = (d.to(device) for d in data)
                     temperature = torch.tensor([300] * current_state.shape[0]).unsqueeze(1).to(device)
                 else:
                     raise ValueError(f"Molecule {cfg.molecule} not found")
 
                 # Self-supervised learning
-                result_dict = model_wrapper(
-                    current_state=current_state,
-                    next_state=next_state,
-                    temperature=temperature
-                )
+                if "augmentation" not in cfg.data or cfg.data.augmentation == "next":
+                    result_dict = model_wrapper(
+                        current_state=current_state,
+                        next_state=next_state,
+                        temperature=temperature
+                    )
+                elif cfg.data.augmentation == "hard":
+                    result_dict = model_wrapper(
+                        current_state=current_state,
+                        next_state=next_state_hard,
+                        temperature=temperature
+                    )
+                else:
+                    raise ValueError(f"Augmentation {cfg.data.augmentation} not found")
                 
                 # Copmpute loss
                 if cfg.model.name in ["cvmlp"]:

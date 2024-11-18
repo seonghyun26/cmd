@@ -15,6 +15,7 @@
           "debug-cl",
           "hydra.run.dir=outputs/debug",
           "++logging.wandb=False",
+          // "++training.loss.name=infonce",
           // "++model.params.output_dim=4",
           // "++job.simulation.k=10000",
         ],

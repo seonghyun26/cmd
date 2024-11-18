@@ -27,7 +27,7 @@ scheduler_dict = {
 
 
 def load_data(cfg):   
-    data_path = f"{cfg.data.dir}/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.version}.pt"
+    data_path = f"{cfg.data.dir}/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.version}/{cfg.data.name}.pt"
     dataset = torch.load(f"{data_path}")
     
     if cfg.data.molecule == "double-well":
@@ -176,22 +176,6 @@ def load_loss(cfg):
         
         return loss_list
     
-    def nce_loss(result_dict):
-        current_state_rep = result_dict["current_state_rep"]
-        next_state_rep = result_dict["next_state_rep"]
-        batch_size = current_state_rep.shape[0]
-        similarity = load_similarity(cfg.training.loss.similarity)
-        
-        positive_pairs = torch.sigmoid(similarity(current_state_rep, next_state_rep))
-        negative_pairs = 1 - torch.sigmoid(similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0)))
-        contrastive_loss = torch.log(positive_pairs / negative_pairs)
-        
-        loss_list = {
-            "CL": contrastive_loss.mean()
-        }
-        
-        return loss_list
-    
     def triplet_loss(result_dict):
         margin = cfg.training.loss.margin
         anchor = result_dict["current_state_rep"]
@@ -204,10 +188,45 @@ def load_loss(cfg):
         triplet_loss = torch.nn.functional.relu(distance_positive - distance_negative + margin)
 
         loss_list = {
-            "CL": triplet_loss.mean()
+            "CL": triplet_loss.mean() if cfg.training.loss.reduction == "mean" else triplet_loss.sum()
         }
         
         return  loss_list
+    
+    def nce_loss(result_dict):
+        current_state_rep = result_dict["current_state_rep"]
+        next_state_rep = result_dict["next_state_rep"]
+        batch_size = current_state_rep.shape[0]
+        similarity = load_similarity(cfg.training.loss.similarity)
+        
+        positive_pairs = torch.sigmoid(similarity(current_state_rep, next_state_rep))
+        negative_pairs = 1 - torch.sigmoid(similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0)))
+        contrastive_loss = - torch.log(positive_pairs * negative_pairs)
+        
+        loss_list = {
+            "CL": contrastive_loss.mean()
+        }
+        
+        return loss_list
+    
+    def infonce_loss(result_dict):
+        current_state_rep = result_dict["current_state_rep"]
+        next_state_rep = result_dict["next_state_rep"]
+        batch_size = current_state_rep.shape[0]
+        n = cfg.training.loss.n
+        similarity = load_similarity(cfg.training.loss.similarity)
+        
+        positive_pairs = similarity(current_state_rep, next_state_rep)
+        negative_pairs = similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0))
+        for i in range(n-1):
+            negative_pairs += similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0))
+        contrastive_loss = - torch.log(positive_pairs / negative_pairs)
+        
+        loss_list = {
+            "CL": contrastive_loss.mean()
+        }
+        
+        return loss_list
     
     loss_func_list = {
         "mse": mse_loss,
@@ -215,8 +234,9 @@ def load_loss(cfg):
         "mae": mae_loss,
         "mae+reg": mae_reg_loss,
         "cl": cl_loss,
-        "nce": nce_loss,
         "triplet": triplet_loss,
+        "nce": nce_loss,
+        "infonce": infonce_loss,
     }
     
     loss_type_list = {
@@ -226,6 +246,7 @@ def load_loss(cfg):
         "mae+reg": ["mae", "reg"],
         "cl": ["CL"],
         "nce": ["CL"],
+        "infonce": ["CL"],
         "triplet": ["CL"],
     }
     

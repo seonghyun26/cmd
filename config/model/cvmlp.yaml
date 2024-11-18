@@ -2,6 +2,6 @@ name: cvmlp
 input: distance
 params: {
   hidden_dim: [64, 64, 64, 32, 16],
-  output_dim: 1,
+  output_dim: 4,
   residual: False,
 }

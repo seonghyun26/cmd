@@ -218,6 +218,8 @@ def compute_ram(cfg, trajectory_list, epoch):
             traj_dihedral = (phi_traj_list, psi_traj_list),
             start_dihedral = (phi_start, psi_start),
             goal_dihedral = (phi_goal, psi_goal),
+            cv_bound_use = cfg.job.metrics.projection.bound_use,
+            cv_bound = cfg.job.metrics.thp.cv_bound,
             epoch = epoch
         )
         

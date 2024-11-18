@@ -6,7 +6,8 @@ loader:
   num_workers: 8
   test: False
 loss:
-  name: nce
+  name: infonce
+  n: 8
   similarity: cosine
   temperature: 1
   reduction: sum
