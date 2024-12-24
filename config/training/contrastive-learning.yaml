@@ -1,5 +1,5 @@
 train: True
-epoch: 200
+epoch: 400
 loader:
   batch_size: 8192
   shuffle: True
@@ -14,11 +14,11 @@ loss:
 optimizer:
   name: Adam
   params: {
-    lr: 5e-5
+    lr: 1e-5
   }
 scheduler:
   name: CosineAnnealingLR
   params: {
-    T_max: 200,
-    eta_min: 1e-6
+    T_max: 400,
+    eta_min: 1e-8
   }

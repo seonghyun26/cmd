@@ -4,4 +4,4 @@ temperature: 1200.0
 version: v2
 name: cl-distance
 atom: 22
-augmentation: hard
+augmentation: next

@@ -170,15 +170,19 @@ def main(cfg):
             device=device,
             logger=logger
         )
-        evaluate(
-            cfg=cfg,
-            model_wrapper=model_wrapper,
-            trajectory_list=trajectory_list,
-            logger=logger,
-            epoch=epoch,
-            device=device
-        )
-        logger.info("Evaluation complete!!!")
+        if trajectory_list is None:
+            logger.info("Error in generating trajectory")
+            logger.info(f"Skipping evaluation at epcoh {epoch}")
+        else:
+            evaluate(
+                cfg=cfg,
+                model_wrapper=model_wrapper,
+                trajectory_list=trajectory_list,
+                logger=logger,
+                epoch=epoch,
+                device=device
+            )
+            logger.info("Evaluation complete!!!")
         
     # Finish and exit
     if cfg.logging.wandb:

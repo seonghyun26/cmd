@@ -7,7 +7,7 @@ sample_num: 16
 save: True
 simulation:
   steered: True
-  k: 10000
+  k: 1000000
   time_horizon: 500
   force_type: cvmlp
   friction: 0.001
@@ -30,6 +30,7 @@ metrics:
     use: True
     gridsize: 400
     cmap: viridis
+    bound_use: True
     divide_plot: True
     cv_index: 0
     number_of_bins: 10

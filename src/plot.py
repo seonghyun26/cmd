@@ -255,12 +255,12 @@ def plot_dw_potential(traj, start, goal, epoch):
     return fig
 
 def plot_ad_cv(
-        phi: np.ndarray,
-        psi: np.ndarray,
-        cv: np.ndarray,
-        epoch: int,
-        cfg_plot
-    ):
+    phi: np.ndarray,
+    psi: np.ndarray,
+    cv: np.ndarray,
+    epoch: int,
+    cfg_plot
+):
     number_of_cvs =cv.shape[1]
 
     df = pd.DataFrame(cv.cpu().detach().numpy(), columns=[f'CV{i}' for i in range(number_of_cvs)])

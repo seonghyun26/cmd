@@ -12,7 +12,8 @@
         "program": "main.py",
         "args": [
           "--config-name",
-          "debug-cl",
+          "contrastive-triplet",
+          // "debug-cl",
           "hydra.run.dir=outputs/debug",
           "++logging.wandb=False",
           // "++training.loss.name=infonce",

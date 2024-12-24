@@ -246,9 +246,14 @@ def compute_projection(cfg, model_wrapper, epoch):
     
     if molecule == "alanine":
         if cfg.model.input == "distance":
-            heavy_atom_distance = torch.load("./data/alanine/heavy_atom_distance.pt").to(device)
-            psis = np.load("./data/alanine/heavy_atom_distance_psis.npy")
-            phis = np.load("./data/alanine/heavy_atom_distance_phis.npy")
+            # heavy_atom_distance = torch.load("./data/alanine/heavy_atom_distance.pt").to(device)
+            # psis = np.load("./data/alanine/heavy_atom_distance_psis.npy")
+            # phis = np.load("./data/alanine/heavy_atom_distance_phis.npy")
+            data_dir = f"{cfg.data.dir}/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.version}"
+            heavy_atom_distance = f"{data_dir}/cl-distance.pt"
+            psis = np.load(f"{data_dir}/cl-psi.npy")
+            phis = np.load(f"{data_dir}/cl-phi.npy")
+            
             if cfg.model.name in ["cvmlp"]:
                 temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
                 projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1))
@@ -267,8 +272,6 @@ def compute_projection(cfg, model_wrapper, epoch):
                 data_list.append(data[i][1].to(device))
                 phi_list.append(data[i][2])
                 psi_list.append(data[i][3])
-            # phis = compute_dihedral_torch(data_list[:, ALDP_PHI_ANGLE]).unsqueeze(1).detach().cpu().numpy()
-            # psis = compute_dihedral_torch(data_list[:, ALDP_PSI_ANGLE]).unsqueeze(1).detach().cpu().numpy()
             data_list = torch.stack(data_list)
             data_list = data_list.reshape(data_list.shape[0], -1)
             phis = torch.stack(phi_list).unsqueeze(1).detach().cpu().numpy()
@@ -291,3 +294,19 @@ def compute_projection(cfg, model_wrapper, epoch):
         raise ValueError(f"Projection for molecule {molecule} not supported")
     
     return wandb.Image(projection_img)
+
+def compute_jacobian(cfg, model_wrapper, epoch):
+    molecule = cfg.job.molecule
+    device = model_wrapper.device
+    
+    if molecule == "alanine":
+        pass
+    
+    elif molecule == "chignolin":
+        raise ValueError(f"Jacobian for molecule {molecule} TBA...")
+    
+    else:
+        raise ValueError(f"Jacobian for molecule {molecule} not supported")
+        
+    jacobian_img = None
+    return wandb.Image(jacobian_img)
