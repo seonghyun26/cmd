@@ -17,7 +17,7 @@ from .simulation import init_simulation, set_simulation
 from .plot import plot_ad_potential, plot_dw_potential, plot_ad_cv
 
 pairwise_distance = torch.cdist
-ALDP_PHI_ANGLE = [1, 6, 8, 14]
+ALDP_PHI_ANGLE = [4, 6, 8, 14]
 ALDP_PSI_ANGLE = [6, 8, 14, 16]
 
 def compute_epd(cfg, trajectory_list, goal_state):
@@ -47,13 +47,10 @@ def compute_thp(cfg, trajectory_list, goal_state):
     cv_bound = cfg.job.metrics.thp.cv_bound
     
     if molecule == "alanine":
-        phi_angle = [1, 6, 8, 14]
-        psi_angle = [6, 8, 14, 16]
-        
-        phi = compute_dihedral(last_state[:, phi_angle])
-        psi = compute_dihedral(last_state[:, psi_angle])
-        phi_goal = compute_dihedral(goal_state[:, phi_angle])
-        psi_goal = compute_dihedral(goal_state[:, psi_angle])
+        phi = compute_dihedral(last_state[:, ALDP_PHI_ANGLE])
+        psi = compute_dihedral(last_state[:, ALDP_PSI_ANGLE])
+        phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
+        psi_goal = compute_dihedral(goal_state[:, ALDP_PSI_ANGLE])
         
         hit = (np.abs(psi - psi_goal) < cv_bound) & (np.abs(phi - phi_goal) < cv_bound)
         hit_rate = hit.sum() / hit.shape[0]
@@ -122,10 +119,8 @@ def compute_dihedral_torch(positions):
 
 def compute_phi_psi(cfg, state):
     if cfg.data.molecule == "alanine":
-        phi_angle = [1, 6, 8, 14]
-        psi_angle = [6, 8, 14, 16]
-        phi = np.expand_dims(compute_dihedral(state[:, phi_angle]), axis=1)
-        psi = np.expand_dims(compute_dihedral(state[:, psi_angle]), axis=1)
+        phi = np.expand_dims(compute_dihedral(state[:, ALDP_PHI_ANGLE]), axis=1)
+        psi = np.expand_dims(compute_dihedral(state[:, ALDP_PSI_ANGLE]), axis=1)
         phi_psi = torch.cat([torch.from_numpy(phi), torch.from_numpy(psi)], dim=1)
     else:
         raise ValueError(f"Phi, Psi for molecule {molecule} TBA...")
@@ -197,22 +192,19 @@ def potential_energy(cfg, trajectory):
 def compute_ram(cfg, trajectory_list, epoch):
     molecule = cfg.job.molecule
     if molecule == "alanine":
-        phi_angle = [1, 6, 8, 14]
-        psi_angle = [6, 8, 14, 16]
-        
         # Load start, goal state and compute phi, psi
         start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
         goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz
         start_state = torch.tensor(start_state_xyz)
         goal_state = torch.tensor(goal_state_xyz)
-        phi_start = compute_dihedral(start_state[:, phi_angle])
-        psi_start = compute_dihedral(start_state[:, psi_angle])
-        phi_goal = compute_dihedral(goal_state[:, phi_angle])
-        psi_goal = compute_dihedral(goal_state[:, psi_angle])
+        phi_start = compute_dihedral(start_state[:, ALDP_PHI_ANGLE])
+        psi_start = compute_dihedral(start_state[:, ALDP_PSI_ANGLE])
+        phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
+        psi_goal = compute_dihedral(goal_state[:, ALDP_PSI_ANGLE])
     
         # Compute phi, psi from trajectory_list
-        phi_traj_list = np.array([compute_dihedral(trajectory[:, phi_angle]) for trajectory in trajectory_list])
-        psi_traj_list = np.array([compute_dihedral(trajectory[:, psi_angle]) for trajectory in trajectory_list])
+        phi_traj_list = np.array([compute_dihedral(trajectory[:, ALDP_PHI_ANGLE]) for trajectory in trajectory_list])
+        psi_traj_list = np.array([compute_dihedral(trajectory[:, ALDP_PSI_ANGLE]) for trajectory in trajectory_list])
         
         ram_plot_img = plot_ad_potential(
             traj_dihedral = (phi_traj_list, psi_traj_list),
@@ -245,12 +237,10 @@ def compute_projection(cfg, model_wrapper, epoch):
     device = model_wrapper.device
     
     if molecule == "alanine":
+        '''
         if cfg.model.input == "distance":
-            # heavy_atom_distance = torch.load("./data/alanine/heavy_atom_distance.pt").to(device)
-            # psis = np.load("./data/alanine/heavy_atom_distance_psis.npy")
-            # phis = np.load("./data/alanine/heavy_atom_distance_phis.npy")
             data_dir = f"{cfg.data.dir}/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.version}"
-            heavy_atom_distance = f"{data_dir}/cl-distance.pt"
+            heavy_atom_distance = torch.load(f"{data_dir}/cl-distance.pt").to(device)
             psis = np.load(f"{data_dir}/cl-psi.npy")
             phis = np.load(f"{data_dir}/cl-phi.npy")
             
@@ -278,12 +268,40 @@ def compute_projection(cfg, model_wrapper, epoch):
             psis = torch.stack(psi_list).unsqueeze(1).detach().cpu().numpy()
             temperature = torch.tensor(cfg.job.simulation.temperature).repeat(data_list.shape[0], 1).to(device)
             projected_cv = model_wrapper.model(torch.cat([data_list, temperature], dim=1), transformed=False)
-
+        '''
+        
+        data_dir = f"{cfg.data.dir}/projection"
+        if cfg.model.input == "distance":
+            heavy_atom_distance = torch.load(f"{data_dir}/alanine_heavy_atom_distance.pt").to(device)
+            if cfg.model.name in ["cvmlp"]:
+                temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
+                projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1))
+            elif cfg.model.name in ["deeplda", "deeptda", "aecv", "vaecv", "beta-vae"]:
+                projected_cv = model_wrapper.model(heavy_atom_distance)
+        else:
+            coordinate = torch.load(f"{data_dir}/alanine_coordinate.pt").to(device)
+            temperature = torch.tensor(cfg.job.simulation.temperature).repeat(data_list.shape[0], 1).to(device)
+            projected_cv = model_wrapper.model(torch.cat([coordinate, temperature], dim=1), transformed=False)
+        
+        phis = np.load(f"{data_dir}/alanine_phi_list.npy")
+        psis = np.load(f"{data_dir}/alanine_psi_list.npy")
+        
+        start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
+        goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz
+        start_state = torch.tensor(start_state_xyz)
+        goal_state = torch.tensor(goal_state_xyz)
+        phi_start = compute_dihedral(start_state[:, ALDP_PHI_ANGLE])
+        psi_start = compute_dihedral(start_state[:, ALDP_PSI_ANGLE])
+        phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
+        psi_goal = compute_dihedral(goal_state[:, ALDP_PSI_ANGLE])
+        
         projection_img = plot_ad_cv(
             phi = phis,
             psi = psis,
             cv = projected_cv,
             epoch = epoch,
+            start_dihedral = (phi_start, psi_start),
+            goal_dihedral = (phi_goal, psi_goal),
             cfg_plot = cfg.job.metrics.projection
         )
     

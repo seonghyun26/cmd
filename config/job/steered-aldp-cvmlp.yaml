@@ -3,7 +3,7 @@ name: tps
 molecule: alanine
 start_state: c5
 goal_state: c7ax-minimized
-sample_num: 16
+sample_num: 64
 save: True
 simulation:
   steered: True
@@ -13,7 +13,7 @@ simulation:
   friction: 0.001
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]
-  temperature: 1200
+  temperature: 300
   platform: OpenCL
   precision: mixed
 metrics:
@@ -31,8 +31,7 @@ metrics:
     gridsize: 400
     cmap: viridis
     bound_use: True
-    divide_plot: True
+    contour_plot: True
     cv_index: 0
     number_of_bins: 10
-    contour_plot: False
     threshold: 0.01

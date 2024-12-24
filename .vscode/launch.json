@@ -23,7 +23,7 @@
         "console": "integratedTerminal"
     },
     {
-      "name": "SMD",
+      "name": "Steered MD",
       "type": "debugpy",
       "request": "launch",
       "env": {
@@ -35,8 +35,8 @@
         "--config-name",
         "steered-deeplda",
         // "debug-smd",
-        "hydra.run.dir=outputs/debug",
-        "++logging.wandb=False",
+        // "hydra.run.dir=outputs/debug",
+        // "++logging.wandb=False",
       ],
       "console": "integratedTerminal"
     },

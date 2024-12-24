@@ -31,8 +31,7 @@ metrics:
     gridsize: 400
     cmap: viridis
     bound_use: True
-    divide_plot: True
+    contour_plot: True
     cv_index: 0
     number_of_bins: 10
-    contour_plot: False
     threshold: 0.01

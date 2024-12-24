@@ -1,6 +1,7 @@
+dir: /home/shpark/prj-cmd/data
 molecule: alanine
-atom: 22
 temperature: 300.0
-state: c5
-version: random-v2
-train_test_split: [0.8, 0.2]
+name: random
+version: v2
+atom: 22
+augmentation: none

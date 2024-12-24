@@ -1,4 +1,4 @@
-dir: /home/shpark/prj-cmd/simulation/dataset-CL
+dir: /home/shpark/prj-cmd/data
 molecule: alanine
 temperature: 1200.0
 version: v2

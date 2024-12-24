@@ -3,4 +3,4 @@ defaults:
 - data: alanine-distance
 - training: cl-infonce
 - logging: basic
-- job: steered-cvmlp
+- job: steered-aldp-cvmlp

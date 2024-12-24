@@ -3,7 +3,7 @@ name: tps
 molecule: alanine
 start_state: c5
 goal_state: c7ax-minimized
-sample_num: 16
+sample_num: 64
 save: True
 simulation:
   steered: True
@@ -30,7 +30,7 @@ metrics:
     use: True
     gridsize: 400
     cmap: viridis
-    divide_plot: True
+    bound_use: True
+    contour_plot: True
     cv_index: 0
     number_of_bins: 10
-    contour_plot: False

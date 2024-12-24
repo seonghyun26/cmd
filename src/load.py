@@ -27,7 +27,7 @@ scheduler_dict = {
 
 
 def load_data(cfg):   
-    data_path = f"{cfg.data.dir}/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.version}/{cfg.data.name}.pt"
+    data_path = f"{cfg.data.dir}/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.version}/{cfg.data.name}.pt"
     dataset = torch.load(f"{data_path}")
     
     if cfg.data.molecule == "double-well":

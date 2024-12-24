@@ -259,9 +259,11 @@ def plot_ad_cv(
     psi: np.ndarray,
     cv: np.ndarray,
     epoch: int,
+    start_dihedral,
+    goal_dihedral,
     cfg_plot
 ):
-    number_of_cvs =cv.shape[1]
+    number_of_cvs = cv.shape[1]
 
     df = pd.DataFrame(cv.cpu().detach().numpy(), columns=[f'CV{i}' for i in range(number_of_cvs)])
     df['psi'] = psi
@@ -273,6 +275,12 @@ def plot_ad_cv(
             cmap=cfg_plot.cmap, ax=ax,
             gridsize=cfg_plot.gridsize
         )
+        ax.scatter(
+            start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=101, s=100
+        )
+        ax.scatter(
+            goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=101, s=300, marker="*"
+        )
         save_plot(
             dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
             name = f"ad-cv{i}-{epoch}.png",
@@ -280,7 +288,7 @@ def plot_ad_cv(
         )
         log_fig = fig
     
-    if cfg_plot.divide_plot:
+    if cfg_plot.contour_plot:
         cv_index = cfg_plot.cv_index
         fig,axs = plt.subplots(3, 3, figsize = ( 15, 12 ) )
         axs = axs.ravel()
@@ -308,31 +316,5 @@ def plot_ad_cv(
             name = f"ad-cv{cv_index}-div-{epoch}.png",
             fig = fig
         )
-    
-    if cfg_plot.contour_plot:
-        try:
-            cv_index = cfg_plot.cv_index
-            threshold = cfg_plot.threshold
-            fig, ax = plt.subplots(1, 1, figsize = ( 5, 4 ) )
-            # combined_df = pd.concat([
-            #     df[
-            #         (df[f'CV{cv_index}'] <= boundary[i] * (1 + threshold)) &
-            #         (df[f'CV{cv_index}'] >= boundary[i] * (1 - threshold))
-            #     ]
-            #         for i in range(0, min(len(boundary)-1, 9))
-            #     ])
-            # combined_df.plot.hexbin(
-            #     'phi', 'psi', C=f'CV{cv_index}',
-            #     vmin=boundary[0], vmax=boundary[-1],
-            #     cmap=cfg_plot.cmap, ax=ax,
-            #     gridsize=cfg_plot.gridsize,
-            # )
-            # save_plot(
-            #     dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
-            #     name = f"ad-cv{cv_index}-contour-{epoch}.png",
-            #     fig = fig
-            # )
-        except Exception as e:
-            print(f"Error in plotting contour plot: {e}")
     
     return log_fig

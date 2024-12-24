@@ -3,4 +3,4 @@ defaults:
 - data: alanine-distance
 - training: contrastive-triplet
 - logging: basic
-- job: steered-triplet
+- job: steered-aldp-cvmlp
