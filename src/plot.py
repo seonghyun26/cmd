@@ -122,7 +122,7 @@ def save_plot(dir, name, fig):
     if os.path.exists(f"{dir}/img") is False:
         os.mkdir(f"{dir}/img")
     img_path = f"{dir}/img/{name}"
-    fig.savefig(f"{img_path}")
+    fig.savefig(f"{img_path}", dpi=200)
     print(f"Saved plot at {img_path}")
     plt.close()
 
@@ -171,7 +171,8 @@ def plot_ad_potential(traj_dihedral, start_dihedral, goal_dihedral, cv_bound_use
         square = plt.Rectangle(
             (goal_dihedral[0] - cv_bound / 2, goal_dihedral[1] - cv_bound /2),
             cv_bound, cv_bound,
-            color='r', fill=False, linewidth=2
+            color='r', fill=False, linewidth=2,
+            zorder=101
         )
         plt.gca().add_patch(square)
     
@@ -286,7 +287,8 @@ def plot_ad_cv(
             name = f"ad-cv{i}-{epoch}.png",
             fig = fig
         )
-        log_fig = fig
+        if i == 0:
+            fig_projection = fig
     
     if cfg_plot.contour_plot:
         cv_index = cfg_plot.cv_index
@@ -316,5 +318,9 @@ def plot_ad_cv(
             name = f"ad-cv{cv_index}-div-{epoch}.png",
             fig = fig
         )
+        fig_contur = fig
     
-    return log_fig
+    if cfg_plot.contour_plot:
+        return fig_projection, fig_contur
+    else:
+        return fig_projection

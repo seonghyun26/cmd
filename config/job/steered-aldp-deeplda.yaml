@@ -1,9 +1,9 @@
 evaluate: True
-name: tps
+name: cv
 molecule: alanine
 start_state: c5
-goal_state: c7ax-minimized
-sample_num: 64
+goal_state: c7ax
+sample_num: 16
 save: True
 simulation:
   steered: True
@@ -28,7 +28,7 @@ metrics:
     use: True
   projection:
     use: True
-    gridsize: 400
+    gridsize: 100
     cmap: viridis
     bound_use: True
     contour_plot: True

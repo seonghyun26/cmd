@@ -71,7 +71,10 @@ def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
         eval_result["eval/ram"] = compute_ram(cfg, trajectory_list, epoch)
     if cfg.job.metrics.projection.use:
         logger.info(">> Plotting projected CV values")
-        eval_result["eval/projection"] = compute_projection(cfg, model_wrapper, epoch)
+        if cfg.job.metrics.projection.contour_plot:
+            eval_result["eval/projection"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
+        else:
+            eval_result["eval/projection"] = compute_projection(cfg, model_wrapper, epoch)
     # if cfg.job.metrics.jacobian.use:
     #     logger.info(">> Computing Jacobian for mlcv against input")
     #     eval_result["eval/jacobian"] = compute_jacobian(cfg, model_wrapper, epoch)
@@ -90,7 +93,10 @@ def evaluate_cv(cfg, model_wrapper, logger, epoch, device):
     
     if cfg.job.metrics.projection.use:
         logger.info(">> Plotting projected CV values")
-        eval_result["eval/projection"] = compute_projection(cfg, model_wrapper, epoch)
+        if cfg.job.metrics.projection.contour_plot:
+            eval_result["eval/projection"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
+        else:
+            eval_result["eval/projection"] = compute_projection(cfg, model_wrapper, epoch)
     
     for key in eval_result.keys():
         logger.info(f"{key}: {eval_result[key]}")
