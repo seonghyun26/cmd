@@ -8,7 +8,7 @@ save: True
 simulation:
   steered: True
   k: 200
-  time_horizon: 500
+  time_horizon: 1000
   force_type: aecv
   friction: 0.001
   timestep: 1

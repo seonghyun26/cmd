@@ -38,8 +38,10 @@ class ModelWrapper(nn.Module):
         if cfg.data.molecule == "alanine":
             if cfg.model.input == "distance":
                 input_dim = 45 + 1
-            else:
+            elif cfg.model.input == "coordinate":
                 input_dim = data_dim + 1
+            else:
+                raise ValueError(f"Input type {cfg.model.input} not found")
         
         elif cfg.data.moelcule == "chignolin":
             raise ValueError(f"Molecule {cfg.data.molecule} TBA...")
@@ -54,13 +56,17 @@ class ModelWrapper(nn.Module):
     def load_model(self, cfg):
         if cfg.data.molecule in ["alanine", "chignolin"]:
             self.data_dim = cfg.data.atom * 3
-        elif cfg.data.molecule == "double-well":
-            self.data_dim = cfg.data.atom 
         else:
             raise ValueError(f"Molecule {cfg.data.molecule} not defined")
         
         self.model_name = cfg.model.name.lower() 
-        if self.model_name in COLVAR_METHODS:
+        if self.model_name == "deeptica":
+            model = DeepTICA(
+                layers = cfg.model.params.layers,
+                n_cvs = cfg.model.params.n_cvs,
+                options = {'nn': {'activation': 'shifted_softplus'} }
+            )
+        elif self.model_name in COLVAR_METHODS:
             model = model_dict[self.model_name](**cfg.model.params)
         elif self.model_name in model_dict.keys():
             model = model_dict[self.model_name](
@@ -70,10 +76,6 @@ class ModelWrapper(nn.Module):
             )
         else:
             raise ValueError(f"Model {self.model_name} not found")
-        
-        if self.model_name != "cvmlp":
-            self.mu = nn.Linear(self.data_dim, self.data_dim).to(self.device)
-            self.log_var = nn.Linear(self.data_dim, self.data_dim).to(self.device)
         
         return model
     
@@ -85,57 +87,34 @@ class ModelWrapper(nn.Module):
     
     def forward(self,
         current_state: torch.Tensor,
-        next_state: torch.Tensor,
+        positive_sample: torch.Tensor,
+        negative_sample: torch.Tensor,
         temperature: torch.Tensor,
-        goal_state: torch.Tensor = None,
-        step: torch.Tensor = None,
     ) -> torch.Tensor:
         batch_size = current_state.shape[0]
+        scale = self.cfg.data.scale
         
-        if self.model_name in ["cvmlp"]:
-            current_state_conditions = torch.cat([
-                current_state.reshape(batch_size, -1),
-                temperature.reshape(batch_size, -1)
-            ], dim=1)
-            current_state_latent = self.model(current_state_conditions)
-            next_state_conditions = torch.cat([
-                next_state.reshape(batch_size, -1),
-                temperature.reshape(batch_size, -1)
-            ], dim=1)
-            next_state_latent = self.model(next_state_conditions)
-        
-        else:
-            conditions = torch.cat([
-                current_state.reshape(batch_size, -1),
-                next_state.reshape(batch_size, -1),
-                temperature.reshape(batch_size, -1)
-            ], dim=1)
-            latent = self.model(conditions)
+        # Process input
+        current_state_conditions = torch.cat([
+            current_state.reshape(batch_size, -1) * scale,
+            temperature.reshape(batch_size, -1)
+        ], dim=1)
+        current_state_representation = self.model(current_state_conditions)
+        positive_sample_conditions = torch.cat([
+            positive_sample.reshape(batch_size, -1) * scale,
+            temperature.reshape(batch_size, -1)
+        ], dim=1)
+        positive_sample_representation = self.model(positive_sample_conditions)
+        negative_sample_conditions = torch.cat([
+            negative_sample.reshape(batch_size, -1) * scale,
+            temperature.reshape(batch_size, -1)
+        ], dim=1)
+        negative_sample_representation = self.model(negative_sample_conditions)
         
         # Process results
         result_dict = {}
-        if self.model_name == "cvmlp":
-            result_dict["current_state_rep"] = current_state_latent
-            result_dict["next_state_rep"] = next_state_latent
-        elif self.model_name in ["sdenet", "lsde", "lnsde"]:
-            mu, log_var = latent
-            log_var = torch.clamp(log_var, max=10)
-            result_dict["mu"] = mu
-            result_dict["log_var"] = log_var
-            pred = self.reparameterize(mu, log_var)
-            result_dict["pred"] = pred
-        else:
-            mu = self.mu(latent)
-            log_var = torch.clamp(self.log_var(latent), max=10)
-            result_dict["mu"] = mu
-            result_dict["log_var"] = log_var
-            pred = self.reparameterize(mu, log_var)
-            result_dict["pred"] = pred    
-        
+        result_dict["current_state_rep"] = current_state_representation
+        result_dict["positive_sample_rep"] = positive_sample_representation
+        result_dict["negative_sample_rep"] = negative_sample_representation
+
         return result_dict
-    
-    def reparameterize(self, mu, log_var):
-        std = torch.exp(log_var)
-        eps = torch.randn_like(std) * self.noise_scale
-        
-        return mu + eps * std

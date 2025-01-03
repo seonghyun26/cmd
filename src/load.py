@@ -177,21 +177,30 @@ def load_loss(cfg):
         return loss_list
     
     def triplet_loss(result_dict):
+        # margin = cfg.training.loss.margin
+        # anchor = result_dict["current_state_rep"]
+        # positive = result_dict["next_state_rep"]
+        # batch_size = anchor.shape[0]
+        # negative = torch.roll(positive, shifts=random.randint(1, batch_size), dims=0)
+
+        # distance_positive = torch.nn.functional.pairwise_distance(anchor, positive, p=2)
+        # distance_negative = torch.nn.functional.pairwise_distance(anchor, negative, p=2)
+        # triplet_loss = torch.nn.functional.relu(distance_positive - distance_negative + margin)
+
         margin = cfg.training.loss.margin
         anchor = result_dict["current_state_rep"]
-        positive = result_dict["next_state_rep"]
-        batch_size = anchor.shape[0]
-        negative = torch.roll(positive, shifts=random.randint(1, batch_size), dims=0)
-
+        positive = result_dict["positive_sample_rep"]
+        negative = result_dict["negative_sample_rep"]
+        
         distance_positive = torch.nn.functional.pairwise_distance(anchor, positive, p=2)
         distance_negative = torch.nn.functional.pairwise_distance(anchor, negative, p=2)
         triplet_loss = torch.nn.functional.relu(distance_positive - distance_negative + margin)
-
+        
         loss_list = {
             "CL": triplet_loss.mean() if cfg.training.loss.reduction == "mean" else triplet_loss.sum()
         }
         
-        return  loss_list
+        return loss_list
     
     def nce_loss(result_dict):
         current_state_rep = result_dict["current_state_rep"]
@@ -210,16 +219,26 @@ def load_loss(cfg):
         return loss_list
     
     def infonce_loss(result_dict):
+        # current_state_rep = result_dict["current_state_rep"]
+        # next_state_rep = result_dict["next_state_rep"]
+        # batch_size = current_state_rep.shape[0]
+        # n = cfg.training.loss.n
+        # similarity = load_similarity(cfg.training.loss.similarity)
+        # positive_pairs = similarity(current_state_rep, next_state_rep)
+        # negative_pairs = similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0))
+        # for i in range(n-1):
+        #     negative_pairs += similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0))
+        # contrastive_loss = - torch.log(positive_pairs / negative_pairs)
+        
         current_state_rep = result_dict["current_state_rep"]
-        next_state_rep = result_dict["next_state_rep"]
+        positive_sample_rep = result_dict["positive_sample_rep"]
+        negative_sample_rep = result_dict["negative_sample_rep"]
         batch_size = current_state_rep.shape[0]
         n = cfg.training.loss.n
         similarity = load_similarity(cfg.training.loss.similarity)
         
-        positive_pairs = similarity(current_state_rep, next_state_rep)
-        negative_pairs = similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0))
-        for i in range(n-1):
-            negative_pairs += similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0))
+        positive_pairs = similarity(current_state_rep, positive_sample_rep)
+        negative_pairs = similarity(current_state_rep, negative_sample_rep)
         contrastive_loss = - torch.log(positive_pairs / negative_pairs)
         
         loss_list = {

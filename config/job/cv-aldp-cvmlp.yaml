@@ -1,5 +1,5 @@
 evaluate: True
-name: tps
+name: cv
 molecule: alanine
 start_state: c5
 goal_state: c7ax
@@ -7,9 +7,9 @@ sample_num: 64
 save: True
 simulation:
   steered: True
-  k: 1000
+  k: 100000
   time_horizon: 1000
-  force_type: deeplda
+  force_type: cvmlp
   friction: 0.001
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]
@@ -34,3 +34,4 @@ metrics:
     contour_plot: True
     cv_index: 0
     number_of_bins: 10
+    threshold: 0.01

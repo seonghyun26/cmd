@@ -1,7 +1,7 @@
 train: True
-epoch: 200
+epoch: 500
 loader:
-  batch_size: 8192
+  batch_size: 4096
   shuffle: True
   num_workers: 8
   test: False
@@ -19,6 +19,6 @@ optimizer:
 scheduler:
   name: CosineAnnealingLR
   params: {
-    T_max: 200,
+    T_max: 500,
     eta_min: 1e-6
   }

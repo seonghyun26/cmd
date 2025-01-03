@@ -1,5 +1,5 @@
 train: False
-ckpt_file: aecv-v2
+ckpt_file: aecv-v3
 epoch: 0
 loader:
   batch_size: 8192

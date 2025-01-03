@@ -7,8 +7,8 @@ sample_num: 64
 save: True
 simulation:
   steered: True
-  k: 20
-  time_horizon: 4000
+  k: 100
+  time_horizon: 1000
   force_type: deeptda
   friction: 0.001
   timestep: 1

@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-        "name": "CL",
+        "name": "CLCV",
         "type": "debugpy",
         "request": "launch",
         "env": {
@@ -12,13 +12,11 @@
         "program": "main.py",
         "args": [
           "--config-name",
-          "contrastive-triplet",
-          // "debug-cl",
+          "debug-cl",
           "hydra.run.dir=outputs/debug",
-          "++logging.wandb=False",
+          "++logging.wandb=True",
           // "++training.loss.name=infonce",
           // "++model.params.output_dim=4",
-          // "++job.simulation.k=10000",
         ],
         "console": "integratedTerminal"
     },
@@ -33,16 +31,17 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-deeplda",
+        "steered-deeptica",
         // "debug-smd",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        // "++"
+        "++job.sample_num=10",
+        "++job.simulation.time_horizon=1000",
       ],
       "console": "integratedTerminal"
     },
     {
-      "name": "CMD evaluation",
+      "name": "Steered MD CL",
       "type": "debugpy",
       "request": "launch",
       "env": {
@@ -52,10 +51,12 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "regression",
+        "contrastive-triplet",
+        "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        "job.metrics=['epd', 'thp', 'ram']",
-        "hydra.run.dir=outputs/debug-eval"
+        "++training.train=False",
+        "++training.ckpt_file=1226-093625",
+        "++job.name=cv"
       ],
       "console": "integratedTerminal"
   }

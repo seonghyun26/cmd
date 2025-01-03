@@ -122,7 +122,7 @@ def save_plot(dir, name, fig):
     if os.path.exists(f"{dir}/img") is False:
         os.mkdir(f"{dir}/img")
     img_path = f"{dir}/img/{name}"
-    fig.savefig(f"{img_path}", dpi=200)
+    fig.savefig(f"{img_path}")
     print(f"Saved plot at {img_path}")
     plt.close()
 
@@ -265,12 +265,15 @@ def plot_ad_cv(
     cfg_plot
 ):
     number_of_cvs = cv.shape[1]
-
     df = pd.DataFrame(cv.cpu().detach().numpy(), columns=[f'CV{i}' for i in range(number_of_cvs)])
     df['psi'] = psi
     df['phi'] = phi
-    for i in range (number_of_cvs):
-        fig, ax = plt.subplots(1, 1, figsize = ( 5, 4 ) )
+    
+    # Plot the projection of CVs
+    fig, axs = plt.subplots(2, 2, figsize = ( 15, 12 ) )
+    axs = axs.ravel()
+    for i in range(min(number_of_cvs, 9)):
+        ax = axs[i]
         df.plot.hexbin(
             'phi','psi', C=f"CV{i}",
             cmap=cfg_plot.cmap, ax=ax,
@@ -282,45 +285,76 @@ def plot_ad_cv(
         ax.scatter(
             goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=101, s=300, marker="*"
         )
-        save_plot(
-            dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
-            name = f"ad-cv{i}-{epoch}.png",
-            fig = fig
-        )
-        if i == 0:
-            fig_projection = fig
+    save_plot(
+        dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
+        name = f"{epoch}-ad-cv.png",
+        fig = fig
+    )
+    fig_projection = fig
     
-    if cfg_plot.contour_plot:
-        cv_index = cfg_plot.cv_index
-        fig,axs = plt.subplots(3, 3, figsize = ( 15, 12 ) )
-        axs = axs.ravel()
-        max_cv0 = df[f'CV{cv_index}'].max()
-        min_cv0 = df[f'CV{cv_index}'].min()
-        boundary = np.linspace(min_cv0, max_cv0, cfg_plot.number_of_bins)
-        
-        for i in range(0, min(len(boundary)-1, 9)):
-            ax = axs[i]
-            df_selected = df[(df[f'CV{cv_index}'] <= boundary[i+1]) & (df[f'CV{cv_index}'] >= boundary[i])]
-            if len(df_selected) == 0:
-                continue
-            df_selected.plot.hexbin(
-                'phi', 'psi', C=f'CV{cv_index}',
-                vmin = boundary[0], vmax = boundary[-1],
-                cmap = cfg_plot.cmap, ax = ax,
-                gridsize=cfg_plot.gridsize,
+    # Plot the projection of CVs for meta-stable states
+    fig, axs = plt.subplots(2, 2, figsize = ( 15, 12 ) )
+    axs = axs.ravel()
+    for i in range(min(number_of_cvs, 9)):
+        ax = axs[i]
+        df_filtered = df[
+            (
+                df.phi.between(left=start_dihedral[0][0]-0.5, right=start_dihedral[0][0]+0.5) &
+                df.psi.between(left=start_dihedral[1][0]-0.5, right=start_dihedral[1][0]+0.5)
+            ) |
+            (
+                df.phi.between(left=goal_dihedral[0][0]-0.5, right=goal_dihedral[0][0]+0.5) &
+                df.psi.between(left=goal_dihedral[1][0]-0.5, right=goal_dihedral[1][0]+0.5)
             )
-            ax.set_xlim(-3.2, 3.2)
-            ax.set_ylim(-3.2, 3.2)
-        plt.tight_layout()
-        
-        save_plot(
-            dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
-            name = f"ad-cv{cv_index}-div-{epoch}.png",
-            fig = fig
+        ]
+        df_filtered.plot.hexbin(
+            'phi','psi', C=f"CV{i}",
+            cmap=cfg_plot.cmap, ax=ax,
+            gridsize=cfg_plot.gridsize
         )
-        fig_contur = fig
+        ax.scatter(
+            start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=101, s=100
+        )
+        ax.scatter(
+            goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=101, s=300, marker="*"
+        )
+        ax.set_xlim(-3.2, 3.2)
+        ax.set_ylim(-3.2, 3.2)
+    save_plot(
+        dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
+        name = f"{epoch}-ad-cv-state.png",
+        fig = fig
+    )
+    fig_state = fig
     
-    if cfg_plot.contour_plot:
-        return fig_projection, fig_contur
-    else:
-        return fig_projection
+    # Plot the contour plot of CV of interest
+    cv_index = cfg_plot.cv_index
+    fig, axs = plt.subplots(3, 3, figsize = ( 15, 12 ) )
+    axs = axs.ravel()
+    max_cv0 = df[f'CV{cv_index}'].max()
+    min_cv0 = df[f'CV{cv_index}'].min()
+    boundary = np.linspace(min_cv0, max_cv0, cfg_plot.number_of_bins)
+    
+    for i in range(0, min(len(boundary)-1, 9)):
+        ax = axs[i]
+        df_selected = df[(df[f'CV{cv_index}'] <= boundary[i+1]) & (df[f'CV{cv_index}'] >= boundary[i])]
+        if len(df_selected) == 0:
+            continue
+        df_selected.plot.hexbin(
+            'phi', 'psi', C=f'CV{cv_index}',
+            vmin = boundary[0], vmax = boundary[-1],
+            cmap = cfg_plot.cmap, ax = ax,
+            gridsize=cfg_plot.gridsize,
+        )
+        ax.set_xlim(-3.2, 3.2)
+        ax.set_ylim(-3.2, 3.2)
+    plt.tight_layout()
+    
+    save_plot(
+        dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
+        name = f"{epoch}-ad-cv{cv_index}-div.png",
+        fig = fig
+    )
+    fig_contur = fig
+    
+    return fig_projection, fig_state, fig_contur

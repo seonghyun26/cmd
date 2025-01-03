@@ -20,52 +20,10 @@ pairwise_distance = torch.cdist
 ALDP_PHI_ANGLE = [4, 6, 8, 14]
 ALDP_PSI_ANGLE = [6, 8, 14, 16]
 
-def compute_epd(cfg, trajectory_list, goal_state):
-    molecule = cfg.job.molecule
-    atom_num = cfg.data.atom
-    unit_scale_factor = 1000
-    last_state = trajectory_list[:, -1]
-    
-    if molecule == "alanine":
-        matrix_f_norm = torch.sqrt(torch.square(
-            pairwise_distance(last_state, last_state) - pairwise_distance(goal_state, goal_state)
-        ).sum((1, 2)))
-        epd = matrix_f_norm / (atom_num ** 2) * unit_scale_factor
-    elif molecule == "double-well":
-        # RMSD for double well
-        epd = torch.sqrt(torch.sum(torch.square(last_state - goal_state), dim=1)).mean()
-    else:
-        raise ValueError(f"EPD for molecule {molecule} TBA")
-    
-    return epd.mean().item()
-
-
-def compute_thp(cfg, trajectory_list, goal_state):
-    molecule = cfg.job.molecule
-    sample_num = cfg.job.sample_num
-    last_state = trajectory_list[:, -1]
-    cv_bound = cfg.job.metrics.thp.cv_bound
-    
-    if molecule == "alanine":
-        phi = compute_dihedral(last_state[:, ALDP_PHI_ANGLE])
-        psi = compute_dihedral(last_state[:, ALDP_PSI_ANGLE])
-        phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
-        psi_goal = compute_dihedral(goal_state[:, ALDP_PSI_ANGLE])
-        
-        hit = (np.abs(psi - psi_goal) < cv_bound) & (np.abs(phi - phi_goal) < cv_bound)
-        hit_rate = hit.sum() / hit.shape[0]
-    elif molecule == "double-well":
-        hit = (np.abs(last_state[:, 0] - goal_state[:, 0]) < cv_bound) & (np.abs(last_state[:, 1] - goal_state[:, 1]) < cv_bound)
-        hit_rate = torch.all(hit) / hit.shape[0]
-    else:
-        raise ValueError(f"THP for molecule {molecule} TBA")
-    
-    return hit_rate
 
 
 def compute_dihedral(positions):
     """http://stackoverflow.com/q/20305272/1128289"""
-    
     def dihedral(p):
         p = p.numpy()
         b = p[:-1] - p[1:]
@@ -82,8 +40,7 @@ def compute_dihedral(positions):
         return np.arctan2(y, x)
     
     angles = np.array(list(map(dihedral, positions)))
-    return angles
-    
+    return angles  
 
 def compute_dihedral_torch(positions):
     """
@@ -116,7 +73,6 @@ def compute_dihedral_torch(positions):
     
     return angle
 
-
 def compute_phi_psi(cfg, state):
     if cfg.data.molecule == "alanine":
         phi = np.expand_dims(compute_dihedral(state[:, ALDP_PHI_ANGLE]), axis=1)
@@ -126,46 +82,6 @@ def compute_phi_psi(cfg, state):
         raise ValueError(f"Phi, Psi for molecule {molecule} TBA...")
     
     return phi_psi
-
-
-def compute_energy(cfg, trajectory_list, goal_state):
-    molecule = cfg.job.molecule
-    sample_num = trajectory_list.shape[0]
-    path_length = trajectory_list.shape[1]
-    
-    try:
-        if molecule == "alanine":
-            goal_state_file_path = f"data/{cfg.data.molecule}/{cfg.job.goal_state}.pdb"
-            goal_simulation = init_simulation(cfg, goal_state_file_path)
-            goal_state_energy = goal_simulation.context.getState(getEnergy=True).getPotentialEnergy()._value
-            
-            path_energy_list = []
-            for trajectory in tqdm(
-                trajectory_list,
-                desc=f"Computing energy for {trajectory_list.shape[0]} trajectories"
-            ):
-                energy_trajectory = potential_energy(cfg, trajectory)
-                path_energy_list.append(energy_trajectory)
-            path_energy_list = np.array(path_energy_list)
-            
-            path_maximum_energy = np.max(path_energy_list, axis=1)
-            path_final_energy_error = np.array(path_energy_list[:, -1]) - goal_state_energy
-        elif molecule == "double-well":
-            synthetic = Synthetic()
-            path_energy_list = [synthetic.potential(trajectory) for trajectory in trajectory_list]
-            path_energy_list = np.array(path_energy_list)
-            path_maximum_energy = np.max(path_energy_list, axis=1)
-            path_final_energy_error = np.array(path_energy_list[:, -1]) - synthetic.potential(goal_state)
-        else: 
-            raise ValueError(f"Energy for molecule {molecule} TBA")
-    except Exception as e:
-        print(f"Error in computing energy: {e}")
-        path_maximum_energy = np.ones(sample_num) * 10000
-        path_energy_list = np.ones((sample_num, path_length)) * 10000
-        path_final_energy_error = np.ones(sample_num) * 10000
-    
-    return path_maximum_energy.mean(), path_energy_list[:, -1].mean(), path_final_energy_error.mean()
-
 
 def potential_energy(cfg, trajectory):
     molecule = cfg.job.molecule
@@ -189,7 +105,89 @@ def potential_energy(cfg, trajectory):
     return energy_list
 
 
-def compute_ram(cfg, trajectory_list, epoch):
+
+def compute_epd(cfg, trajectory_list, goal_state):
+    molecule = cfg.job.molecule
+    atom_num = cfg.data.atom
+    unit_scale_factor = 1000
+    last_state = trajectory_list[:, -1]
+    
+    if molecule == "alanine":
+        matrix_f_norm = torch.sqrt(torch.square(
+            pairwise_distance(last_state, last_state) - pairwise_distance(goal_state, goal_state)
+        ).sum((1, 2)))
+        epd = matrix_f_norm / (atom_num ** 2) * unit_scale_factor
+    elif molecule == "double-well":
+        # RMSD for double well
+        epd = torch.sqrt(torch.sum(torch.square(last_state - goal_state), dim=1)).mean()
+    else:
+        raise ValueError(f"EPD for molecule {molecule} TBA")
+    
+    return epd.mean().item()
+
+def compute_thp(cfg, trajectory_list, goal_state):
+    molecule = cfg.job.molecule
+    sample_num = cfg.job.sample_num
+    last_state = trajectory_list[:, -1]
+    cv_bound = cfg.job.metrics.thp.cv_bound
+    
+    if molecule == "alanine":
+        phi = compute_dihedral(last_state[:, ALDP_PHI_ANGLE])
+        psi = compute_dihedral(last_state[:, ALDP_PSI_ANGLE])
+        phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
+        psi_goal = compute_dihedral(goal_state[:, ALDP_PSI_ANGLE])
+        
+        hit = (np.abs(psi - psi_goal) < cv_bound) & (np.abs(phi - phi_goal) < cv_bound)
+        hit_rate = hit.sum() / hit.shape[0]
+    elif molecule == "double-well":
+        hit = (np.abs(last_state[:, 0] - goal_state[:, 0]) < cv_bound) & (np.abs(last_state[:, 1] - goal_state[:, 1]) < cv_bound)
+        hit_rate = torch.all(hit) / hit.shape[0]
+    else:
+        raise ValueError(f"THP for molecule {molecule} TBA")
+    hit_mask = torch.tensor(hit, dtype=torch.bool)
+    
+    return hit_rate, hit_mask
+
+def compute_energy(cfg, trajectory_list, goal_state, hit_mask):
+    molecule = cfg.job.molecule
+    sample_num = trajectory_list.shape[0]
+    path_length = trajectory_list.shape[1]
+    
+    try:
+        if molecule == "alanine":
+            goal_state_file_path = f"data/{cfg.data.molecule}/{cfg.job.goal_state}.pdb"
+            goal_simulation = init_simulation(cfg, goal_state_file_path)
+            goal_state_energy = goal_simulation.context.getState(getEnergy=True).getPotentialEnergy()._value
+            
+            path_energy_list = []
+            for trajectory in tqdm(
+                trajectory_list[hit_mask],
+                desc=f"Computing energy for {trajectory_list.shape[0]} trajectories"
+            ):
+                # if hit_mask[traj_idx]:
+                energy_trajectory = potential_energy(cfg, trajectory)
+                path_energy_list.append(energy_trajectory)
+            path_energy_list = np.array(path_energy_list)
+            
+            path_maximum_energy = np.max(path_energy_list, axis=1)
+            path_final_energy_error = np.array(path_energy_list[:, -1]) - goal_state_energy
+        elif molecule == "double-well":
+            synthetic = Synthetic()
+            path_energy_list = [synthetic.potential(trajectory) for trajectory in trajectory_list]
+            path_energy_list = np.array(path_energy_list)
+            path_maximum_energy = np.max(path_energy_list, axis=1)
+            path_final_energy_error = np.array(path_energy_list[:, -1]) - synthetic.potential(goal_state)
+        else: 
+            raise ValueError(f"Energy for molecule {molecule} TBA")
+    except Exception as e:
+        print(f"Error in computing energy: {e}")
+        path_maximum_energy = np.ones(sample_num) * 10000
+        path_energy_list = np.ones((sample_num, path_length)) * 10000
+        path_final_energy_error = np.ones(sample_num) * 10000
+    
+    return path_maximum_energy.mean(), path_energy_list[:, -1].mean(), path_final_energy_error.mean()
+
+def compute_ram(cfg, trajectory_list, hit_mask, epoch):
     molecule = cfg.job.molecule
     if molecule == "alanine":
         # Load start, goal state and compute phi, psi
@@ -215,6 +213,15 @@ def compute_ram(cfg, trajectory_list, epoch):
             epoch = epoch
         )
         
+        transition_path_plot_img = plot_ad_potential(
+            traj_dihedral = (phi_traj_list[hit_mask], psi_traj_list[hit_mask]),
+            start_dihedral = (phi_start, psi_start),
+            goal_dihedral = (phi_goal, psi_goal),
+            cv_bound_use = cfg.job.metrics.projection.bound_use,
+            cv_bound = cfg.job.metrics.thp.cv_bound,
+            epoch = epoch
+        )
+        
     elif molecule == "double-well":
         device = trajectory_list.device
         start_state = torch.tensor([-1.118, 0], dtype=torch.float32).to(device)
@@ -230,7 +237,7 @@ def compute_ram(cfg, trajectory_list, epoch):
     else:
         raise ValueError(f"Ramachandran plot for molecule {molecule} TBA...")
     
-    return wandb.Image(ram_plot_img)
+    return wandb.Image(ram_plot_img), wandb.Image(transition_path_plot_img)
 
 def compute_projection(cfg, model_wrapper, epoch):
     molecule = cfg.job.molecule
@@ -276,12 +283,17 @@ def compute_projection(cfg, model_wrapper, epoch):
             if cfg.model.name in ["cvmlp"]:
                 temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
                 projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1))
-            elif cfg.model.name in ["deeplda", "deeptda", "aecv", "vaecv", "beta-vae"]:
+            elif cfg.model.name in ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]:
                 projected_cv = model_wrapper.model(heavy_atom_distance)
-        else:
+            else:
+                raise ValueError(f"Model {cfg.model.name} not found")
+        elif cfg.model.input == "coordinate":
             coordinate = torch.load(f"{data_dir}/alanine_coordinate.pt").to(device)
-            temperature = torch.tensor(cfg.job.simulation.temperature).repeat(data_list.shape[0], 1).to(device)
+            coordinate = coordinate.reshape(coordinate.shape[0], -1)
+            temperature = torch.tensor(cfg.job.simulation.temperature).repeat(coordinate.shape[0], 1).to(device)
             projected_cv = model_wrapper.model(torch.cat([coordinate, temperature], dim=1), transformed=False)
+        else:
+            raise ValueError(f"Input type {cfg.model.input} not found")
         
         phis = np.load(f"{data_dir}/alanine_phi_list.npy")
         psis = np.load(f"{data_dir}/alanine_psi_list.npy")
@@ -311,7 +323,7 @@ def compute_projection(cfg, model_wrapper, epoch):
     else:
         raise ValueError(f"Projection for molecule {molecule} not supported")
     
-    return wandb.Image(projection_img)
+    return wandb.Image(projection_img[0]), wandb.Image(projection_img[1]), wandb.Image(projection_img[2])
 
 def compute_jacobian(cfg, model_wrapper, epoch):
     molecule = cfg.job.molecule

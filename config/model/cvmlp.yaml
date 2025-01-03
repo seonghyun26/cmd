@@ -1,5 +1,5 @@
 name: cvmlp
-input: distance
+input: coordinate
 params: {
   hidden_dim: [64, 64, 64, 64],
   output_dim: 4,

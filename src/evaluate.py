@@ -62,19 +62,16 @@ def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
         eval_result["eval/epd"] = compute_epd(cfg, trajectory_list, goal_state)
     if cfg.job.metrics.thp.use:
         logger.info(">> Computing THP")
-        eval_result["eval/thp"] = compute_thp(cfg, trajectory_list, goal_state)
+        eval_result["eval/thp"], hit_mask = compute_thp(cfg, trajectory_list, goal_state)
     if cfg.job.metrics.energy.use:
         logger.info(">> Computing Energy")
-        eval_result["eval/max_energy"], eval_result["eval/final_energy"], eval_result["eval/final_energy_err"] = compute_energy(cfg, trajectory_list, goal_state)
+        eval_result["eval/max_energy"], eval_result["eval/final_energy"], eval_result["eval/final_energy_err"] = compute_energy(cfg, trajectory_list, goal_state, hit_mask)
     if cfg.job.metrics.ram.use:
         logger.info(">> Plotting Ramachandran plot")
-        eval_result["eval/ram"] = compute_ram(cfg, trajectory_list, epoch)
+        eval_result["eval/ram"], eval_result["eval/transition_path"] = compute_ram(cfg, trajectory_list, hit_mask, epoch)
     if cfg.job.metrics.projection.use:
         logger.info(">> Plotting projected CV values")
-        if cfg.job.metrics.projection.contour_plot:
-            eval_result["eval/projection"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
-        else:
-            eval_result["eval/projection"] = compute_projection(cfg, model_wrapper, epoch)
+        eval_result["eval/projection"], eval_result["eval/state"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
     # if cfg.job.metrics.jacobian.use:
     #     logger.info(">> Computing Jacobian for mlcv against input")
     #     eval_result["eval/jacobian"] = compute_jacobian(cfg, model_wrapper, epoch)
@@ -93,10 +90,7 @@ def evaluate_cv(cfg, model_wrapper, logger, epoch, device):
     
     if cfg.job.metrics.projection.use:
         logger.info(">> Plotting projected CV values")
-        if cfg.job.metrics.projection.contour_plot:
-            eval_result["eval/projection"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
-        else:
-            eval_result["eval/projection"] = compute_projection(cfg, model_wrapper, epoch)
+        eval_result["eval/projection"], eval_result["eval/state"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
     
     for key in eval_result.keys():
         logger.info(f"{key}: {eval_result[key]}")

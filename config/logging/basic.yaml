@@ -5,4 +5,4 @@ project: cmd
 entity: eddy26
 device: cuda
 checkpoint: True
-ckpt_freq: 40
+ckpt_freq: 100

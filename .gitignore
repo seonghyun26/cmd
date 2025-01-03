@@ -12,3 +12,4 @@ wandb/*
 *.csv
 *.dcd
 *.pt
+*.npy

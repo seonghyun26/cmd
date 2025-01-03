@@ -1,5 +1,5 @@
 defaults:
-- model: deepticaa
+- model: deeptica
 - data: alanine
 - training: deeptica-pretrained
 - logging: baseline

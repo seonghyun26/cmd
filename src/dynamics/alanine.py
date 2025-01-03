@@ -16,7 +16,7 @@ from ..utils import compute_dihedral, compute_dihedral_torch
 from ..simulation import load_forcefield, load_system
 
 
-MLCOLVAR_METHODS = ["deeplda", "deeptda", "aecv", "betavae"]
+MLCOLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv", "betavae"]
 
 class Alanine(BaseDynamics):
     def __init__(self, cfg, state):

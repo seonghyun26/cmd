@@ -3,12 +3,12 @@ name: tps
 molecule: alanine
 start_state: c5
 goal_state: c7ax
-sample_num: 16
+sample_num: 64
 save: True
 simulation:
   steered: True
   k: 2000
-  time_horizon: 500
+  time_horizon: 1000
   force_type: deeptica
   friction: 0.001
   timestep: 1
