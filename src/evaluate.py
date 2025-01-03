@@ -39,15 +39,6 @@ def evaluate(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     return
 
 
-def evaluate_sim(cfg, trajectory_list, logger):
-    # Load ground truth simulation results
-    
-    # Compare the results
-    pass
-    
-    return
-
-
 def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     # Trajectory list shape: (sample_num, time_horizon, atom_num, 3)
     goal_state = load_state_file(cfg, cfg.job.goal_state, device)
@@ -57,17 +48,17 @@ def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     trajectory_list = trajectory_list.to("cpu")
     eval_result = {}
     
-    if cfg.job.metrics.epd.use:
-        logger.info(">> Computing EPD")
-        eval_result["eval/epd"] = compute_epd(cfg, trajectory_list, goal_state)
     if cfg.job.metrics.thp.use:
         logger.info(">> Computing THP")
         eval_result["eval/thp"], hit_mask = compute_thp(cfg, trajectory_list, goal_state)
+    if cfg.job.metrics.epd.use:
+        logger.info(">> Computing EPD")
+        eval_result["eval/epd"], eval_result["eval/rmsd"]  = compute_epd(cfg, trajectory_list, goal_state, hit_mask)
     if cfg.job.metrics.energy.use:
         logger.info(">> Computing Energy")
         eval_result["eval/max_energy"], eval_result["eval/final_energy"], eval_result["eval/final_energy_err"] = compute_energy(cfg, trajectory_list, goal_state, hit_mask)
     if cfg.job.metrics.ram.use:
-        logger.info(">> Plotting Ramachandran plot")
+        logger.info(">> Plotting paths")
         eval_result["eval/ram"], eval_result["eval/transition_path"] = compute_ram(cfg, trajectory_list, hit_mask, epoch)
     if cfg.job.metrics.projection.use:
         logger.info(">> Plotting projected CV values")

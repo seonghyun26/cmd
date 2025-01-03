@@ -127,7 +127,15 @@ def save_plot(dir, name, fig):
     plt.close()
 
 
-def plot_ad_potential(traj_dihedral, start_dihedral, goal_dihedral, cv_bound_use, cv_bound, epoch):
+def plot_ad_potential(
+    traj_dihedral,
+    start_dihedral,
+    goal_dihedral,
+    cv_bound_use,
+    cv_bound,
+    epoch,
+    name
+):
     plt.clf()
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111)
@@ -183,14 +191,11 @@ def plot_ad_potential(traj_dihedral, start_dihedral, goal_dihedral, cv_bound_use
     plt.ylabel("psi")
     plt.show()
     
-    # Save the plot
-    output_dir = hydra.core.hydra_config.HydraConfig.get().run.dir
-    if os.path.exists(f"{output_dir}/img") is False:
-        os.mkdir(f"{output_dir}/img")
-    img_path = f"{output_dir}/img/ad-ram-{epoch}.png"
-    plt.savefig(f"{img_path}")
-    plt.close()
-    
+    save_plot(
+        dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
+        name = f"{epoch}-ad-{name}.png",
+        fig = fig
+    )
     return fig
 
 def plot_dw_potential(traj, start, goal, epoch):

@@ -2,7 +2,7 @@ cd ../../
 
 CUDA_VISIBLE_DEVICES=$1 python main.py \
     --config-name contrastive-triplet \
-    ++data.version=v4 
+    ++data.version=v3
 
 # batch_list=(2048 4096 8192 16384)
 # for i in "${!batch_list[@]}"; do

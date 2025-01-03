@@ -106,24 +106,33 @@ def potential_energy(cfg, trajectory):
 
 
 
-def compute_epd(cfg, trajectory_list, goal_state):
+def compute_epd(cfg, trajectory_list, goal_state, hit_mask):
     molecule = cfg.job.molecule
     atom_num = cfg.data.atom
     unit_scale_factor = 1000
-    last_state = trajectory_list[:, -1]
+    last_state = trajectory_list[hit_mask, -1]
+    goal_state = goal_state[hit_mask]
     
+    # Compute EPD
     if molecule == "alanine":
         matrix_f_norm = torch.sqrt(torch.square(
             pairwise_distance(last_state, last_state) - pairwise_distance(goal_state, goal_state)
         ).sum((1, 2)))
         epd = matrix_f_norm / (atom_num ** 2) * unit_scale_factor
-    elif molecule == "double-well":
-        # RMSD for double well
-        epd = torch.sqrt(torch.sum(torch.square(last_state - goal_state), dim=1)).mean()
+    # elif molecule == "double-well":
+    #     RMSD for double well
+    #     epd = torch.sqrt(torch.sum(torch.square(last_state - goal_state), dim=1)).mean()
     else:
         raise ValueError(f"EPD for molecule {molecule} TBA")
     
-    return epd.mean().item()
+    # TODO: RMSD computation for alanine
+    if molecule == "alanine":
+        rmsd = torch.tensor(0)
+        pass
+    else:
+        raise ValueError(f"RMSD for molecule {molecule} TBA")
+    
+    return epd.mean(), rmsd
 
 def compute_thp(cfg, trajectory_list, goal_state):
     molecule = cfg.job.molecule
@@ -210,7 +219,8 @@ def compute_ram(cfg, trajectory_list, hit_mask, epoch):
             goal_dihedral = (phi_goal, psi_goal),
             cv_bound_use = cfg.job.metrics.projection.bound_use,
             cv_bound = cfg.job.metrics.thp.cv_bound,
-            epoch = epoch
+            epoch = epoch,
+            name = "paths"
         )
         
         transition_path_plot_img = plot_ad_potential(
@@ -219,7 +229,8 @@ def compute_ram(cfg, trajectory_list, hit_mask, epoch):
             goal_dihedral = (phi_goal, psi_goal),
             cv_bound_use = cfg.job.metrics.projection.bound_use,
             cv_bound = cfg.job.metrics.thp.cv_bound,
-            epoch = epoch
+            epoch = epoch,
+            name = "transition_paths"
         )
         
     elif molecule == "double-well":
@@ -243,44 +254,11 @@ def compute_projection(cfg, model_wrapper, epoch):
     molecule = cfg.job.molecule
     device = model_wrapper.device
     
-    if molecule == "alanine":
-        '''
-        if cfg.model.input == "distance":
-            data_dir = f"{cfg.data.dir}/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.version}"
-            heavy_atom_distance = torch.load(f"{data_dir}/cl-distance.pt").to(device)
-            psis = np.load(f"{data_dir}/cl-psi.npy")
-            phis = np.load(f"{data_dir}/cl-phi.npy")
-            
-            if cfg.model.name in ["cvmlp"]:
-                temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
-                projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1))
-            elif cfg.model.name in ["deeplda", "deeptda", "aecv", "vaecv", "beta-vae"]:
-                projected_cv = model_wrapper.model(heavy_atom_distance)
-        
-        else:
-            data_path = f"/home/shpark/prj-cmd/simulation/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.state}-{cfg.data.version}.pt"
-            data = torch.load(f"{data_path}")
-            
-            data_list = []
-            phi_list = []
-            psi_list = []
-            for i in range(len(data)):
-                data_list.append(data[i][0].to(device))
-                data_list.append(data[i][1].to(device))
-                phi_list.append(data[i][2])
-                psi_list.append(data[i][3])
-            data_list = torch.stack(data_list)
-            data_list = data_list.reshape(data_list.shape[0], -1)
-            phis = torch.stack(phi_list).unsqueeze(1).detach().cpu().numpy()
-            psis = torch.stack(psi_list).unsqueeze(1).detach().cpu().numpy()
-            temperature = torch.tensor(cfg.job.simulation.temperature).repeat(data_list.shape[0], 1).to(device)
-            projected_cv = model_wrapper.model(torch.cat([data_list, temperature], dim=1), transformed=False)
-        '''
-        
+    if molecule == "alanine":       
         data_dir = f"{cfg.data.dir}/projection"
         if cfg.model.input == "distance":
             heavy_atom_distance = torch.load(f"{data_dir}/alanine_heavy_atom_distance.pt").to(device)
-            if cfg.model.name in ["cvmlp"]:
+            if cfg.model.name in ["cvmlp", "cvmlp-bn"]:
                 temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
                 projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1))
             elif cfg.model.name in ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]:

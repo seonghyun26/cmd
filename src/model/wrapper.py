@@ -14,6 +14,7 @@ model_dict = {
     "lsde": LSDE,
     "lnsde": LNSDE,
     "cvmlp": CVMLP,
+    "cvmlp-bn": CVMLPBN,
     "deeplda": DeepLDA,
     "deeptda": DeepTDA,
     "deeptica": DeepTICA,

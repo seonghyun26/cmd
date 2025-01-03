@@ -14,9 +14,7 @@
           "--config-name",
           "debug-cl",
           "hydra.run.dir=outputs/debug",
-          "++logging.wandb=True",
-          // "++training.loss.name=infonce",
-          // "++model.params.output_dim=4",
+          "++logging.wandb=False",
         ],
         "console": "integratedTerminal"
     },
@@ -32,9 +30,8 @@
       "args": [
         "--config-name",
         "steered-deeptica",
-        // "debug-smd",
         "hydra.run.dir=outputs/debug",
-        "++logging.wandb=False",
+        "++logging.wandb=True",
         "++job.sample_num=10",
         "++job.simulation.time_horizon=1000",
       ],

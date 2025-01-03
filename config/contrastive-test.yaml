@@ -1,5 +1,5 @@
 defaults:
-- model: cvmlp
+- model: cvmlp-batchnorm
 - data: alanine-cl
 - training: cl-triplet
 - logging: basic
