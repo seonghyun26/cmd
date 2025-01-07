@@ -4,4 +4,4 @@ temperature: 300.0
 version: v3
 name: cl-distance
 atom: 22
-scale: 1_000
+scale: 1

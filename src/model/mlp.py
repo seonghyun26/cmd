@@ -125,7 +125,7 @@ class CVMLPBN(nn.Module):
         for i in range(self.params["layer_num"] - 1):
             self.layers.append(nn.Linear(self.params["hidden_dim"][i], self.params["hidden_dim"][i+1]))
             self.layers.append(nn.ReLU())
-            self.layers.append(nn.BatchNorm1d(self.params["hidden_dim"][i+1]))
+            self.layers.append(nn.BatchNorm1d(self.params["hidden_dim"][i+1], affine=False  ))
         self.layers.append(nn.Linear(self.params["hidden_dim"][-1], self.output_dim))
     
     def forward(self,

@@ -1,7 +1,7 @@
 defaults:
 - model: cvmlp-batchnorm
 - data: alanine-cl
-- training: contrastive-triplet
+- training: cl-triplet
 - logging: debug-log
 # - job: cv-aldp-cvmlp
 - job: steered-aldp-cvmlp

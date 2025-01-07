@@ -159,9 +159,9 @@ class SteeredAlanine:
             current_position.requires_grad = True
             if self.cfg.model.input == "distance":
                 heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
-                mlcv = self.model(torch.cat([heavy_atom_distance, temperature], dim=0))
+                mlcv = self.model(torch.cat([heavy_atom_distance, temperature], dim=0).reshape(1, -1))
             else:
-                mlcv = self.model(torch.cat([current_position, temperature], dim=0))
+                mlcv = self.model(torch.cat([current_position, temperature], dim=0).reshape(1, -1))
             
             goal_position = torch.tensor(
                 [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
@@ -170,9 +170,9 @@ class SteeredAlanine:
             goal_position.requires_grad = True
             if self.cfg.model.input == "distance":
                 goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
-                goal_mlcv = self.model(torch.cat([goal_heavy_atom_distance, temperature], dim=0))
+                goal_mlcv = self.model(torch.cat([goal_heavy_atom_distance, temperature], dim=0).reshape(1, -1))
             else:
-                goal_mlcv = self.model(torch.cat([goal_position, temperature], dim=0))            
+                goal_mlcv = self.model(torch.cat([goal_position, temperature], dim=0).reshape(1, -1))            
             
             mlcv_difference = torch.linalg.norm(goal_mlcv - mlcv, ord=2)
             

@@ -7,7 +7,7 @@ sample_num: 64
 save: True
 simulation:
   steered: True
-  k: 100000
+  k: 200
   time_horizon: 1000
   force_type: cvmlp
   friction: 0.001

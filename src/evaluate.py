@@ -15,14 +15,20 @@ def evaluate(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     task = cfg.job.name
     
     if task == "tps":
-        evaluate_tps(
-            cfg = cfg,
-            model_wrapper = model_wrapper, 
-            trajectory_list = trajectory_list,
-            logger = logger, 
-            epoch = epoch,
-            device = device
-        )
+        if trajectory_list is None:
+            if cfg.logging.wandb:
+                dummy_keys = ["eval/thp", "eval/epd", "eval/rmsd", "eval/max_energy", "eval/final_energy", "eval/final_energy_err", "eval/ram", "eval/transition_path", "eval/projection", "eval/state", "eval/contour"]
+                eval_result = {key: None for key in dummy_keys}
+                wandb.log(eval_result)
+        else:
+            evaluate_tps(
+                cfg = cfg,
+                model_wrapper = model_wrapper, 
+                trajectory_list = trajectory_list,
+                logger = logger, 
+                epoch = epoch,
+                device = device
+            )
     
     elif task == "cv":
         evaluate_cv(
@@ -50,16 +56,20 @@ def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     
     if cfg.job.metrics.thp.use:
         logger.info(">> Computing THP")
-        eval_result["eval/thp"], hit_mask = compute_thp(cfg, trajectory_list, goal_state)
+        eval_result["eval/thp"], hit_mask, eval_result["eval/hit_index"] = compute_thp(cfg, trajectory_list, goal_state)
     if cfg.job.metrics.epd.use:
         logger.info(">> Computing EPD")
-        eval_result["eval/epd"], eval_result["eval/rmsd"]  = compute_epd(cfg, trajectory_list, goal_state, hit_mask)
+        eval_result["eval/epd"], eval_result["eval/rmsd"]  = compute_epd(cfg, trajectory_list, goal_state, hit_mask, hit_index)
     if cfg.job.metrics.energy.use:
-        logger.info(">> Computing Energy")
-        eval_result["eval/max_energy"], eval_result["eval/final_energy"], eval_result["eval/final_energy_err"] = compute_energy(cfg, trajectory_list, goal_state, hit_mask)
+        if hit_mask.sum() == 0:
+            logger.info("No hit found, skipping energy computation")
+            eval_result["eval/max_energy"], eval_result["eval/final_energy"], eval_result["eval/final_energy_err"] = None, None, None
+        else:
+            logger.info(">> Computing Energy")
+            eval_result["eval/max_energy"], eval_result["eval/final_energy"], eval_result["eval/final_energy_err"] = compute_energy(cfg, trajectory_list, goal_state, hit_mask, hit_index)
     if cfg.job.metrics.ram.use:
         logger.info(">> Plotting paths")
-        eval_result["eval/ram"], eval_result["eval/transition_path"] = compute_ram(cfg, trajectory_list, hit_mask, epoch)
+        eval_result["eval/ram"], eval_result["eval/transition_path"] = compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch)
     if cfg.job.metrics.projection.use:
         logger.info(">> Plotting projected CV values")
         eval_result["eval/projection"], eval_result["eval/state"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)

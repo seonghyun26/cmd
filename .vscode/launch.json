@@ -15,6 +15,7 @@
           "debug-cl",
           "hydra.run.dir=outputs/debug",
           "++logging.wandb=False",
+          "++job.simulation.time_horizon=100"
         ],
         "console": "integratedTerminal"
     },

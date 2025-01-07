@@ -177,16 +177,6 @@ def load_loss(cfg):
         return loss_list
     
     def triplet_loss(result_dict):
-        # margin = cfg.training.loss.margin
-        # anchor = result_dict["current_state_rep"]
-        # positive = result_dict["next_state_rep"]
-        # batch_size = anchor.shape[0]
-        # negative = torch.roll(positive, shifts=random.randint(1, batch_size), dims=0)
-
-        # distance_positive = torch.nn.functional.pairwise_distance(anchor, positive, p=2)
-        # distance_negative = torch.nn.functional.pairwise_distance(anchor, negative, p=2)
-        # triplet_loss = torch.nn.functional.relu(distance_positive - distance_negative + margin)
-
         margin = cfg.training.loss.margin
         anchor = result_dict["current_state_rep"]
         positive = result_dict["positive_sample_rep"]

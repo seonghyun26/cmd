@@ -88,7 +88,7 @@ def potential_energy(cfg, trajectory):
     energy_list = []
     
     if molecule == "alanine":
-        pbb_file_path = f"data/{cfg.data.molecule}/c5.pdb"
+        pbb_file_path = f"{cfg.data.dir}/{cfg.data.molecule}/c5.pdb"
         simulation = init_simulation(cfg, pbb_file_path)
         
         for frame in trajectory:
@@ -106,7 +106,7 @@ def potential_energy(cfg, trajectory):
 
 
 
-def compute_epd(cfg, trajectory_list, goal_state, hit_mask):
+def compute_epd(cfg, trajectory_list, goal_state, hit_mask, hit_index):
     molecule = cfg.job.molecule
     atom_num = cfg.data.atom
     unit_scale_factor = 1000
@@ -141,6 +141,10 @@ def compute_thp(cfg, trajectory_list, goal_state):
     cv_bound = cfg.job.metrics.thp.cv_bound
     
     if molecule == "alanine":
+        # NOTE: compute CV distance for all frames
+        # Find the frame having mimimum distance between the goal state
+        # Return hit_rate, hit_mask, hit_index
+        hit_index = 0
         phi = compute_dihedral(last_state[:, ALDP_PHI_ANGLE])
         psi = compute_dihedral(last_state[:, ALDP_PSI_ANGLE])
         phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
@@ -155,9 +159,9 @@ def compute_thp(cfg, trajectory_list, goal_state):
         raise ValueError(f"THP for molecule {molecule} TBA")
     hit_mask = torch.tensor(hit, dtype=torch.bool)
     
-    return hit_rate, hit_mask
+    return hit_rate, hit_mask, hit_index
 
-def compute_energy(cfg, trajectory_list, goal_state, hit_mask):
+def compute_energy(cfg, trajectory_list, goal_state, hit_mask, hit_index):
     molecule = cfg.job.molecule
     sample_num = trajectory_list.shape[0]
     path_length = trajectory_list.shape[1]
@@ -196,7 +200,7 @@ def compute_energy(cfg, trajectory_list, goal_state, hit_mask):
     
     return path_maximum_energy.mean(), path_energy_list[:, -1].mean(), path_final_energy_error.mean()
 
-def compute_ram(cfg, trajectory_list, hit_mask, epoch):
+def compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch):
     molecule = cfg.job.molecule
     if molecule == "alanine":
         # Load start, goal state and compute phi, psi
