@@ -51,14 +51,38 @@
         "--config-name",
         "contrastive-triplet",
         "hydra.run.dir=outputs/debug",
-        "++logging.wandb=False",
+        "++logging.wandb=True",
+        "++logging.tags=['debug']",
         "++training.train=False",
-        "++training.ckpt_file=1226-093625",
-        "++job.name=tps",
-        "++job.sample_num=10",
-        "++job.simulation.time_horizon=20",
+        "++job.simulation.k=800000",
+        "++job.simulation.time_horizon=1000",
+        "++training.ckpt_file=1230-024411",
       ],
       "console": "integratedTerminal"
-  }
+  },
+  {
+    "name": "Eval - load traj",
+    "type": "debugpy",
+    "request": "launch",
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "01"
+    },
+    "cwd": "/home/shpark/prj-cmd/cmd/",
+    "program": "main.py",
+    "args": [
+      "--config-name",
+      "contrastive-triplet",
+      "hydra.run.dir=outputs/debug",
+      "++logging.wandb=False",
+      "++logging.tags=['debug']",
+      "++training.train=False",
+      "++job.simulation.k=800000",
+      "++job.simulation.time_horizon=1000",
+      "++training.ckpt_file=1230-024411",
+      "++job.generate=False",
+      "++job.traj_dir=/home/shpark/prj-cmd/cmd/outputs/2025-01-07/07-30-00/tps/0"
+    ],
+    "console": "integratedTerminal"
+  },
   ]
 }

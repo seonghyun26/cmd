@@ -16,8 +16,8 @@ cd ../../
 
 k_list=(400 600 800)
 for i in "${!k_list[@]}"; do
-    CUDA_VISIBLE_DEVICES=$((i + 1)) python main.py \
+    CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-deeplda \
-        ++job.simulation.k=${k_list[$i]} &
+        ++job.simulation.k=${k_list[$i]}
     sleep 2
 done

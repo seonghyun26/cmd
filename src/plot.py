@@ -133,14 +133,16 @@ def plot_ad_potential(
     goal_dihedral,
     cv_bound_use,
     cv_bound,
+    hit_path_num,
     epoch,
     name
 ):
     plt.clf()
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111)
-    sample_num = traj_dihedral[0].shape[0]
-    traj_length = traj_dihedral[0].shape[1]
+    sample_num = len(traj_dihedral[0])
+    traj_list_phi = traj_dihedral[0]
+    traj_list_psi = traj_dihedral[1]
 
     # Plot the potential
     xs = np.arange(-np.pi, np.pi + 0.1, 0.1)
@@ -155,12 +157,12 @@ def plot_ad_potential(
     # Plot the trajectory
     cm = plt.get_cmap("gist_rainbow")
     ax.set_prop_cycle(
-        color=[cm(1.0 * i / sample_num) for i in range(sample_num)]
+        color=[cm(1.0 * i / sample_num) for i in range(hit_path_num)]
     )
-    for idx in range(sample_num):
+    for idx in range(hit_path_num):
         ax.plot(
-            traj_dihedral[0][idx],
-            traj_dihedral[1][idx],
+            traj_list_phi[idx].cpu(),
+            traj_list_psi[idx].cpu(),
             marker="o",
             linestyle="None",
             markersize=3,
@@ -179,7 +181,7 @@ def plot_ad_potential(
         square = plt.Rectangle(
             (goal_dihedral[0] - cv_bound / 2, goal_dihedral[1] - cv_bound /2),
             cv_bound, cv_bound,
-            color='r', fill=False, linewidth=2,
+            color='r', fill=False, linewidth=4,
             zorder=101
         )
         plt.gca().add_patch(square)
@@ -203,7 +205,6 @@ def plot_dw_potential(traj, start, goal, epoch):
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111)
     sample_num = traj.shape[0]
-    traj_length = traj.shape[1]
 
     # Plot the potential
     bound = 1.7

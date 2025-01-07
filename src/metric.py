@@ -108,6 +108,7 @@ def potential_energy(cfg, trajectory):
 
 
 def compute_thp(cfg, trajectory_list, goal_state):
+    device = trajectory_list.device
     molecule = cfg.job.molecule
     sample_num = cfg.job.sample_num
     cv_bound = cfg.job.metrics.thp.cv_bound
@@ -116,20 +117,21 @@ def compute_thp(cfg, trajectory_list, goal_state):
     hit_index = []
     
     if molecule == "alanine":
-        psi_goal = compute_dihedral(goal_state[0, ALDP_PSI_ANGLE].reshape(-1, len(ALDP_PSI_ANGLE), 3))
-        phi_goal = compute_dihedral(goal_state[0, ALDP_PSI_ANGLE].reshape(-1, len(ALDP_PHI_ANGLE), 3))
+        psi_goal = compute_dihedral_torch(goal_state[0, ALDP_PSI_ANGLE].reshape(-1, len(ALDP_PSI_ANGLE), 3))
+        phi_goal = compute_dihedral_torch(goal_state[0, ALDP_PHI_ANGLE].reshape(-1, len(ALDP_PHI_ANGLE), 3))
         for i in tqdm(
             range(sample_num),
-            desc = "Computing THP for trajectories"
+            desc = f"Computing THP for {trajectory_list.shape[0]} trajectories"
         ):
-            psi = compute_dihedral(trajectory_list[i, :, ALDP_PSI_ANGLE])
-            phi = compute_dihedral(trajectory_list[i, :, ALDP_PHI_ANGLE])
-            psi_hit_distance = np.abs(psi - psi_goal)
-            phi_hit_distance = np.abs(phi - phi_goal)
-            cv_distance = np.sqrt(psi_hit_distance ** 2 + phi_hit_distance ** 2)
+            psi = compute_dihedral_torch(trajectory_list[i, :, ALDP_PSI_ANGLE])
+            phi = compute_dihedral_torch(trajectory_list[i, :, ALDP_PHI_ANGLE])
+            psi_hit_distance = torch.abs(psi - psi_goal)
+            phi_hit_distance = torch.abs(phi - phi_goal)
+            cv_distance = torch.sqrt(psi_hit_distance ** 2 + phi_hit_distance ** 2)
             hit_in_path = (psi_hit_distance < cv_bound) & (phi_hit_distance < cv_bound)
-            hit_index_in_path = np.argmin(cv_distance)
-            if np.any(hit_mask):
+            hit_index_in_path = torch.argmin(cv_distance)
+            
+            if torch.any(hit_in_path):
                 hit_rate += 1.0
                 hit_mask.append(True)
                 hit_index.append(hit_index_in_path)
@@ -138,15 +140,8 @@ def compute_thp(cfg, trajectory_list, goal_state):
                 hit_index.append(-1)
                 
         hit_rate /= sample_num
-        hit_mask = torch.tensor(hit_mask, dtype=torch.bool, device=trajectory_list.device)
-        hit_index = torch.tensor(hit_index, dtype=torch.int32, device=trajectory_list.device)
-        
-        # phi = compute_dihedral(last_state[:, ALDP_PHI_ANGLE])
-        # psi = compute_dihedral(last_state[:, ALDP_PSI_ANGLE])
-        # phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
-        # psi_goal = compute_dihedral(goal_state[:, ALDP_PSI_ANGLE])
-        # hit = (np.abs(psi - psi_goal) < cv_bound) & (np.abs(phi - phi_goal) < cv_bound)
-        # hit_rate = hit.sum() / hit.shape[0]
+        hit_mask = torch.tensor(hit_mask, dtype=torch.bool, device=device)
+        hit_index = torch.tensor(hit_index, dtype=torch.int32, device=device)
     elif molecule == "double-well":
         hit = (np.abs(last_state[:, 0] - goal_state[:, 0]) < cv_bound) & (np.abs(last_state[:, 1] - goal_state[:, 1]) < cv_bound)
         hit_rate = torch.all(hit) / hit.shape[0]
@@ -159,22 +154,29 @@ def compute_thp(cfg, trajectory_list, goal_state):
 def compute_epd(cfg, trajectory_list, goal_state, hit_mask, hit_index):
     molecule = cfg.job.molecule
     atom_num = cfg.data.atom
+    sample_num = trajectory_list.shape[0]
     unit_scale_factor = 1000
     hit_trajectory = trajectory_list[hit_mask]
+    hit_path_num = hit_mask.sum().item()
     goal_state = goal_state[hit_mask]
     epd = 0.0
     
     # Compute EPD
     if molecule == "alanine":
-        for i in range(hit_trajectory.shape[0]):
-            hit_state = hit_trajectory[i, hit_index[i]]
-            matrix_f_norm = torch.sqrt(torch.square(
-                pairwise_distance(hit_state, hit_state) - pairwise_distance(goal_state, goal_state)
-            ).sum((1, 2)))
-            epd += matrix_f_norm / (atom_num ** 2) * unit_scale_factor
+        hit_state = []
+        for i in tqdm(
+            range(hit_path_num),
+            desc = f"Computing EPD, RMSD for {hit_path_num} hitting trajectories"
+        ):
+            hit_state.append(hit_trajectory[i, hit_index[i]])
+        hit_state = torch.stack(hit_state)
+        matrix_f_norm = torch.sqrt(torch.square(
+            pairwise_distance(hit_state, hit_state) - pairwise_distance(goal_state, goal_state)
+        ).sum((1, 2)))
+        epd = torch.mean(matrix_f_norm / (atom_num ** 2) * unit_scale_factor)
     else:
         raise ValueError(f"EPD for molecule {molecule} TBA")
-    epd /= hit_trajectory.shape[0]
+    # epd /= hit_trajectorsy.shape[0]
     
     # TODO: RMSD computation for alanine
     if molecule == "alanine":
@@ -227,20 +229,22 @@ def compute_energy(cfg, trajectory_list, goal_state, hit_mask, hit_index):
 
 def compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch):
     molecule = cfg.job.molecule
+    hit_path_num = hit_mask.sum().item()
+    
     if molecule == "alanine":
         # Load start, goal state and compute phi, psi
         start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
         goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz
         start_state = torch.tensor(start_state_xyz)
         goal_state = torch.tensor(goal_state_xyz)
-        phi_start = compute_dihedral(start_state[:, ALDP_PHI_ANGLE])
-        psi_start = compute_dihedral(start_state[:, ALDP_PSI_ANGLE])
-        phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
-        psi_goal = compute_dihedral(goal_state[:, ALDP_PSI_ANGLE])
+        phi_start = compute_dihedral_torch(start_state[:, ALDP_PHI_ANGLE])
+        psi_start = compute_dihedral_torch(start_state[:, ALDP_PSI_ANGLE])
+        phi_goal = compute_dihedral_torch(goal_state[:, ALDP_PHI_ANGLE])
+        psi_goal = compute_dihedral_torch(goal_state[:, ALDP_PSI_ANGLE])
     
         # Compute phi, psi from trajectory_list
-        phi_traj_list = np.array([compute_dihedral(trajectory[:, ALDP_PHI_ANGLE]) for trajectory in trajectory_list])
-        psi_traj_list = np.array([compute_dihedral(trajectory[:, ALDP_PSI_ANGLE]) for trajectory in trajectory_list])
+        phi_traj_list = [compute_dihedral_torch(trajectory[:, ALDP_PHI_ANGLE]) for trajectory in trajectory_list]
+        psi_traj_list = [compute_dihedral_torch(trajectory[:, ALDP_PSI_ANGLE]) for trajectory in trajectory_list]
         
         ram_plot_img = plot_ad_potential(
             traj_dihedral = (phi_traj_list, psi_traj_list),
@@ -248,19 +252,26 @@ def compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch):
             goal_dihedral = (phi_goal, psi_goal),
             cv_bound_use = cfg.job.metrics.projection.bound_use,
             cv_bound = cfg.job.metrics.thp.cv_bound,
+            hit_path_num = hit_path_num,
             epoch = epoch,
             name = "paths"
         )
         
-        transition_path_plot_img = plot_ad_potential(
-            traj_dihedral = (phi_traj_list[hit_mask], psi_traj_list[hit_mask]),
-            start_dihedral = (phi_start, psi_start),
-            goal_dihedral = (phi_goal, psi_goal),
-            cv_bound_use = cfg.job.metrics.projection.bound_use,
-            cv_bound = cfg.job.metrics.thp.cv_bound,
-            epoch = epoch,
-            name = "transition_paths"
-        )
+        if hit_mask.sum() == 0:
+            transition_path_plot_img = None
+        else:
+            hit_phi_traj_list = [phi_traj_list[i][:hit_index[i]] for i in range(len(phi_traj_list)) if hit_mask[i]]
+            hit_psi_traj_list = [psi_traj_list[i][:hit_index[i]] for i in range(len(psi_traj_list)) if hit_mask[i]]
+            transition_path_plot_img = plot_ad_potential(
+                traj_dihedral = (hit_phi_traj_list, hit_psi_traj_list),
+                start_dihedral = (phi_start, psi_start),
+                goal_dihedral = (phi_goal, psi_goal),
+                cv_bound_use = cfg.job.metrics.projection.bound_use,
+                cv_bound = cfg.job.metrics.thp.cv_bound,
+                hit_path_num = hit_path_num,
+                epoch = epoch,
+                name = "transition_paths"
+            )
         
     elif molecule == "double-well":
         device = trajectory_list.device

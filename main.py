@@ -146,19 +146,30 @@ def main(cfg):
     else:
         # Load trainined model from checkpoint
         epoch = 0
-        model_wrapper.load_from_checkpoint(f"./model/{cfg.job.molecule}/{cfg.model.name}/{cfg.training.ckpt_file}.pt")
-        model_wrapper.eval()
+        if cfg.job.generate:
+            model_wrapper.load_from_checkpoint(f"./model/{cfg.job.molecule}/{cfg.model.name}/{cfg.training.ckpt_file}.pt")
+            model_wrapper.eval()
+        else:
+            logger.info(f"Using generated trajectories from {trajectory_dir}")
 
     # Test model on downstream task (generation)
     if cfg.job.evaluate:
         logger.info("Evaluating...")
-        trajectory_list = generate(
-            cfg=cfg,
-            model_wrapper=model_wrapper,
-            epoch=epoch,
-            device=device,
-            logger=logger
-        )
+        if cfg.job.generate:
+            trajectory_list = generate(
+                cfg=cfg,
+                model_wrapper=model_wrapper,
+                epoch=epoch,
+                device=device,
+                logger=logger
+            )
+        else:
+            trajectory_dir = cfg.job.traj_dir
+            trajectory_list = []
+            for i in range(cfg.job.sample_num):
+                trajectory = np.load(f"{trajectory_dir}/{i}.npy")
+                trajectory_list.append(trajectory)
+            trajectory_list = np.array(trajectory_list)
         evaluate(
             cfg=cfg,
             model_wrapper=model_wrapper,

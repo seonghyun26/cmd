@@ -3,4 +3,4 @@ defaults:
 - data: alanine
 - training: aecv-pretrained
 - logging: baseline
-- job: steered-aldp-aecv
+- job: steered-aldp-ae

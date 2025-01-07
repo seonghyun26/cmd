@@ -46,12 +46,15 @@ def evaluate(cfg, model_wrapper, trajectory_list, logger, epoch, device):
 
 
 def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
-    # Trajectory list shape: (sample_num, time_horizon, atom_num, 3)
+    '''
+        Trajectory: torch.Tensor (sample_num, time_horizon, atom_num, 3)
+    '''
+    
     goal_state = load_state_file(cfg, cfg.job.goal_state, device)
-    goal_state = goal_state.to("cpu")
+    goal_state = goal_state.to(device)
     if isinstance(trajectory_list, np.ndarray):
         trajectory_list = torch.tensor(trajectory_list, dtype=torch.float32, device=device)
-    trajectory_list = trajectory_list.to("cpu")
+    trajectory_list = trajectory_list.to(device)
     eval_result = {}
     
     if cfg.job.metrics.thp.use:
@@ -65,6 +68,12 @@ def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
             eval_result["eval/epd"], eval_result["eval/rmsd"]  = None, None
         else:
             eval_result["eval/epd"], eval_result["eval/rmsd"]  = compute_epd(cfg, trajectory_list, goal_state, hit_mask, hit_index)
+    if cfg.job.metrics.ram.use:
+        logger.info(">> Plotting paths")
+        eval_result["eval/ram"], eval_result["eval/transition_path"] = compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch)
+    if cfg.job.metrics.projection.use:
+        logger.info(">> Plotting projected CV values")
+        eval_result["eval/projection"], eval_result["eval/state"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
     if cfg.job.metrics.energy.use:
         if hit_mask.sum() == 0:
             logger.info("No hit found, skipping energy computation")
@@ -72,12 +81,6 @@ def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
         else:
             logger.info(">> Computing Energy")
             eval_result["eval/max_energy"], eval_result["eval/final_energy"], eval_result["eval/final_energy_err"] = compute_energy(cfg, trajectory_list, goal_state, hit_mask, hit_index)
-    if cfg.job.metrics.ram.use:
-        logger.info(">> Plotting paths")
-        eval_result["eval/ram"], eval_result["eval/transition_path"] = compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch)
-    if cfg.job.metrics.projection.use:
-        logger.info(">> Plotting projected CV values")
-        eval_result["eval/projection"], eval_result["eval/state"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
     # if cfg.job.metrics.jacobian.use:
     #     logger.info(">> Computing Jacobian for mlcv against input")
     #     eval_result["eval/jacobian"] = compute_jacobian(cfg, model_wrapper, epoch)
@@ -97,6 +100,9 @@ def evaluate_cv(cfg, model_wrapper, logger, epoch, device):
     if cfg.job.metrics.projection.use:
         logger.info(">> Plotting projected CV values")
         eval_result["eval/projection"], eval_result["eval/state"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
+        # if cfg.job.metrics.jacobian.use:
+    #     logger.info(">> Computing Jacobian for mlcv against input")
+    #     eval_result["eval/jacobian"] = compute_jacobian(cfg, model_wrapper, epoch)
     
     for key in eval_result.keys():
         logger.info(f"{key}: {eval_result[key]}")
