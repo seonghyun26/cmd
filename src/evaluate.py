@@ -56,10 +56,15 @@ def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     
     if cfg.job.metrics.thp.use:
         logger.info(">> Computing THP")
-        eval_result["eval/thp"], hit_mask, eval_result["eval/hit_index"] = compute_thp(cfg, trajectory_list, goal_state)
+        eval_result["eval/thp"], hit_mask, hit_index = compute_thp(cfg, trajectory_list, goal_state)
+        # eval_result["eval/hit_index"] = hit_index.mean()
     if cfg.job.metrics.epd.use:
         logger.info(">> Computing EPD")
-        eval_result["eval/epd"], eval_result["eval/rmsd"]  = compute_epd(cfg, trajectory_list, goal_state, hit_mask, hit_index)
+        if hit_mask.sum() == 0:
+            logger.info("No hit found, skipping epd computation")
+            eval_result["eval/epd"], eval_result["eval/rmsd"]  = None, None
+        else:
+            eval_result["eval/epd"], eval_result["eval/rmsd"]  = compute_epd(cfg, trajectory_list, goal_state, hit_mask, hit_index)
     if cfg.job.metrics.energy.use:
         if hit_mask.sum() == 0:
             logger.info("No hit found, skipping energy computation")

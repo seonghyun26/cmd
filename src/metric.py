@@ -106,24 +106,75 @@ def potential_energy(cfg, trajectory):
 
 
 
+
+def compute_thp(cfg, trajectory_list, goal_state):
+    molecule = cfg.job.molecule
+    sample_num = cfg.job.sample_num
+    cv_bound = cfg.job.metrics.thp.cv_bound
+    hit_rate = 0.0
+    hit_mask = []
+    hit_index = []
+    
+    if molecule == "alanine":
+        psi_goal = compute_dihedral(goal_state[0, ALDP_PSI_ANGLE].reshape(-1, len(ALDP_PSI_ANGLE), 3))
+        phi_goal = compute_dihedral(goal_state[0, ALDP_PSI_ANGLE].reshape(-1, len(ALDP_PHI_ANGLE), 3))
+        for i in tqdm(
+            range(sample_num),
+            desc = "Computing THP for trajectories"
+        ):
+            psi = compute_dihedral(trajectory_list[i, :, ALDP_PSI_ANGLE])
+            phi = compute_dihedral(trajectory_list[i, :, ALDP_PHI_ANGLE])
+            psi_hit_distance = np.abs(psi - psi_goal)
+            phi_hit_distance = np.abs(phi - phi_goal)
+            cv_distance = np.sqrt(psi_hit_distance ** 2 + phi_hit_distance ** 2)
+            hit_in_path = (psi_hit_distance < cv_bound) & (phi_hit_distance < cv_bound)
+            hit_index_in_path = np.argmin(cv_distance)
+            if np.any(hit_mask):
+                hit_rate += 1.0
+                hit_mask.append(True)
+                hit_index.append(hit_index_in_path)
+            else:
+                hit_mask.append(False)
+                hit_index.append(-1)
+                
+        hit_rate /= sample_num
+        hit_mask = torch.tensor(hit_mask, dtype=torch.bool, device=trajectory_list.device)
+        hit_index = torch.tensor(hit_index, dtype=torch.int32, device=trajectory_list.device)
+        
+        # phi = compute_dihedral(last_state[:, ALDP_PHI_ANGLE])
+        # psi = compute_dihedral(last_state[:, ALDP_PSI_ANGLE])
+        # phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
+        # psi_goal = compute_dihedral(goal_state[:, ALDP_PSI_ANGLE])
+        # hit = (np.abs(psi - psi_goal) < cv_bound) & (np.abs(phi - phi_goal) < cv_bound)
+        # hit_rate = hit.sum() / hit.shape[0]
+    elif molecule == "double-well":
+        hit = (np.abs(last_state[:, 0] - goal_state[:, 0]) < cv_bound) & (np.abs(last_state[:, 1] - goal_state[:, 1]) < cv_bound)
+        hit_rate = torch.all(hit) / hit.shape[0]
+    else:
+        raise ValueError(f"THP for molecule {molecule} TBA")
+    
+    return hit_rate, hit_mask, hit_index
+
+
 def compute_epd(cfg, trajectory_list, goal_state, hit_mask, hit_index):
     molecule = cfg.job.molecule
     atom_num = cfg.data.atom
     unit_scale_factor = 1000
-    last_state = trajectory_list[hit_mask, -1]
+    hit_trajectory = trajectory_list[hit_mask]
     goal_state = goal_state[hit_mask]
+    epd = 0.0
     
     # Compute EPD
     if molecule == "alanine":
-        matrix_f_norm = torch.sqrt(torch.square(
-            pairwise_distance(last_state, last_state) - pairwise_distance(goal_state, goal_state)
-        ).sum((1, 2)))
-        epd = matrix_f_norm / (atom_num ** 2) * unit_scale_factor
-    # elif molecule == "double-well":
-    #     RMSD for double well
-    #     epd = torch.sqrt(torch.sum(torch.square(last_state - goal_state), dim=1)).mean()
+        for i in range(hit_trajectory.shape[0]):
+            hit_state = hit_trajectory[i, hit_index[i]]
+            matrix_f_norm = torch.sqrt(torch.square(
+                pairwise_distance(hit_state, hit_state) - pairwise_distance(goal_state, goal_state)
+            ).sum((1, 2)))
+            epd += matrix_f_norm / (atom_num ** 2) * unit_scale_factor
     else:
         raise ValueError(f"EPD for molecule {molecule} TBA")
+    epd /= hit_trajectory.shape[0]
     
     # TODO: RMSD computation for alanine
     if molecule == "alanine":
@@ -132,34 +183,8 @@ def compute_epd(cfg, trajectory_list, goal_state, hit_mask, hit_index):
     else:
         raise ValueError(f"RMSD for molecule {molecule} TBA")
     
-    return epd.mean(), rmsd
+    return epd, rmsd
 
-def compute_thp(cfg, trajectory_list, goal_state):
-    molecule = cfg.job.molecule
-    sample_num = cfg.job.sample_num
-    last_state = trajectory_list[:, -1]
-    cv_bound = cfg.job.metrics.thp.cv_bound
-    
-    if molecule == "alanine":
-        # NOTE: compute CV distance for all frames
-        # Find the frame having mimimum distance between the goal state
-        # Return hit_rate, hit_mask, hit_index
-        hit_index = 0
-        phi = compute_dihedral(last_state[:, ALDP_PHI_ANGLE])
-        psi = compute_dihedral(last_state[:, ALDP_PSI_ANGLE])
-        phi_goal = compute_dihedral(goal_state[:, ALDP_PHI_ANGLE])
-        psi_goal = compute_dihedral(goal_state[:, ALDP_PSI_ANGLE])
-        
-        hit = (np.abs(psi - psi_goal) < cv_bound) & (np.abs(phi - phi_goal) < cv_bound)
-        hit_rate = hit.sum() / hit.shape[0]
-    elif molecule == "double-well":
-        hit = (np.abs(last_state[:, 0] - goal_state[:, 0]) < cv_bound) & (np.abs(last_state[:, 1] - goal_state[:, 1]) < cv_bound)
-        hit_rate = torch.all(hit) / hit.shape[0]
-    else:
-        raise ValueError(f"THP for molecule {molecule} TBA")
-    hit_mask = torch.tensor(hit, dtype=torch.bool)
-    
-    return hit_rate, hit_mask, hit_index
 
 def compute_energy(cfg, trajectory_list, goal_state, hit_mask, hit_index):
     molecule = cfg.job.molecule

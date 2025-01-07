@@ -54,7 +54,9 @@
         "++logging.wandb=False",
         "++training.train=False",
         "++training.ckpt_file=1226-093625",
-        "++job.name=cv"
+        "++job.name=tps",
+        "++job.sample_num=10",
+        "++job.simulation.time_horizon=20",
       ],
       "console": "integratedTerminal"
   }
