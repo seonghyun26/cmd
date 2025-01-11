@@ -150,7 +150,7 @@ def main(cfg):
             model_wrapper.load_from_checkpoint(f"./model/{cfg.job.molecule}/{cfg.model.name}/{cfg.training.ckpt_file}.pt")
             model_wrapper.eval()
         else:
-            logger.info(f"Using generated trajectories from {trajectory_dir}")
+            logger.info(f"Using generated trajectories from {cfg.job.traj_dir}")
 
     # Test model on downstream task (generation)
     if cfg.job.evaluate:

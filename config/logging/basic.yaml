@@ -1,7 +1,7 @@
 wandb: True
 tags:
 - test
-project: cmd
+project: clcv
 entity: eddy26
 device: cuda
 checkpoint: True

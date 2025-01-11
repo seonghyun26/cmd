@@ -133,16 +133,15 @@ def plot_ad_potential(
     goal_dihedral,
     cv_bound_use,
     cv_bound,
-    hit_path_num,
     epoch,
     name
 ):
     plt.clf()
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111)
-    sample_num = len(traj_dihedral[0])
     traj_list_phi = traj_dihedral[0]
     traj_list_psi = traj_dihedral[1]
+    sample_num = len(traj_dihedral[0])
 
     # Plot the potential
     xs = np.arange(-np.pi, np.pi + 0.1, 0.1)
@@ -157,9 +156,9 @@ def plot_ad_potential(
     # Plot the trajectory
     cm = plt.get_cmap("gist_rainbow")
     ax.set_prop_cycle(
-        color=[cm(1.0 * i / sample_num) for i in range(hit_path_num)]
+        color=[cm(1.0 * i / sample_num) for i in range(sample_num)]
     )
-    for idx in range(hit_path_num):
+    for idx in range(sample_num):
         ax.plot(
             traj_list_phi[idx].cpu(),
             traj_list_psi[idx].cpu(),

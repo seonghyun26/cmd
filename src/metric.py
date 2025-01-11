@@ -252,26 +252,21 @@ def compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch):
             goal_dihedral = (phi_goal, psi_goal),
             cv_bound_use = cfg.job.metrics.projection.bound_use,
             cv_bound = cfg.job.metrics.thp.cv_bound,
-            hit_path_num = hit_path_num,
             epoch = epoch,
             name = "paths"
         )
         
-        if hit_mask.sum() == 0:
-            transition_path_plot_img = None
-        else:
-            hit_phi_traj_list = [phi_traj_list[i][:hit_index[i]] for i in range(len(phi_traj_list)) if hit_mask[i]]
-            hit_psi_traj_list = [psi_traj_list[i][:hit_index[i]] for i in range(len(psi_traj_list)) if hit_mask[i]]
-            transition_path_plot_img = plot_ad_potential(
-                traj_dihedral = (hit_phi_traj_list, hit_psi_traj_list),
-                start_dihedral = (phi_start, psi_start),
-                goal_dihedral = (phi_goal, psi_goal),
-                cv_bound_use = cfg.job.metrics.projection.bound_use,
-                cv_bound = cfg.job.metrics.thp.cv_bound,
-                hit_path_num = hit_path_num,
-                epoch = epoch,
-                name = "transition_paths"
-            )
+        hit_phi_traj_list = [phi_traj_list[i][:hit_index[i]] for i in range(len(phi_traj_list)) if hit_mask[i]]
+        hit_psi_traj_list = [psi_traj_list[i][:hit_index[i]] for i in range(len(psi_traj_list)) if hit_mask[i]]
+        transition_path_plot_img = plot_ad_potential(
+            traj_dihedral = (hit_phi_traj_list, hit_psi_traj_list),
+            start_dihedral = (phi_start, psi_start),
+            goal_dihedral = (phi_goal, psi_goal),
+            cv_bound_use = cfg.job.metrics.projection.bound_use,
+            cv_bound = cfg.job.metrics.thp.cv_bound,
+            epoch = epoch,
+            name = "transition_paths"
+        )
         
     elif molecule == "double-well":
         device = trajectory_list.device

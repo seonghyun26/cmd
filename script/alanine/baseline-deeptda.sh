@@ -12,10 +12,22 @@ cd ../../
 #     done
 # done
 
-k_list=(40 60 80)
+k_list=(10 20 40 60 80)
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-deeptda \
-        ++job.simulation.k=${k_list[$i]}
+        ++job.simulation.k=${k_list[$i]} \
+        ++job.simulation.time_horizon=500 \
+        ++training.ckpt_file=deeptda-v1
+    sleep 2
+done
+
+k_list=(10 20 40 60 80)
+for i in "${!k_list[@]}"; do
+    CUDA_VISIBLE_DEVICES=$1 python main.py \
+        --config-name steered-deeptda \
+        ++job.simulation.k=${k_list[$i]} \
+        ++job.simulation.time_horizon=500 \
+        ++training.ckpt_file=deeptda-v2
     sleep 2
 done

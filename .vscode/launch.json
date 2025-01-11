@@ -6,7 +6,7 @@
         "type": "debugpy",
         "request": "launch",
         "env": {
-          "CUDA_VISIBLE_DEVICES": "1"
+          "CUDA_VISIBLE_DEVICES": "0"
         },
         "cwd": "/home/shpark/prj-cmd/cmd/",
         "program": "main.py",
@@ -54,9 +54,8 @@
         "++logging.wandb=True",
         "++logging.tags=['debug']",
         "++training.train=False",
-        "++job.simulation.k=800000",
-        "++job.simulation.time_horizon=1000",
         "++training.ckpt_file=1230-024411",
+        "++job.sample_num=64",
       ],
       "console": "integratedTerminal"
   },
@@ -65,7 +64,7 @@
     "type": "debugpy",
     "request": "launch",
     "env": {
-      "CUDA_VISIBLE_DEVICES": "01"
+      "CUDA_VISIBLE_DEVICES": "1"
     },
     "cwd": "/home/shpark/prj-cmd/cmd/",
     "program": "main.py",
@@ -76,8 +75,6 @@
       "++logging.wandb=False",
       "++logging.tags=['debug']",
       "++training.train=False",
-      "++job.simulation.k=800000",
-      "++job.simulation.time_horizon=1000",
       "++training.ckpt_file=1230-024411",
       "++job.generate=False",
       "++job.traj_dir=/home/shpark/prj-cmd/cmd/outputs/2025-01-07/07-30-00/tps/0"

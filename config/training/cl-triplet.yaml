@@ -1,7 +1,7 @@
 train: True
 epoch: 500
 loader:
-  batch_size: 4096
+  batch_size: 16384
   shuffle: True
   num_workers: 8
   test: False
