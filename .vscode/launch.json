@@ -30,10 +30,10 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-deeptica",
+        "steered-debug",
         "hydra.run.dir=outputs/debug",
-        "++logging.wandb=True",
-        "++job.sample_num=10",
+        "++logging.wandb=False",
+        "++job.sample_num=64",
         "++job.simulation.time_horizon=1000",
       ],
       "console": "integratedTerminal"
@@ -51,11 +51,12 @@
         "--config-name",
         "contrastive-triplet",
         "hydra.run.dir=outputs/debug",
-        "++logging.wandb=True",
+        "++logging.wandb=False",
         "++logging.tags=['debug']",
         "++training.train=False",
         "++training.ckpt_file=1230-024411",
-        "++job.sample_num=64",
+        "++job.sample_num=20",
+        "++job.simulation.k=100000",
       ],
       "console": "integratedTerminal"
   },

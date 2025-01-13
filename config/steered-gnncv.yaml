@@ -1,0 +1,6 @@
+defaults:
+- model: gnncv
+- data: alanine-cl-xyz
+- training: gnncv-pretrained
+- logging: baseline
+- job: steered-aldp-gnncv

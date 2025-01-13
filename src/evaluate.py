@@ -71,7 +71,7 @@ def evaluate_tps(cfg, model_wrapper, trajectory_list, logger, epoch, device):
     if cfg.job.metrics.ram.use:
         logger.info(">> Plotting paths")
         eval_result["eval/ram"], eval_result["eval/transition_path"] = compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch)
-    if cfg.job.metrics.projection.use:
+    if cfg.job.metrics.projection.use and cfg.model.name not in ["rmsd", "torsion"]:
         logger.info(">> Plotting projected CV values")
         eval_result["eval/projection"], eval_result["eval/state"], eval_result["eval/contour"] = compute_projection(cfg, model_wrapper, epoch)
     if cfg.job.metrics.energy.use:

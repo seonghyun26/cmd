@@ -14,17 +14,39 @@ cd ../../
 #     done
 # done
 
-k_list=(10 50 100 200 400 600)
+
+
+# k_list=(700 800 900 1000 1200)
+# for i in "${!k_list[@]}"; do
+#     CUDA_VISIBLE_DEVICES=$1 python main.py \
+#         --config-name steered-deeplda \
+#         ++job.simulation.k=${k_list[$i]} \
+#         ++training.ckpt_file=deeplda-v1 
+#     sleep 2
+# done
+
+k_list=(500 600 700 800 900 1000)
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-deeplda \
         ++job.simulation.k=${k_list[$i]} \
-        ++job.simulation.time_horizon=500 \
-        ++training.ckpt_file=deeplda-v1 
+        ++training.ckpt_file=deeplda-v2 
     sleep 2
 done
 
-k_list=(10 50 100 200 400 600)
+
+
+# k_list=(800 1000 1200 1400 1600)
+# for i in "${!k_list[@]}"; do
+#     CUDA_VISIBLE_DEVICES=$1 python main.py \
+#         --config-name steered-deeplda \
+#         ++job.simulation.k=${k_list[$i]} \
+#         ++job.simulation.time_horizon=500 \
+#         ++training.ckpt_file=deeplda-v1 
+#     sleep 2
+# done
+
+k_list=(1000 1200 1400 1600 1800 2000)
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-deeplda \

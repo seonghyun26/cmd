@@ -1,0 +1,25 @@
+train: False
+ckpt_file: dummy-cvmlp
+epoch: 500
+loader:
+  batch_size: 16384
+  shuffle: True
+  num_workers: 8
+  test: False
+loss:
+  name: triplet
+  similarity: cosine
+  temperature: 1
+  reduction: mean
+  margin: 1e-12
+optimizer:
+  name: Adam
+  params: {
+    lr: 1e-4
+  }
+scheduler:
+  name: CosineAnnealingLR
+  params: {
+    T_max: 500,
+    eta_min: 1e-6
+  }

@@ -1,0 +1,22 @@
+train: False
+ckpt_file: gnncv-v1
+epoch: 0
+loader:
+  batch_size: 8192
+  shuffle: True
+  num_workers: 8
+  test: False
+loss:
+  name: pretrained
+  reduction: None
+optimizer:
+  name: Adam
+  params: {
+    lr: 1e-4
+  }
+scheduler:
+  name: CosineAnnealingLR
+  params: {
+    T_max: 200,
+    eta_min: 1e-3
+  }

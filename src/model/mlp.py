@@ -70,6 +70,12 @@ class CVMLP(nn.Module):
             self.layers.append(nn.Linear(self.params["hidden_dim"][i], self.params["hidden_dim"][i+1]))
             self.layers.append(nn.ReLU())
         self.layers.append(nn.Linear(self.params["hidden_dim"][-1], self.output_dim))
+        
+        if self.params["normalized"]:
+            class CVNormalization(nn.Module):
+                def forward(self, x):
+                    return F.normalize(x, p=2, dim=1)
+            self.layers.append(CVNormalization())
     
     def forward(self,
             x: torch.Tensor,
@@ -94,8 +100,6 @@ class CVMLP(nn.Module):
                 
         return z
 
-    
-    
 class CVMLPBN(nn.Module):
     def __init__(self, input_dim, data_dim, **kwargs):
         super(CVMLPBN, self).__init__()

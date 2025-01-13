@@ -5,6 +5,7 @@ import numpy as np
 
 from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA, AutoEncoderCV, VariationalAutoEncoderCV
 
+
 from . import *
 
 model_dict = {
@@ -20,7 +21,8 @@ model_dict = {
     "deeptica": DeepTICA,
     "aecv": AutoEncoderCV,
     "vaecv": VariationalAutoEncoderCV,
-    "betavae": VariationalAutoEncoderCVBeta
+    "betavae": VariationalAutoEncoderCVBeta,
+    "rmsd": CVMLP,
 }
 
 COLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]
@@ -69,6 +71,14 @@ class ModelWrapper(nn.Module):
             )
         elif self.model_name in COLVAR_METHODS:
             model = model_dict[self.model_name](**cfg.model.params)
+        elif self.model_name == "gnncv":
+            import mlcolvar.graph as mg
+            model = mg.cvs.GraphDeepTICA(
+                n_cvs = cfg.model.params["n_cvs"],
+                cutoff = cfg.model.params["cutoff"],
+                atomic_numbers = cfg.model.params["atomic_number"],
+                model_options = dict(cfg.model.params["model_options"]),
+            )
         elif self.model_name in model_dict.keys():
             model = model_dict[self.model_name](
                 input_dim = self._set_input_dim(cfg, self.data_dim),

@@ -1,0 +1,6 @@
+defaults:
+- model: rmsd
+- data: alanine-cl
+- training: dummy-cvmlp
+- logging: baseline
+- job: steered-aldp-rmsd

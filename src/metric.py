@@ -17,7 +17,7 @@ from .simulation import init_simulation, set_simulation
 from .plot import plot_ad_potential, plot_dw_potential, plot_ad_cv
 
 pairwise_distance = torch.cdist
-ALDP_PHI_ANGLE = [4, 6, 8, 14]
+ALDP_PHI_ANGLE = [1, 6, 8, 14]
 ALDP_PSI_ANGLE = [6, 8, 14, 16]
 
 
