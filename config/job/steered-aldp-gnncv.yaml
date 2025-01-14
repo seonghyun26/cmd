@@ -8,7 +8,7 @@ sample_num: 64
 save: True
 simulation:
   steered: True
-  k: 2000
+  k: 1000
   time_horizon: 1000
   force_type: gnncv
   friction: 0.001

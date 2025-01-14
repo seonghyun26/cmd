@@ -16,9 +16,25 @@ from ..utils import compute_dihedral, compute_dihedral_torch
 from ..simulation import load_forcefield, load_system
 
 
-MLCOLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv", "gnncv"]
+MLCOLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv"]
 ALANINE_HEAVY_ATOM_IDX = [
     1, 4, 5, 6, 8, 10, 14, 15, 16, 18
+]
+ALANINE_HEAVY_ATOM_EDGE_INDEX = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0]
+]
+ALANINE_HEAVY_ATOM_ATTRS =[
+    [1., 0., 0.],
+    [1., 0., 0.],
+    [0., 0., 1.],
+    [0., 1., 0.],
+    [1., 0., 0.],
+    [1., 0., 0.],
+    [1., 0., 0.],
+    [0., 0., 1.],
+    [0., 1., 0.],
+    [1., 0., 0.]
 ]
 
 def coordinate2distance(molecule, position):
@@ -140,7 +156,35 @@ class SteeredAlanine:
             
             # Set external forces
             current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
-            mlcv_difference = 0.5 * self.k * torch.linalg.norm(goal_mlcv - current_mlcv, ord=2)
+            mlcv_difference = 0.5 * self.k * torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
+            bias_force = torch.autograd.grad(mlcv_difference, current_position)[0].reshape(-1, 3)
+            external_force = self.simulation.system.getForce(5)
+            for i in range(bias_force.shape[0]):
+                external_force.setParticleParameters(i, i, bias_force[i])
+            external_force.updateParametersInContext(self.simulation.context)
+            
+        elif self.force_type == "gnncv":
+            # Get position
+            current_position = torch.tensor(
+                [list(p) for p in self.simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
+                dtype=torch.float32, device = self.device
+            ).reshape(-1)
+            current_position.requires_grad = True
+            from torch_geometric.data import Data
+            current_position_data = Data(
+                batch = torch.tensor([0], dtype=torch.int64, device=self.device),
+                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
+                positions = current_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
+                edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
+                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
+            )
+            current_mlcv = self.model(current_position_data)
+            start_mlcv = self.start_mlcv
+            goal_mlcv = self.goal_mlcv             
+            
+            # Set external forces
+            current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
+            mlcv_difference = 0.5 * self.k * torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
             bias_force = torch.autograd.grad(mlcv_difference, current_position)[0].reshape(-1, 3)
             external_force = self.simulation.system.getForce(5)
             for i in range(bias_force.shape[0]):
@@ -162,7 +206,10 @@ class SteeredAlanine:
             for i in range(bias_force.shape[0]):
                 external_force.setParticleParameters(i, i, bias_force[i])
             external_force.updateParametersInContext(self.simulation.context)
-
+        
+        else:
+            raise ValueError(f"Force type {self.force_type} not found")
+        
         self.simulation.step(1)
 
     def report(self):
@@ -202,6 +249,16 @@ class SteeredAlanine:
         if self.force_type in MLCOLVAR_METHODS:
             start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
             self.start_mlcv = self.model(start_heavy_atom_distance) 
+        elif self.force_type == "gnncv":
+            from torch_geometric.data import Data
+            start_position_data = Data(
+                batch = torch.tensor([0], dtype=torch.int64, device=self.device),
+                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
+                positions = start_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
+                edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
+                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
+            )
+            self.start_mlcv = self.model(start_position_data) 
         elif self.force_type == "cvmlp":
             if self.cfg.model.input == "distance":
                 start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
@@ -232,6 +289,16 @@ class SteeredAlanine:
         if self.force_type in MLCOLVAR_METHODS:
             goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
             self.goal_mlcv = self.model(goal_heavy_atom_distance) 
+        elif self.force_type == "gnncv":
+            from torch_geometric.data import Data
+            goal_position_data = Data(
+                batch = torch.tensor([0], dtype=torch.int64, device=self.device),
+                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
+                positions = goal_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
+                edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
+                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
+            )
+            self.goal_mlcv = self.model(goal_position_data) 
         elif self.force_type == "cvmlp":  
             if self.cfg.model.input == "distance":
                 goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
@@ -294,7 +361,7 @@ class SteeredAlanine:
             custom_cv_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             self.system.addForce(custom_cv_force)
         
-        elif self.force_type in MLCOLVAR_METHODS:
+        elif self.force_type in MLCOLVAR_METHODS + ["gnncv"]:
             # Get positions
             start_position = torch.tensor(
                 [list(p) for p in self.start_position.value_in_unit(unit.nanometer)],
@@ -306,42 +373,6 @@ class SteeredAlanine:
             ).reshape(-1)
             start_position.requires_grad = True
             
-            # Get leanred collective variables
-            # def position2mlcv(cfg, position):
-            #     heavy_atom_distance = coordinate2distance(cfg.job.molecule, position)
-            #     mlcv = self.model(heavy_atom_distance).cpu().detach().numpy()
-            #     return mlcv
-            # self.position2mlcv = position2mlcv
-            
-            # if self.cfg.data.input == "distance":
-            #     start_mlcv = self.position2mlcv(self.cfg, start_position)
-            #     goal_mlcv = self.position2mlcv(self.cfg, goal_position)
-            # elif self.cfg.data.input == "xyz":
-            #     start_mlcv = self.model(start_position)
-            #     goal_mlcv = self.model(goal_position)
-                
-
-            # Create custom force
-            # custom_cv_force = mm.CustomCVForce(
-            #     "0.5 * k * (mlcv - (start_mlcv + (goal_mlcv - start_mlcv) * (time / total_time)))^2 "
-            # )
-            # custom_cv_force = mm.CustomCVForce(
-            #     "0.5 * k * (mlcv - (start_mlcv + (goal_mlcv - start_mlcv) * (time / total_time)))^2 + 0.001 * dummy"
-            # )
-            
-            # v1: Collective variable
-            # custom_cv_force.addCollectiveVariable("mlcv", start_mlcv)
-            
-            # v2: add by global parameter
-            # custom_cv_force.addGlobalParameter("mlcv", start_mlcv)
-            
-            # v3: add dummy
-            # custom_cv_force.addCollectiveVariable("dummy", mm.CustomExternalForce("0"))
-            
-            # custom_cv_force.addGlobalParameter("start_mlcv", start_mlcv)
-            # custom_cv_force.addGlobalParameter("goal_mlcv", goal_mlcv)     
-            
-            # v4: external force
             external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
             external_force.addGlobalParameter("time", 0)
             external_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
@@ -351,11 +382,7 @@ class SteeredAlanine:
             for i in range(22):
                 external_force.addParticle(i, [0, 0, 0])
             self.system.addForce(external_force)          
-               
-            # Debugging
-            # print(f"Start mlcv: {start_mlcv}")
-            # print(f"Goal mlcv: {goal_mlcv}")
-            
+        
         elif self.force_type in ["cvmlp"]:
             external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
             # external_force.addGlobalParameter("k", self.k)

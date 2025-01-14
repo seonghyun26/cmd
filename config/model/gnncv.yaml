@@ -1,5 +1,5 @@
 name: gnncv
-input: xyz
+input: coordinate
 params: {
   n_cvs: 1,
   cutoff: 10,

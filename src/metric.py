@@ -20,6 +20,25 @@ pairwise_distance = torch.cdist
 ALDP_PHI_ANGLE = [4, 6, 8, 14]
 ALDP_PSI_ANGLE = [6, 8, 14, 16]
 
+ALANINE_HEAVY_ATOM_IDX = [
+    1, 4, 5, 6, 8, 10, 14, 15, 16, 18
+]
+ALANINE_HEAVY_ATOM_EDGE_INDEX = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0]
+]
+ALANINE_HEAVY_ATOM_ATTRS =[
+    [1., 0., 0.],
+    [1., 0., 0.],
+    [0., 0., 1.],
+    [0., 1., 0.],
+    [1., 0., 0.],
+    [1., 0., 0.],
+    [1., 0., 0.],
+    [0., 0., 1.],
+    [0., 1., 0.],
+    [1., 0., 0.]
+]
 
 
 def compute_dihedral(positions):
@@ -289,8 +308,11 @@ def compute_projection(cfg, model_wrapper, epoch):
     molecule = cfg.job.molecule
     device = model_wrapper.device
     
-    if molecule == "alanine":       
+    if molecule == "alanine":
         data_dir = f"{cfg.data.dir}/projection"
+        phis = np.load(f"{data_dir}/alanine_phi_list.npy")
+        psis = np.load(f"{data_dir}/alanine_psi_list.npy")   
+        
         if cfg.model.input == "distance":
             heavy_atom_distance = torch.load(f"{data_dir}/alanine_heavy_atom_distance.pt").to(device)
             if cfg.model.name in ["cvmlp", "cvmlp-bn"]:
@@ -301,15 +323,31 @@ def compute_projection(cfg, model_wrapper, epoch):
             else:
                 raise ValueError(f"Model {cfg.model.name} not found")
         elif cfg.model.input == "coordinate":
-            coordinate = torch.load(f"{data_dir}/alanine_coordinate.pt").to(device)
-            coordinate = coordinate.reshape(coordinate.shape[0], -1)
-            temperature = torch.tensor(cfg.job.simulation.temperature).repeat(coordinate.shape[0], 1).to(device)
-            projected_cv = model_wrapper.model(torch.cat([coordinate, temperature], dim=1), transformed=False)
+            if cfg.model.name in ["gnncv"]:
+                # sparsity = 10
+                from torch_geometric.data import Data
+                coordinate = torch.load(f"{data_dir}/alanine_coordinate.pt").to(device)
+                coordinate = coordinate.reshape(coordinate.shape[0], -1)
+                projected_cv = []
+                for data in tqdm(coordinate):
+                    projection_data = Data(
+                        batch = torch.zeros(1, dtype=torch.int64, device=model_wrapper.device),
+                        node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=model_wrapper.device),
+                        positions = data.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
+                        edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.int64, device=model_wrapper.device),
+                        shifts = torch.zeros(90, 3, dtype=torch.float32, device=model_wrapper.device)
+                    )
+                    projected_cv.append(model_wrapper.model(projection_data))
+                projected_cv = torch.stack(projected_cv, dim=0).reshape(coordinate.shape[0], -1)
+                # phis = phis[::sparsity]
+                # psis = psis[::sparsity]
+            else:
+                coordinate = torch.load(f"{data_dir}/alanine_coordinate.pt").to(device)
+                temperature = torch.tensor(cfg.job.simulation.temperature).repeat(coordinate.shape[0], 1).to(device)
+                projected_cv = model_wrapper.model(torch.cat([coordinate, temperature], dim=1), transformed=False)
         else:
             raise ValueError(f"Input type {cfg.model.input} not found")
-        
-        phis = np.load(f"{data_dir}/alanine_phi_list.npy")
-        psis = np.load(f"{data_dir}/alanine_psi_list.npy")
+
         
         start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
         goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz

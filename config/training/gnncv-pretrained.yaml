@@ -1,5 +1,5 @@
 train: False
-ckpt_file: gnncv-v1
+ckpt_file: gnncv-given2
 epoch: 0
 loader:
   batch_size: 8192

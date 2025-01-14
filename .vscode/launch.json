@@ -32,9 +32,9 @@
         "--config-name",
         "steered-debug",
         "hydra.run.dir=outputs/debug",
-        "++logging.wandb=False",
-        "++job.sample_num=64",
-        "++job.simulation.time_horizon=1000",
+        "++logging.wandb=True",
+        "++job.sample_num=10",
+        "++job.simulation.time_horizon=500",
       ],
       "console": "integratedTerminal"
     },

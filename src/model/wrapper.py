@@ -3,7 +3,8 @@ import torch.nn as nn
 
 import numpy as np
 
-from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA, AutoEncoderCV, VariationalAutoEncoderCV
+from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA
+from mlcolvar.cvs import AutoEncoderCV, VariationalAutoEncoderCV
 
 
 from . import *
@@ -26,8 +27,26 @@ model_dict = {
     "torsion": CVMLP,
 }
 
-COLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]
-
+MLCOLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]
+ALANINE_HEAVY_ATOM_IDX = [
+    1, 4, 5, 6, 8, 10, 14, 15, 16, 18
+]
+ALANINE_HEAVY_ATOM_EDGE_INDEX = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0]
+]
+ALANINE_HEAVY_ATOM_ATTRS =[
+    [1., 0., 0.],
+    [1., 0., 0.],
+    [0., 0., 1.],
+    [0., 1., 0.],
+    [1., 0., 0.],
+    [1., 0., 0.],
+    [1., 0., 0.],
+    [0., 0., 1.],
+    [0., 1., 0.],
+    [1., 0., 0.]
+]
 class ModelWrapper(nn.Module):
     def __init__(self, cfg, device):
         super(ModelWrapper, self).__init__()
@@ -70,7 +89,7 @@ class ModelWrapper(nn.Module):
                 n_cvs = cfg.model.params.n_cvs,
                 options = {'nn': {'activation': 'shifted_softplus'} }
             )
-        elif self.model_name in COLVAR_METHODS:
+        elif self.model_name in MLCOLVAR_METHODS:
             model = model_dict[self.model_name](**cfg.model.params)
         elif self.model_name == "gnncv":
             import mlcolvar.graph as mg
