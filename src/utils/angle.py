@@ -52,13 +52,15 @@ def compute_dihedral(
     return np.arctan2(y, x)
     
 
-def compute_dihedral_torch(positions):
+def compute_dihedral_torch(
+    positions: torch.Tensor,
+):
     """
-    Computes the dihedral angle for batches of points P1, P2, P3, P4.
-    Args:
-        positions: (bacth_size, 4, 3)
-    Returns:
-        A tensor of shape (batch_size,) containing the dihedral angles in radians.
+        Computes the dihedral angle for batches of points P1, P2, P3, P4.
+        Args:
+            positions: (bacth_size, 4, 3)
+        Returns:
+            A tensor of shape (batch_size,) containing the dihedral angles in radians.
     """
 
     P1 = positions[:, 0]

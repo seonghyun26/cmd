@@ -1,6 +1,6 @@
 defaults:
-- model: torsion
+- model: rmsd
 - data: alanine-cl
 - training: dummy-cvmlp
 - logging: baseline
-- job: steered-aldp-torsion
+- job: steered-aldp-rmsd

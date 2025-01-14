@@ -207,7 +207,9 @@ class SteeredAlanine:
                 start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
                 self.start_mlcv = self.model(torch.cat([start_heavy_atom_distance, temperature], dim=0).reshape(1, -1))
             else:
-                self.start_mlcv = self.model(torch.cat([start_position, temperature], dim=0).reshape(1, -1))    
+                self.start_mlcv = self.model(torch.cat([start_position, temperature], dim=0).reshape(1, -1))
+        elif self.force_type in ["rmsd", "torsion"]:
+            pass
         else:
             raise ValueError(f"Force type {self.force_type} not found")
         
@@ -236,15 +238,16 @@ class SteeredAlanine:
                 self.goal_mlcv = self.model(torch.cat([goal_heavy_atom_distance, temperature], dim=0).reshape(1, -1))
             else:
                 self.goal_mlcv = self.model(torch.cat([goal_position, temperature], dim=0).reshape(1, -1))
+        elif self.force_type in ["rmsd", "torsion"]:
+            pass
         else:
             raise ValueError(f"Force type {self.force_type} not found")
         
         
     def _set_custom_force(self):        
         if self.force_type == "torsion":
-            # Compute state information
-            angle_1 = [6, 8, 14, 16]
-            angle_2 = [1, 6, 8, 14]
+            ALSP_PSI_ANGLE = [6, 8, 14, 16]
+            ALDP_PHI_ANGLE = [4, 6, 8, 14]
             start_position = np.array(
                 [list(p) for p in self.start_position.value_in_unit(unit.nanometer)],
                 dtype=np.float32,
@@ -253,10 +256,10 @@ class SteeredAlanine:
                 [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
                 dtype=np.float32,
             )
-            start_psi = compute_dihedral(start_position[angle_1])
-            start_phi = compute_dihedral(start_position[angle_2])
-            goal_psi = compute_dihedral(goal_position[angle_1])
-            goal_phi = compute_dihedral(goal_position[angle_2])
+            start_psi = compute_dihedral(start_position[ALSP_PSI_ANGLE])
+            start_phi = compute_dihedral(start_position[ALDP_PHI_ANGLE])
+            goal_psi = compute_dihedral(goal_position[ALSP_PSI_ANGLE])
+            goal_phi = compute_dihedral(goal_position[ALDP_PHI_ANGLE])
 
             # Create CustomTorsionForce for phi and psi angles
             custom_cv_force = mm.CustomTorsionForce(
@@ -264,8 +267,8 @@ class SteeredAlanine:
             )
             custom_cv_force.addPerTorsionParameter("theta_start")
             custom_cv_force.addPerTorsionParameter("theta_goal")
-            custom_cv_force.addTorsion(*angle_1, [start_psi, goal_psi])
-            custom_cv_force.addTorsion(*angle_2, [start_phi, goal_phi])
+            custom_cv_force.addTorsion(*ALSP_PSI_ANGLE, [start_psi, goal_psi])
+            custom_cv_force.addTorsion(*ALDP_PHI_ANGLE, [start_phi, goal_phi])
             custom_cv_force.addGlobalParameter("k", self.k)
             custom_cv_force.addGlobalParameter("time", 0)
             custom_cv_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)

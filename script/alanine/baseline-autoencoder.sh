@@ -21,37 +21,37 @@ cd ../../
 #     sleep 2
 # done
 
-k_list=(200 250 300 350 400)
-for i in "${!k_list[@]}"; do
-    CUDA_VISIBLE_DEVICES=$1 python main.py \
-        --config-name steered-ae \
-        ++job.simulation.k=${k_list[$i]} \
-        ++training.ckpt_file=aecv-v2
-    sleep 2
-done
+# k_list=(200 250 300 350 400)
+# for i in "${!k_list[@]}"; do
+#     CUDA_VISIBLE_DEVICES=$1 python main.py \
+#         --config-name steered-ae \
+#         ++job.simulation.k=${k_list[$i]} \
+#         ++training.ckpt_file=aecv-v2
+#     sleep 2
+# done
 
-k_list=(100 150 200 250)
-for i in "${!k_list[@]}"; do
-    CUDA_VISIBLE_DEVICES=$1 python main.py \
-        --config-name steered-ae \
-        ++job.simulation.k=${k_list[$i]} \
-        ++training.ckpt_file=aecv-v3 
-    sleep 2
-done
-
-
-k_list=(300 400 500 600)
-for i in "${!k_list[@]}"; do
-    CUDA_VISIBLE_DEVICES=$1 python main.py \
-        --config-name steered-ae \
-        ++job.simulation.k=${k_list[$i]} \
-        ++job.simulation.time_horizon=500 \
-        ++training.ckpt_file=aecv-v2
-    sleep 2
-done
+# k_list=(100 150 200 250)
+# for i in "${!k_list[@]}"; do
+#     CUDA_VISIBLE_DEVICES=$1 python main.py \
+#         --config-name steered-ae \
+#         ++job.simulation.k=${k_list[$i]} \
+#         ++training.ckpt_file=aecv-v3 
+#     sleep 2
+# done
 
 
-k_list=(300 400 500 600)
+# k_list=(300 400 500 600)
+# for i in "${!k_list[@]}"; do
+#     CUDA_VISIBLE_DEVICES=$1 python main.py \
+#         --config-name steered-ae \
+#         ++job.simulation.k=${k_list[$i]} \
+#         ++job.simulation.time_horizon=500 \
+#         ++training.ckpt_file=aecv-v2
+#     sleep 2
+# done
+
+
+k_list=(20 40 60 80)
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-ae \

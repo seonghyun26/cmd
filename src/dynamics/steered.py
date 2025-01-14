@@ -161,7 +161,7 @@ class SteeredDynamics:
         # Set custom force
         if args.cv == "torsion":
             angle_1 = [6, 8, 14, 16]
-            angle_2 = [1, 6, 8, 14]
+            angle_2 = [4, 6, 8, 14]
             start_position = np.array(
                 [list(p) for p in self.position.value_in_unit(unit.nanometer)],
                 dtype=np.float32,

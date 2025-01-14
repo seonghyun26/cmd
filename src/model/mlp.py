@@ -82,10 +82,10 @@ class CVMLP(nn.Module):
             transformed: bool = False
         ) -> torch.Tensor:
         """
-        Args:
-            x (batch x representation): state, temperature
-        Returns:
-            cv (batch x 1): machined learned collective variables for given molecular configuration
+            Args:
+                x (batch x representation): state, temperature
+            Returns:
+                cv (batch x 1): machined learned collective variables for given molecular configuration
         """        
         z = x
         
@@ -116,8 +116,8 @@ class CVMLPBN(nn.Module):
         for i in range(self.params["layer_num"] - 1):
             self.layers.append(nn.Linear(self.params["hidden_dim"][i], self.params["hidden_dim"][i+1]))
             self.layers.append(nn.ReLU())
-            self.layers.append(nn.BatchNorm1d(self.params["hidden_dim"][i+1], affine=False  ))
         self.layers.append(nn.Linear(self.params["hidden_dim"][-1], self.output_dim))
+        self.layers.append(nn.BatchNorm1d(self.output_dim))
     
     def forward(self,
             x: torch.Tensor,
@@ -135,23 +135,3 @@ class CVMLPBN(nn.Module):
             z = layer(z)
         
         return z
-
-    
-    def coordinate2distance(self,
-            positions: torch.Tensor
-        ) -> torch.Tensor:
-        
-        num_heavy_atoms = 10
-        distances = []
-        
-        for position in positions:
-            heavy_atom_position = position[ALANINE_HEAVY_ATOM_IDX]
-            distance = []
-            for i in range(num_heavy_atoms):
-                for j in range(i + 1, num_heavy_atoms):
-                    distance.append(torch.norm(heavy_atom_position[i] - heavy_atom_position[j]))
-            distance = torch.stack(distance)
-            distances.append(distance)
-        distances = torch.stack(distances)
-            
-        return distances

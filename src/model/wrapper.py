@@ -23,6 +23,7 @@ model_dict = {
     "vaecv": VariationalAutoEncoderCV,
     "betavae": VariationalAutoEncoderCVBeta,
     "rmsd": CVMLP,
+    "torsion": CVMLP,
 }
 
 COLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]

@@ -1,2 +1,4 @@
-# Controllable Molecular Dynamics
+# Contrastive Learning for Collective Variables
+
+
 
