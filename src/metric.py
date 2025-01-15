@@ -315,7 +315,7 @@ def compute_projection(cfg, model_wrapper, epoch):
         
         if cfg.model.input == "distance":
             heavy_atom_distance = torch.load(f"{data_dir}/alanine_heavy_atom_distance.pt").to(device)
-            if cfg.model.name in ["cvmlp", "cvmlp-bn"]:
+            if cfg.model.name in ["cvmlp", "cvmlp-bn", "cvmlp-test"]:
                 temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
                 projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1))
             elif cfg.model.name in ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]:

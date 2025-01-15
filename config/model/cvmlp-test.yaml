@@ -1,4 +1,4 @@
-name: cvmlp
+name: cvmlp-test
 input: distance
 params: {
   hidden_dim: [32, 32, 16, 8],

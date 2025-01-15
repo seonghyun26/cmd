@@ -1,4 +1,4 @@
-from .mlp import MLP, CVMLP, CVMLPBN
+from .mlp import *
 from .egnn import EGNN
 from .sdenet import SDENet
 from .nsde import LSDE, LNSDE

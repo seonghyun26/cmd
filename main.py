@@ -81,7 +81,7 @@ def main(cfg):
                 )
                 
                 # Copmpute loss
-                if cfg.model.name in ["cvmlp", "cvmlp-bn"]:
+                if cfg.model.name in ["cvmlp", "cvmlp-bn", "cvmlp-test"]:
                     loss_dict_batch = criteria(result_dict)
                 else:
                     loss_dict_batch = criteria(next_state, current_state + result_dict["state_offset"], mu, log_var, step)
