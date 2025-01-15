@@ -4,4 +4,6 @@ params: {
   hidden_dim: [64, 64, 64, 64],
   output_dim: 4,
   residual: False,
+  normalized: False,
+  layernorm: True,
 }

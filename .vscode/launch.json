@@ -30,9 +30,10 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-debug",
+        "steered-deeplda",
         "hydra.run.dir=outputs/debug",
-        "++logging.wandb=True",
+        "++logging.wandb=False",
+        // "++job.simulation.platform=OpenCL",
         "++job.sample_num=10",
         "++job.simulation.time_horizon=500",
       ],

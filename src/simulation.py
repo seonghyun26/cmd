@@ -55,8 +55,10 @@ def init_simulation(cfg, pdb_file_path, frame=None):
         cfg_simulation.friction / femtoseconds,
         cfg_simulation.timestep * femtoseconds
     )
-    platform = Platform.getPlatformByName(cfg_simulation.platform)
-    properties = {'Precision': cfg_simulation.precision}
+    platform = openmm.Platform.getPlatformByName(cfg_simulation.platform)
+    # properties = {'Precision': cfg_simulation.precision}
+    properties = {'DeviceIndex': '0', 'Precision': cfg_simulation.precision}
+    
 
     simulation = Simulation(
         pdb.topology,

@@ -91,10 +91,16 @@ class Alanine(BaseDynamics):
             self.friction,
             self.timestep,
         )
-
         integrator.setConstraintTolerance(0.00001)
-
-        simulation = app.Simulation(pdb.topology, system, integrator)
+        platform = mm.Platform.getPlatformByName(self.cfg.job.simulation.platform)
+        properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        self.simulation = app.Simulation(
+            start_pdb.topology,
+            self.system,
+            integrator,
+            platform,
+            properties
+        )
         simulation.context.setPositions(pdb.positions)
 
         return pdb, integrator, simulation, external_force
@@ -133,9 +139,17 @@ class SteeredAlanine:
         # Set simulation
         integrator = self._new_integrator()
         integrator.setConstraintTolerance(0.00001)
-        self.simulation = app.Simulation(start_pdb.topology, self.system, integrator)
+        platform = mm.Platform.getPlatformByName(self.cfg.job.simulation.platform)
+        properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        self.simulation = app.Simulation(
+            start_pdb.topology,
+            self.system,
+            integrator,
+            platform,
+            properties
+        )
         self.simulation.context.setPositions(self.start_position)
-    
+        self.simulation.minimizeEnergy()
     
     def step(self, time):
         self.simulation.context.setParameter("time", time)
@@ -233,7 +247,15 @@ class SteeredAlanine:
     def _set_start_position(self, pdb, system):
         # Set start position
         integrator = self._new_integrator()
-        simulation = app.Simulation(pdb.topology, system, integrator)
+        platform = mm.Platform.getPlatformByName(self.cfg.job.simulation.platform)
+        properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        simulation = app.Simulation(
+            pdb.topology,
+            system,
+            integrator,
+            platform,
+            properties
+        )
         simulation.context.setPositions(pdb.positions)
         simulation.minimizeEnergy()
         self.start_position = simulation.context.getState(getPositions=True).getPositions()
@@ -273,7 +295,16 @@ class SteeredAlanine:
     def _set_goal_position(self, pdb, system):
         # Set goal position
         integrator = self._new_integrator()
-        simulation = app.Simulation(pdb.topology, system, integrator)
+        integrator = self._new_integrator()
+        platform = mm.Platform.getPlatformByName(self.cfg.job.simulation.platform)
+        properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        simulation = app.Simulation(
+            pdb.topology,
+            system,
+            integrator,
+            platform,
+            properties
+        )
         simulation.context.setPositions(pdb.positions)
         simulation.minimizeEnergy()
         self.goal_position = simulation.context.getState(getPositions=True).getPositions()
@@ -363,15 +394,15 @@ class SteeredAlanine:
         
         elif self.force_type in MLCOLVAR_METHODS + ["gnncv"]:
             # Get positions
-            start_position = torch.tensor(
-                [list(p) for p in self.start_position.value_in_unit(unit.nanometer)],
-                dtype=torch.float32, device = self.device
-            ).reshape(-1)
-            goal_position = torch.tensor(
-                [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
-                dtype=torch.float32, device = self.device
-            ).reshape(-1)
-            start_position.requires_grad = True
+            # start_position = torch.tensor(
+            #     [list(p) for p in self.start_position.value_in_unit(unit.nanometer)],
+            #     dtype=torch.float32, device = self.device
+            # ).reshape(-1)
+            # goal_position = torch.tensor(
+            #     [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
+            #     dtype=torch.float32, device = self.device
+            # ).reshape(-1)
+            # start_position.requires_grad = True
             
             external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
             external_force.addGlobalParameter("time", 0)
@@ -385,7 +416,6 @@ class SteeredAlanine:
         
         elif self.force_type in ["cvmlp"]:
             external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
-            # external_force.addGlobalParameter("k", self.k)
             external_force.addGlobalParameter("time", 0)
             external_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             external_force.addPerParticleParameter("fx")

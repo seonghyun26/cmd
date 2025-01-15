@@ -11,6 +11,7 @@ from scipy.constants import physical_constants
 class BaseDynamics(ABC):
     def __init__(self, cfg, state):
         super().__init__()
+        self.cfg = cfg
         molecule = cfg.data.molecule
         self.start_file = f"./data/{molecule}/{state}.pdb"
 
