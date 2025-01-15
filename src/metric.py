@@ -221,7 +221,7 @@ def compute_energy(cfg, trajectory_list, goal_state, hit_mask, hit_index):
             path_energy_list = []
             for trajectory in tqdm(
                 trajectory_list[hit_mask],
-                desc=f"Computing energy for {trajectory_list.shape[0]} trajectories"
+                desc=f"Computing energy for {trajectory_list[hit_mask].shape[0]} hitting trajectories"
             ):
                 # if hit_mask[traj_idx]:
                 energy_trajectory = potential_energy(cfg, trajectory)

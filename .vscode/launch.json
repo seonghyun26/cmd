@@ -20,6 +20,21 @@
         "console": "integratedTerminal"
     },
     {
+        "name": "Baseline",
+        "type": "debugpy",
+        "request": "launch",
+        "env": {
+          "CUDA_VISIBLE_DEVICES": "0"
+        },
+        "cwd": "/home/shpark/prj-cmd/base/mlcolvar-library",
+        "program": "main.py",
+        "args": [
+          "--config-name",
+          "deeptda",
+        ],
+        "console": "integratedTerminal"
+    },
+    {
       "name": "Steered MD",
       "type": "debugpy",
       "request": "launch",
@@ -56,7 +71,7 @@
         "++logging.tags=['debug']",
         "++training.train=False",
         "++training.ckpt_file=1230-024411",
-        "++job.sample_num=20",
+        "++job.sample_num=64",
         "++job.simulation.k=1000000",
       ],
       "console": "integratedTerminal"

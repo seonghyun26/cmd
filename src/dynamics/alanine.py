@@ -93,7 +93,12 @@ class Alanine(BaseDynamics):
         )
         integrator.setConstraintTolerance(0.00001)
         platform = mm.Platform.getPlatformByName(self.cfg.job.simulation.platform)
-        properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        if self.cfg.job.simulation.platform in ["CUDA", "OpenCL"]:
+            properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        elif self.cfg.job.simulation.platform == "CPU":
+            properties = {}
+        else:
+            raise ValueError(f"Platform {self.cfg.job.simulation.platform} not found")
         self.simulation = app.Simulation(
             start_pdb.topology,
             self.system,
@@ -140,7 +145,12 @@ class SteeredAlanine:
         integrator = self._new_integrator()
         integrator.setConstraintTolerance(0.00001)
         platform = mm.Platform.getPlatformByName(self.cfg.job.simulation.platform)
-        properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        if self.cfg.job.simulation.platform in ["CUDA", "OpenCL"]:
+            properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        elif self.cfg.job.simulation.platform == "CPU":
+            properties = {}
+        else:
+            raise ValueError(f"Platform {self.cfg.job.simulation.platform} not found")
         self.simulation = app.Simulation(
             start_pdb.topology,
             self.system,
@@ -248,7 +258,12 @@ class SteeredAlanine:
         # Set start position
         integrator = self._new_integrator()
         platform = mm.Platform.getPlatformByName(self.cfg.job.simulation.platform)
-        properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        if self.cfg.job.simulation.platform in ["CUDA", "OpenCL"]:
+            properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        elif self.cfg.job.simulation.platform == "CPU":
+            properties = {}
+        else:
+            raise ValueError(f"Platform {self.cfg.job.simulation.platform} not found")
         simulation = app.Simulation(
             pdb.topology,
             system,
@@ -271,6 +286,7 @@ class SteeredAlanine:
         if self.force_type in MLCOLVAR_METHODS:
             start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
             self.start_mlcv = self.model(start_heavy_atom_distance) 
+        
         elif self.force_type == "gnncv":
             from torch_geometric.data import Data
             start_position_data = Data(
@@ -281,23 +297,30 @@ class SteeredAlanine:
                 shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
             )
             self.start_mlcv = self.model(start_position_data) 
+        
         elif self.force_type == "cvmlp":
             if self.cfg.model.input == "distance":
                 start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
                 self.start_mlcv = self.model(torch.cat([start_heavy_atom_distance, temperature], dim=0).reshape(1, -1))
             else:
                 self.start_mlcv = self.model(torch.cat([start_position, temperature], dim=0).reshape(1, -1))
+        
         elif self.force_type in ["rmsd", "torsion"]:
             pass
+        
         else:
             raise ValueError(f"Force type {self.force_type} not found")
         
     def _set_goal_position(self, pdb, system):
         # Set goal position
         integrator = self._new_integrator()
-        integrator = self._new_integrator()
         platform = mm.Platform.getPlatformByName(self.cfg.job.simulation.platform)
-        properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        if self.cfg.job.simulation.platform in ["CUDA", "OpenCL"]:
+            properties = {'DeviceIndex': '0', 'Precision': self.cfg.job.simulation.precision}
+        elif self.cfg.job.simulation.platform == "CPU":
+            properties = {}
+        else:
+            raise ValueError(f"Platform {self.cfg.job.simulation.platform} not found")
         simulation = app.Simulation(
             pdb.topology,
             system,
@@ -393,17 +416,6 @@ class SteeredAlanine:
             self.system.addForce(custom_cv_force)
         
         elif self.force_type in MLCOLVAR_METHODS + ["gnncv"]:
-            # Get positions
-            # start_position = torch.tensor(
-            #     [list(p) for p in self.start_position.value_in_unit(unit.nanometer)],
-            #     dtype=torch.float32, device = self.device
-            # ).reshape(-1)
-            # goal_position = torch.tensor(
-            #     [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
-            #     dtype=torch.float32, device = self.device
-            # ).reshape(-1)
-            # start_position.requires_grad = True
-            
             external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
             external_force.addGlobalParameter("time", 0)
             external_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)

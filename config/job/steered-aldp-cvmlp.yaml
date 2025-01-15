@@ -15,7 +15,7 @@ simulation:
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]
   temperature: 300
-  platform: CUDA
+  platform: OpenCL
   precision: mixed
 metrics:
   epd:

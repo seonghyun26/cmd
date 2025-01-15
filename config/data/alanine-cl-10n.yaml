@@ -1,0 +1,7 @@
+dir: /home/shpark/prj-cmd/data
+molecule: alanine
+temperature: 300.0
+version: 10n-v1
+name: cl-distance
+atom: 22
+scale: 1
