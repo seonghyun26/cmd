@@ -161,7 +161,7 @@ class SteeredAlanine:
         self.simulation.context.setPositions(self.start_position)
         self.simulation.minimizeEnergy()
     
-    def step(self, time):
+    def step(self, time, mlcv=None, position=None):
         self.simulation.context.setParameter("time", time)
         if self.force_type in ["rmsd", "torsion"]:
             pass
@@ -217,10 +217,14 @@ class SteeredAlanine:
         
         elif self.force_type == "cvmlp":
             # Compute CV for states
-            temperature = torch.tensor(self.temperature.value_in_unit(unit.kelvin), device=self.device).unsqueeze(0)
-            current_mlcv, current_position = self._get_current_mlcv(temperature)
             start_mlcv = self.start_mlcv
             goal_mlcv = self.goal_mlcv
+            temperature = torch.tensor(self.temperature.value_in_unit(unit.kelvin), device=self.device).unsqueeze(0)
+            current_mlcv, current_position = self._get_current_mlcv(temperature)
+            # NOTE: parallel computation for model?
+            # current_position = position
+            # current_mlcv = mlcv
+            
             
             # Set external forces
             current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
@@ -449,7 +453,7 @@ class SteeredAlanine:
         ).reshape(-1)
         current_position.requires_grad = True
         if self.cfg.model.input == "distance":
-            heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
+            heavy_atom_distance = coordinate2distance(self.cfg.job.molecule, current_position)
             current_mlcv = self.model(torch.cat([heavy_atom_distance, temperature], dim=0).reshape(1, -1))
         else:
             current_mlcv = self.model(torch.cat([current_position, temperature], dim=0).reshape(1, -1))

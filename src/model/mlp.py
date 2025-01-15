@@ -140,7 +140,12 @@ class CVMLPBN(nn.Module):
 
 
 class CVMLPTEST(nn.Module):
-    def __init__(self, input_dim, data_dim, **kwargs):
+    def __init__(
+        self,
+        input_dim,
+        data_dim,
+        **kwargs
+    ):
         super(CVMLPTEST, self).__init__()
 
         self.params = kwargs
@@ -155,22 +160,23 @@ class CVMLPTEST(nn.Module):
         self.layers.append(nn.ReLU())
         for i in range(self.params["layer_num"] - 1):
             self.layers.append(nn.Linear(self.params["hidden_dim"][i], self.params["hidden_dim"][i+1]))
-            # if self.params["layernorm"] and i == self.params["layer_num"] - 2:
-                # self.layers.append(nn.LayerNorm(self.params["hidden_dim"][i+1]))
+            if self.params["layernorm"] and i == self.params["layer_num"] - 2:
+                self.layers.append(nn.LayerNorm(self.params["hidden_dim"][i+1]))
             self.layers.append(nn.ReLU())
         self.layers.append(nn.Linear(self.params["hidden_dim"][-1], self.output_dim))
-        self.layers.append(nn.LayerNorm(self.output_dim))
+        # self.layers.append(nn.LayerNorm(self.output_dim))
 
         
-        # if self.params["normalized"]:
-        #     class CVNormalization(nn.Module):
-        #         def forward(self, x):
-        #             return F.normalize(x, p=2, dim=1)
-        #     self.layers.append(CVNormalization())
+        if self.params["normalized"]:
+            class CVNormalization(nn.Module):
+                def forward(self, x):
+                    return F.normalize(x, p=2, dim=1)
+            self.layers.append(CVNormalization())
     
-    def forward(self,
-            x: torch.Tensor,
-        ) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+    ) -> torch.Tensor:
         z = x
         
         for idx, layer in enumerate(self.layers):

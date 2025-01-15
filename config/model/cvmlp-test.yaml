@@ -3,7 +3,7 @@ input: distance
 params: {
   hidden_dim: [32, 32, 16, 8],
   output_dim: 4,
-  residual: False,
-  normalized: False,
-  layernorm: True,
+  residual: True,
+  normalized: True,
+  layernorm: False,
 }

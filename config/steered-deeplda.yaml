@@ -1,6 +1,6 @@
 defaults:
 - model: deeplda
-- data: alanine
+- data: alanine-cl-10n
 - training: deeplda-pretrained
 - logging: baseline
 - job: steered-aldp-deeplda

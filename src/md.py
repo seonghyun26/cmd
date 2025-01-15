@@ -7,6 +7,10 @@ from torch.distributions import Normal
 
 from .dynamics import Alanine, SteeredAlanine
 
+ALANINE_HEAVY_ATOM_IDX = [
+    1, 4, 5, 6, 8, 10, 14, 15, 16, 18
+]
+
 class MDSimulation:
     def __init__(self, cfg, sample_num, device):
         self.device = device
@@ -104,6 +108,8 @@ class SteeredMDSimulation:
         self.start_state = cfg.job.start_state
         self.goal_state = cfg.job.goal_state
         self.sample_num = sample_num
+        self.force_type = cfg.job.simulation.force_type
+
         self._init_md_simulation_list(cfg)
 
     def _load_dynamics(self, cfg):
@@ -132,6 +138,32 @@ class SteeredMDSimulation:
         for i in range(self.sample_num):
             self.md_simulation_list[i].simulation.context.setParameter("time", time)
             self.md_simulation_list[i].step(time * self.md_simulation_list[i].timestep)
+            
+        # NOTE: parallel computation for model?
+        # temperature = torch.tensor(self.md_simulation_list[0].temperature.value_in_unit(unit.kelvin), device=self.device).unsqueeze(0)
+        # current_position_list = []
+        # currrent_state_list = []
+        # for i in range(self.sample_num):
+        #     self.md_simulation_list[i].simulation.context.setParameter("time", time)
+        #     current_position = torch.tensor(
+        #         [list(p) for p in self.md_simulation_list[i].simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
+        #         dtype=torch.float32, device = self.device
+        #     ).reshape(-1)
+        #     current_position.requires_grad = True
+        #     current_position_list.append(current_position)
+        #     if self.md_simulation_list[i].cfg.model.input == "distance":
+        #         current_state = coordinate2distance(self.md_simulation_list[i].cfg.data.molecule, current_position)
+        #     else:
+        #         current_state = current_position
+        #     currrent_state_list.append(torch.cat([current_state, temperature], dim=0))
+        # currrent_state_batch = torch.stack(currrent_state_list, dim=0)
+        # current_mlcv_batch = self.model(currrent_state_batch)
+        # for i in range(self.sample_num):
+        #     self.md_simulation_list[i].step(
+        #         time * self.md_simulation_list[i].timestep,
+        #         current_mlcv_batch[i],
+        #         current_position_list[i]
+        #         )
 
     def report(self):
         position_list = []
@@ -144,3 +176,28 @@ class SteeredMDSimulation:
     def reset(self):
         for i in range(self.sample_num):
             self.md_simulation_list[i].reset()
+            
+            
+def coordinate2distance(molecule, position):
+    '''
+        Calculates distance between heavy atoms for Deep LDA
+        input
+            - molecule (str)
+            - coordinates (torch.Tensor)
+        output
+            - distance (torch.Tensor)
+    '''
+    
+    if molecule == "alanine":
+        position = position.reshape(-1, 3)
+        heavy_atom_position = position[ALANINE_HEAVY_ATOM_IDX]
+        num_heavy_atoms = len(heavy_atom_position)
+        distance = []
+        for i in range(num_heavy_atoms):
+            for j in range(i+1, num_heavy_atoms):
+                distance.append(torch.norm(heavy_atom_position[i] - heavy_atom_position[j]))
+        distance = torch.stack(distance)
+    else:
+        raise ValueError(f"Heavy atom distance for molecule {molecule} not supported")
+    
+    return distance
