@@ -299,7 +299,7 @@ def load_simulation(cfg, sample_num, device):
     
     return simulation_list
 
-def load_steered_simulation(cfg, sample_num, model, device):
-    simulation_list = SteeredMDSimulation(cfg, sample_num, model, device)
+def load_steered_simulation(cfg, sample_num, model_wrapper):
+    simulation_list = SteeredMDSimulation(cfg, sample_num, model_wrapper)
 
     return simulation_list

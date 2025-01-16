@@ -1,5 +1,5 @@
 train: False
-ckpt_file: deeplda-v2
+ckpt_file: deeplda-10n
 epoch: 0
 loader:
   batch_size: 8192

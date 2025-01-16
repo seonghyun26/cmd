@@ -1,8 +1,0 @@
-name: simulation
-molecule: alanine
-start_state: c5
-time_horizon: 100_000_000
-sample_num: 10
-step: 1
-temperature: 300
-save: True

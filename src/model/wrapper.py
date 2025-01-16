@@ -57,8 +57,6 @@ class ModelWrapper(nn.Module):
         self.model = self.load_model(cfg).to(device)
     
     def _set_input_dim(self, cfg, data_dim):
-        input_dim = None
-        
         if cfg.data.molecule == "alanine":
             if cfg.model.input == "distance":
                 input_dim = 45 + 1
@@ -73,25 +71,22 @@ class ModelWrapper(nn.Module):
         else:
             raise ValueError(f"Molecule {cfg.data.molecule} not found")
         
-        assert input_dim is not None, f"Input dimension not set for {cfg.data.molecule}"
-        
         return input_dim
     
     def load_model(self, cfg):
-        if cfg.data.molecule in ["alanine", "chignolin"]:
-            self.data_dim = cfg.data.atom * 3
-        else:
-            raise ValueError(f"Molecule {cfg.data.molecule} not defined")
-        
+        self.data_dim = cfg.data.atom * 3
         self.model_name = cfg.model.name.lower() 
+        
         if self.model_name == "deeptica":
             model = DeepTICA(
                 layers = cfg.model.params.layers,
                 n_cvs = cfg.model.params.n_cvs,
                 options = {'nn': {'activation': 'shifted_softplus'} }
             )
+            
         elif self.model_name in MLCOLVAR_METHODS:
             model = model_dict[self.model_name](**cfg.model.params)
+            
         elif self.model_name == "gnncv":
             import mlcolvar.graph as mg
             model = mg.cvs.GraphDeepTICA(
@@ -100,12 +95,14 @@ class ModelWrapper(nn.Module):
                 atomic_numbers = cfg.model.params["atomic_number"],
                 model_options = dict(cfg.model.params["model_options"]),
             )
+        
         elif self.model_name in model_dict.keys():
             model = model_dict[self.model_name](
                 input_dim = self._set_input_dim(cfg, self.data_dim),
                 data_dim = self.data_dim,
                 **cfg.model.params
             )
+        
         else:
             raise ValueError(f"Model {self.model_name} not found")
         
@@ -121,7 +118,7 @@ class ModelWrapper(nn.Module):
         current_state: torch.Tensor,
         positive_sample: torch.Tensor,
         negative_sample: torch.Tensor,
-        temperature: torch.Tensor,
+        temperature: torch.Tensor = None,
     ) -> torch.Tensor:
         batch_size = current_state.shape[0]
         scale = self.cfg.data.scale
@@ -148,5 +145,9 @@ class ModelWrapper(nn.Module):
         result_dict["current_state_rep"] = current_state_representation
         result_dict["positive_sample_rep"] = positive_sample_representation
         result_dict["negative_sample_rep"] = negative_sample_representation
+        
+        # if "output_scale" in cfg.model:
+        #     for key in result_dict.keys():
+        #         result_dict[key] = result_dict[key] * cfg.model.output_scale
 
         return result_dict

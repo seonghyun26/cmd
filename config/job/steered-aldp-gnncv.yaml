@@ -11,6 +11,7 @@ simulation:
   k: 5000
   time_horizon: 1000
   force_type: gnncv
+  force_version: v2
   friction: 0.001
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]

@@ -111,10 +111,15 @@ class Alanine(BaseDynamics):
         return pdb, integrator, simulation, external_force
     
 class SteeredAlanine:
-    def __init__(self, cfg, model=None, device='cpu'):
+    def __init__(
+        self,
+        cfg,
+        model_wrapper,
+    ):
         self.cfg = cfg
-        self.model = model
-        self.device = device
+        self.model_wrapper = model_wrapper
+        self.model = model_wrapper.model
+        self.device = model_wrapper.device
         
         self.k = cfg.job.simulation.k
         self.temperature = cfg.job.simulation.temperature * unit.kelvin
@@ -175,12 +180,17 @@ class SteeredAlanine:
             current_position.requires_grad = True
             heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
             current_mlcv = self.model(heavy_atom_distance)
+            if "output_scale" in self.cfg.model:
+                current_mlcv = current_mlcv * self.cfg.model.output_scale
             start_mlcv = self.start_mlcv
             goal_mlcv = self.goal_mlcv             
             
             # Set external forces
-            current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
-            mlcv_difference = 0.5 * self.k * torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
+            if self.cfg.job.simulation.force_version == "v1":
+                mlcv_difference = torch.linalg.norm(goal_mlcv - current_mlcv, ord=2)
+            elif self.cfg.job.simulation.force_version == "v2":
+                current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
+                mlcv_difference = 0.5 * self.k * torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
             bias_force = torch.autograd.grad(mlcv_difference, current_position)[0].reshape(-1, 3)
             external_force = self.simulation.system.getForce(5)
             for i in range(bias_force.shape[0]):
@@ -225,10 +235,12 @@ class SteeredAlanine:
             # current_position = position
             # current_mlcv = mlcv
             
-            
             # Set external forces
-            current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
-            mlcv_difference = 0.5 * self.k * torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
+            if self.cfg.job.simulation.force_version == "v1":
+                mlcv_difference = torch.linalg.norm(goal_mlcv - current_mlcv, ord=2)
+            elif self.cfg.job.simulation.force_version == "v2":
+                current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
+                mlcv_difference = 0.5 * self.k * torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
             bias_force = torch.autograd.grad(mlcv_difference, current_position)[0].reshape(-1, 3)
             external_force = self.simulation.system.getForce(5)
             for i in range(bias_force.shape[0]):
@@ -290,6 +302,8 @@ class SteeredAlanine:
         if self.force_type in MLCOLVAR_METHODS:
             start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
             self.start_mlcv = self.model(start_heavy_atom_distance) 
+            if "output_scale" in self.cfg.model:
+                self.start_mlcv = self.start_mlcv * self.cfg.model.output_scale
         
         elif self.force_type == "gnncv":
             from torch_geometric.data import Data
@@ -347,6 +361,9 @@ class SteeredAlanine:
         if self.force_type in MLCOLVAR_METHODS:
             goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
             self.goal_mlcv = self.model(goal_heavy_atom_distance) 
+            if "output_scale" in self.cfg.model:
+                self.goal_mlcv = self.goal_mlcv * self.cfg.model.output_scale
+        
         elif self.force_type == "gnncv":
             from torch_geometric.data import Data
             goal_position_data = Data(
@@ -357,18 +374,20 @@ class SteeredAlanine:
                 shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
             )
             self.goal_mlcv = self.model(goal_position_data) 
+        
         elif self.force_type == "cvmlp":  
             if self.cfg.model.input == "distance":
                 goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
                 self.goal_mlcv = self.model(torch.cat([goal_heavy_atom_distance, temperature], dim=0).reshape(1, -1))
             else:
                 self.goal_mlcv = self.model(torch.cat([goal_position, temperature], dim=0).reshape(1, -1))
+        
         elif self.force_type in ["rmsd", "torsion"]:
             pass
+        
         else:
             raise ValueError(f"Force type {self.force_type} not found")
-        
-        
+          
     def _set_custom_force(self):        
         if self.force_type == "torsion":
             ALSP_PSI_ANGLE = [6, 8, 14, 16]
@@ -420,7 +439,14 @@ class SteeredAlanine:
             self.system.addForce(custom_cv_force)
         
         elif self.force_type in MLCOLVAR_METHODS + ["gnncv"]:
-            external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
+            if self.cfg.job.simulation.force_version == "v1":
+                external_force = mm.CustomExternalForce(" 0.5 * k * (fx*x + fy*y + fz*z) * (time / total_time) ")
+                external_force.addGlobalParameter("k", self.k)
+            elif self.cfg.job.simulation.force_version == "v2":
+                external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
+            else:
+                raise ValueError(f"Force version {self.cfg.job.simulation.force_version} not found")
+            
             external_force.addGlobalParameter("time", 0)
             external_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             external_force.addPerParticleParameter("fx")
@@ -431,7 +457,16 @@ class SteeredAlanine:
             self.system.addForce(external_force)          
         
         elif self.force_type in ["cvmlp"]:
-            external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
+            if self.cfg.job.simulation.force_version == "v1":
+                external_force = mm.CustomExternalForce(" 0.5 * k * (fx*x + fy*y + fz*z) * (time / total_time) ")
+                external_force.addGlobalParameter("k", self.k)
+            elif self.cfg.job.simulation.force_version == "v2":
+                external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
+            else:
+                raise ValueError(f"Force version {self.cfg.job.simulation.force_version} not found")
+            
+            external_force.addGlobalParameter("time", 0)
+            external_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             external_force.addGlobalParameter("time", 0)
             external_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             external_force.addPerParticleParameter("fx")

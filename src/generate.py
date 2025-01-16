@@ -20,31 +20,36 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     if task == "tps":
         inital_state = load_state_file(cfg, cfg.job.start_state, device)
         goal_state = load_state_file(cfg, cfg.job.goal_state, device)
-        steered_simulation_list = load_steered_simulation(cfg, cfg.job.sample_num, model_wrapper.model, device)
+        steered_simulation_list = load_steered_simulation(
+            cfg = cfg,
+            sample_num = cfg.job.sample_num,
+            model_wrapper = model_wrapper,
+        )
         position_list = []
         
-        # try:
-        for step in tqdm(
-            range(1, time_horizon + 1),
-            desc=f"Genearting {sample_num} trajectories for {task}",
-        ):
-            position = steered_simulation_list.report()
-            position = np.array([list(p) for p in position], dtype=np.float32)
-            position_list.append(position)
-            steered_simulation_list.step(step)
+        try:
+            for step in tqdm(
+                range(1, time_horizon + 1),
+                desc=f"Genearting {sample_num} trajectories for {task}",
+            ):
+                position = steered_simulation_list.report()
+                position = np.array([list(p) for p in position], dtype=np.float32)
+                position_list.append(position)
+                steered_simulation_list.step(step)
+            
+            if isinstance(position_list, torch.Tensor):
+                trajectory_list = torch.stack(position_list, dim=1)
+            elif isinstance(position_list, list):
+                trajectory_list = np.stack(position_list, axis=1)
+            else:
+                raise ValueError(f"Type {type(position_list)} not supported")
+            
+            if cfg.job.save:
+                save_trajectory(cfg, trajectory_list, epoch, logger)
         
-        if isinstance(position_list, torch.Tensor):
-            trajectory_list = torch.stack(position_list, dim=1)
-        elif isinstance(position_list, list):
-            trajectory_list = np.stack(position_list, axis=1)
-        else:
-            raise ValueError(f"Type {type(position_list)} not supported")
-        
-        if cfg.job.save:
-            save_trajectory(cfg, trajectory_list, epoch, logger)
-        # except Exception as e:
-        #     logger.error(f"Error in generating trajectory: {e}")
-        #     trajectory_list = None
+        except Exception as e:
+            logger.error(f"Error in generating trajectory: {e}")
+            trajectory_list = None
     
     elif task == "cv":
         trajectory_list = None

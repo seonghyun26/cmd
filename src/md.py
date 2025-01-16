@@ -101,14 +101,18 @@ class MDSimulation:
             
             
 class SteeredMDSimulation:
-    def __init__(self, cfg, sample_num, model, device):
-        self.model = model
-        self.device = device
+    def __init__(
+        self,
+        cfg,
+        sample_num,
+        model_wrapper
+        ):
         self.molecule = cfg.data.molecule
         self.start_state = cfg.job.start_state
         self.goal_state = cfg.job.goal_state
         self.sample_num = sample_num
         self.force_type = cfg.job.simulation.force_type
+        self.model_wrapper = model_wrapper
 
         self._init_md_simulation_list(cfg)
 
@@ -116,7 +120,7 @@ class SteeredMDSimulation:
         dynamics = None
         molecule = cfg.data.molecule
         if molecule == "alanine":
-            dynamics = SteeredAlanine(cfg, self.model, self.device)
+            dynamics = SteeredAlanine(cfg, self.model_wrapper)
         else:
             raise ValueError(f"Molecule {molecule} not found")
         

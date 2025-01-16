@@ -11,6 +11,7 @@ time_horizon: 500
 steered_simulation:
   k: 4000
   force_type: aecv
+  force_version: v2
   friction: 0.001
   timestep: 1
   force_field: ["amber99sbildn.xml", "tip3p.xml"]
