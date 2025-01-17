@@ -15,7 +15,7 @@
           "debug-cl",
           "hydra.run.dir=outputs/debug",
           "++logging.wandb=False",
-          "++job.simulation.time_horizon=100"
+        //   "++job.simulation.time_horizon=100"
         ],
         "console": "integratedTerminal"
     },
@@ -39,7 +39,7 @@
       "type": "debugpy",
       "request": "launch",
       "env": {
-        "CUDA_VISIBLE_DEVICES": "2"
+        "CUDA_VISIBLE_DEVICES": "1"
       },
       "cwd": "/home/shpark/prj-cmd/cmd/",
       "program": "main.py",
@@ -60,7 +60,7 @@
       "type": "debugpy",
       "request": "launch",
       "env": {
-          "CUDA_VISIBLE_DEVICES": "0"
+          "CUDA_VISIBLE_DEVICES": "1"
       },
       "cwd": "/home/shpark/prj-cmd/cmd/",
       "program": "main.py",

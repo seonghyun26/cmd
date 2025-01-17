@@ -138,12 +138,14 @@ class ModelWrapper(nn.Module):
         current_position: torch.Tensor,
         temperature: torch.Tensor = None,
     ):
+        data_num = current_position.shape[0]
+        
         if self.model_name in CLCV_METHODS:
             if self.cfg.model.input == "distance":
                 from mlcolvar.core import Normalization
                 preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
                 current_position = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
-            mlcv = self.model(torch.cat([current_position, temperature], dim=0).reshape(1, -1))
+            mlcv = self.model(torch.cat([current_position, temperature], dim=0).reshape(data_num, -1))
         
         elif self.model_name in ["deeplda", "deeptda"]:
             from mlcolvar.core import Normalization
@@ -153,9 +155,9 @@ class ModelWrapper(nn.Module):
         
         elif self.model_name == "autoencoder":
             if self.cfg.job.molecule == "alanine":
-                current_position = current_position.reshape(-1, 3)
-            backbone_atom = current_position[ALANINE_BACKBONE_ATOM_IDX]
-            backbone_atom = backbone_atom.reshape(-1)
+                current_position = current_position.reshape(data_num, -1, 3)
+            backbone_atom = current_position[:, ALANINE_BACKBONE_ATOM_IDX]
+            backbone_atom = backbone_atom.reshape(data_num, -1)
             mlcv = self.model(backbone_atom)
             
         elif self.model_name == "gnncv":
@@ -163,7 +165,7 @@ class ModelWrapper(nn.Module):
             current_position_data = Data(
                 batch = torch.tensor([0], dtype=torch.int64, device=self.device),
                 node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
-                positions = current_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
+                positions = current_position.reshape(data_num, -1, 3)[ALANINE_HEAVY_ATOM_IDX],
                 edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
                 shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
             )

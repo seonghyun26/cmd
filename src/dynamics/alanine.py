@@ -123,7 +123,7 @@ class SteeredAlanine:
         current_position = torch.tensor(
             [list(p) for p in self.simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
             dtype=torch.float32, device = self.device
-        ).reshape(-1)
+        ).reshape(1, -1)
         current_position.requires_grad = True
         
         # Compute mlcv
@@ -202,7 +202,7 @@ class SteeredAlanine:
         start_position = torch.tensor(
             [list(p) for p in self.start_position.value_in_unit(unit.nanometer)],
             dtype=torch.float32, device = self.device
-        ).reshape(-1)
+        ).reshape(1, -1)
         start_position.requires_grad = True
         self.start_mlcv = self.model_wrapper.compute_cv(start_position, temperature)
         
@@ -262,7 +262,7 @@ class SteeredAlanine:
         goal_position = torch.tensor(
             [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
             dtype=torch.float32, device = self.device
-        ).reshape(-1)
+        ).reshape(1, -1)
         goal_position.requires_grad = True
         self.goal_mlcv = self.model_wrapper.compute_cv(goal_position, temperature)
         
