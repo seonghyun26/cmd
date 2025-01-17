@@ -2,6 +2,5 @@ defaults:
 - model: cvmlp-test
 - data: alanine-cl-10n
 - training: cl-triplet
-- logging: debug-log
-# - job: cv-aldp-cvmlp
+- logging: basic
 - job: steered-aldp-cvmlp

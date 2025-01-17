@@ -103,21 +103,20 @@ class ModelWrapper(nn.Module):
         temperature: torch.Tensor = None,
     ) -> torch.Tensor:
         batch_size = current_state.shape[0]
-        scale = self.cfg.data.scale
         
         # Process input
         current_state_conditions = torch.cat([
-            current_state.reshape(batch_size, -1) * scale,
+            current_state.reshape(batch_size, -1),
             temperature.reshape(batch_size, -1)
         ], dim=1)
         current_state_representation = self.model(current_state_conditions)
         positive_sample_conditions = torch.cat([
-            positive_sample.reshape(batch_size, -1) * scale,
+            positive_sample.reshape(batch_size, -1),
             temperature.reshape(batch_size, -1)
         ], dim=1)
         positive_sample_representation = self.model(positive_sample_conditions)
         negative_sample_conditions = torch.cat([
-            negative_sample.reshape(batch_size, -1) * scale,
+            negative_sample.reshape(batch_size, -1),
             temperature.reshape(batch_size, -1)
         ], dim=1)
         negative_sample_representation = self.model(negative_sample_conditions)
@@ -128,9 +127,6 @@ class ModelWrapper(nn.Module):
         result_dict["positive_sample_rep"] = positive_sample_representation
         result_dict["negative_sample_rep"] = negative_sample_representation
         
-        # if "output_scale" in cfg.model:
-        #     for key in result_dict.keys():
-        #         result_dict[key] = result_dict[key] * cfg.model.output_scale
 
         return result_dict
     
@@ -140,18 +136,20 @@ class ModelWrapper(nn.Module):
         temperature: torch.Tensor = None,
         preprocessed_file: str = None,
     ):  
+        
         if self.model_name in CLCV_METHODS:
             if self.cfg.model.input == "distance":
-                from mlcolvar.core import Normalization
-                preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
                 if preprocessed_file is None:
-                    current_position = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
+                    from mlcolvar.core import Normalization
+                    data_num = current_position.shape[0]
+                    preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
+                    current_position = preprocess(coordinate2distance(self.cfg.job.molecule, current_position)).reshape(data_num, -1)
                 else:
                     current_position = torch.load(preprocessed_file).to(self.device)
             else:
                 raise ValueError(f"Input type {self.cfg.model.input} not found for {self.model_name}")
                 
-            mlcv = self.model(torch.cat([current_position, temperature], dim=0))
+            mlcv = self.model(torch.cat([current_position, temperature], dim=1))
         
         elif self.model_name in ["deeplda", "deeptda"]:
             from mlcolvar.core import Normalization
@@ -187,7 +185,5 @@ class ModelWrapper(nn.Module):
         else:
             raise ValueError(f"Model {self.model_name} not found")
 
-        if "output_scale" in self.cfg.model:
-            mlcv = mlcv * self.cfg.model.output_scale
 
         return mlcv

@@ -119,7 +119,7 @@ class SteeredAlanine:
         temperature = torch.tensor(
             self.temperature.value_in_unit(unit.kelvin),
             device=self.device
-        ).unsqueeze(0)
+        ).reshape(1, 1)
         current_position = torch.tensor(
             [list(p) for p in self.simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
             dtype=torch.float32, device = self.device
@@ -196,7 +196,7 @@ class SteeredAlanine:
         simulation.context.setPositions(pdb.positions)
         simulation.minimizeEnergy()
         self.start_position = simulation.context.getState(getPositions=True).getPositions()
-        temperature = torch.tensor(self.temperature.value_in_unit(unit.kelvin), device=self.device).unsqueeze(0)
+        temperature = torch.tensor(self.temperature.value_in_unit(unit.kelvin), device=self.device).reshape(1, 1)
         
         # Set start mlcv
         start_position = torch.tensor(
@@ -256,7 +256,7 @@ class SteeredAlanine:
         simulation.context.setPositions(pdb.positions)
         simulation.minimizeEnergy()
         self.goal_position = simulation.context.getState(getPositions=True).getPositions()
-        temperature = torch.tensor(self.temperature.value_in_unit(unit.kelvin), device=self.device).unsqueeze(0)
+        temperature = torch.tensor(self.temperature.value_in_unit(unit.kelvin), device=self.device).reshape(1, 1)
         
         # Set goal mlcv
         goal_position = torch.tensor(

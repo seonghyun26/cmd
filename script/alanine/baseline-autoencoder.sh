@@ -1,7 +1,7 @@
 cd ../../
 
-CUDA_VISIBLE_DEVICES=$1 python main.py \
-    --config-name steered-autoencoder
+# CUDA_VISIBLE_DEVICES=$1 python main.py \
+#     --config-name steered-autoencoder
 
 # for k in 400 300 200 100; do
 #     for sim_length in 500 1000; do
@@ -12,14 +12,13 @@ CUDA_VISIBLE_DEVICES=$1 python main.py \
 #     done
 # done
 
-# k_list=(100 200 300)
-# for i in "${!k_list[@]}"; do
-#     CUDA_VISIBLE_DEVICES=$1 python main.py \
-#         --config-name steered-ae \
-#         ++job.simulation.k=${k_list[$i]} \
-#         ++training.ckpt_file=autoencoder-v2
-#     sleep 2
-# done
+k_list=(300 400 500 600 800 1000)
+for i in "${!k_list[@]}"; do
+    CUDA_VISIBLE_DEVICES=$1 python main.py \
+        --config-name steered-autoencoder \
+        ++job.simulation.k=${k_list[$i]}
+    sleep 2
+done
 
 # k_list=(200 250 300 350 400)
 # for i in "${!k_list[@]}"; do

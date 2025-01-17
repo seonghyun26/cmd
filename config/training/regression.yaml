@@ -2,7 +2,7 @@
 batch_size: 8192
 shuffle: True
 epoch: 200
-scale: 100.0
+scale: 1
 loss:
   name: mse
   reduction: mean

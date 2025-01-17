@@ -1,7 +1,7 @@
 batch_size: 128
 shuffle: True
 epoch: 4
-scale: 100.0
+scale: 1
 step_scale: False
 state_representation: difference
 repeat: False

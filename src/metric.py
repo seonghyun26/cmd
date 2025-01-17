@@ -210,6 +210,9 @@ def compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch):
             epoch = epoch
         )
 
+    elif molecule == "chignolin":
+        raise ValueError(f"Projection for molecule {molecule} TBA...")
+    
     else:
         raise ValueError(f"Ramachandran plot for molecule {molecule} TBA...")
     

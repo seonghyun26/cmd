@@ -1,6 +1,0 @@
-name: cvmlp
-layers: 4
-hidden_dim: 16
-transform: xyz
-residual: False
-init: xavier
