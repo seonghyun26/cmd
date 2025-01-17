@@ -1,5 +1,5 @@
 name: autoencoder
-input: distance
+input: coordinate
 params: {
   encoder_layers: [24, 40, 2],
   options: {

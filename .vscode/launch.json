@@ -48,10 +48,9 @@
         "steered-autoencoder",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        "++job.simulation.force_version=v1"
-        // "++job.simulation.platform=OpenCL",
-        // "++job.sample_num=10",
-        // "++job.simulation.time_horizon=500",
+        "++job.simulation.force_version=v1",
+        "++job.sample_num=10",
+        "++job.simulation.time_horizon=100",
       ],
       "console": "integratedTerminal"
     },

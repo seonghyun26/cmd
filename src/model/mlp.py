@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn 
 import torch.nn.functional as F
 
-from ..metric import compute_phi_psi, compute_dihedral_torch
 
 
 ALANINE_HEAVY_ATOM_IDX = [

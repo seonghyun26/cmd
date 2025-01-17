@@ -269,27 +269,25 @@ def plot_ad_cv(
     goal_dihedral,
     cfg_plot
 ):
-    number_of_cvs = cv.shape[1]
-    df = pd.DataFrame(cv.cpu().detach().numpy(), columns=[f'CV{i}' for i in range(number_of_cvs)])
-    df['psi'] = psi
-    df['phi'] = phi
+    cv_dim = cv.shape[1]
+    df = pd.DataFrame({
+        **{f'CV{i}': cv[:, i] for i in range(cv_dim)},
+        'psi': psi,
+        'phi': phi
+    })
     
     # Plot the projection of CVs
     fig, axs = plt.subplots(2, 2, figsize = ( 15, 12 ) )
     axs = axs.ravel()
-    for i in range(min(number_of_cvs, 9)):
+    for i in range(min(cv_dim, 9)):
         ax = axs[i]
         df.plot.hexbin(
             'phi','psi', C=f"CV{i}",
             cmap=cfg_plot.cmap, ax=ax,
             gridsize=cfg_plot.gridsize
         )
-        ax.scatter(
-            start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=101, s=100
-        )
-        ax.scatter(
-            goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=101, s=300, marker="*"
-        )
+        ax.scatter(start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=101, s=100)
+        ax.scatter(goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=101, s=300, marker="*")
     save_plot(
         dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
         name = f"{epoch}-ad-cv.png",
@@ -300,16 +298,16 @@ def plot_ad_cv(
     # Plot the projection of CVs for meta-stable states
     fig, axs = plt.subplots(2, 2, figsize = ( 15, 12 ) )
     axs = axs.ravel()
-    for i in range(min(number_of_cvs, 9)):
+    for i in range(min(cv_dim, 9)):
         ax = axs[i]
         df_filtered = df[
             (
-                df.phi.between(left=start_dihedral[0][0]-0.5, right=start_dihedral[0][0]+0.5) &
-                df.psi.between(left=start_dihedral[1][0]-0.5, right=start_dihedral[1][0]+0.5)
+                df.phi.between(left=start_dihedral[0].item()-0.5, right=start_dihedral[0].item()+0.5) &
+                df.psi.between(left=start_dihedral[1].item()-0.5, right=start_dihedral[1].item()+0.5)
             ) |
             (
-                df.phi.between(left=goal_dihedral[0][0]-0.5, right=goal_dihedral[0][0]+0.5) &
-                df.psi.between(left=goal_dihedral[1][0]-0.5, right=goal_dihedral[1][0]+0.5)
+                df.phi.between(left=goal_dihedral[0].item()-0.5, right=goal_dihedral[0].item()+0.5) &
+                df.psi.between(left=goal_dihedral[1].item()-0.5, right=goal_dihedral[1].item()+0.5)
             )
         ]
         df_filtered.plot.hexbin(
@@ -317,12 +315,8 @@ def plot_ad_cv(
             cmap=cfg_plot.cmap, ax=ax,
             gridsize=cfg_plot.gridsize
         )
-        ax.scatter(
-            start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=101, s=100
-        )
-        ax.scatter(
-            goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=101, s=300, marker="*"
-        )
+        ax.scatter(start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=101, s=100)
+        ax.scatter(goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=101, s=300, marker="*")
         ax.set_xlim(-3.2, 3.2)
         ax.set_ylim(-3.2, 3.2)
     save_plot(

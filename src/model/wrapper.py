@@ -22,6 +22,7 @@ model_dict = {
     "deeptda": DeepTDA,
     "deeptica": DeepTICA,
     "autoencoder": AutoEncoderCV,
+    "timelag-autoencoder": AutoEncoderCV,
     "vautoencoder": VariationalAutoEncoderCV,
     "betavae": VariationalAutoEncoderCVBeta,
     "rmsd": CVMLP,
@@ -135,32 +136,44 @@ class ModelWrapper(nn.Module):
     
     def compute_cv(
         self,
-        current_position: torch.Tensor,
+        current_position: torch.Tensor = None,
         temperature: torch.Tensor = None,
-    ):
-        data_num = current_position.shape[0]
-        
+        preprocessed_file: str = None,
+    ):  
         if self.model_name in CLCV_METHODS:
             if self.cfg.model.input == "distance":
                 from mlcolvar.core import Normalization
                 preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
-                current_position = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
-            mlcv = self.model(torch.cat([current_position, temperature], dim=0).reshape(data_num, -1))
+                if preprocessed_file is None:
+                    current_position = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
+                else:
+                    current_position = torch.load(preprocessed_file).to(self.device)
+            else:
+                raise ValueError(f"Input type {self.cfg.model.input} not found for {self.model_name}")
+                
+            mlcv = self.model(torch.cat([current_position, temperature], dim=0))
         
         elif self.model_name in ["deeplda", "deeptda"]:
             from mlcolvar.core import Normalization
             preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
-            heavy_atom_distance = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
+            
+            if preprocessed_file is None:
+                heavy_atom_distance = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
+            else:
+                heavy_atom_distance = torch.load(preprocessed_file).to(self.device)
             mlcv = self.model(heavy_atom_distance)
         
         elif self.model_name == "autoencoder":
-            if self.cfg.job.molecule == "alanine":
-                current_position = current_position.reshape(data_num, -1, 3)
-            backbone_atom = current_position[:, ALANINE_BACKBONE_ATOM_IDX]
-            backbone_atom = backbone_atom.reshape(data_num, -1)
+            if preprocessed_file is not None:
+                current_position = torch.load(preprocessed_file).to(self.device)
+            
+            data_num = current_position.shape[0]
+            current_position = current_position.reshape(data_num, -1, 3)
+            backbone_atom = current_position[:, ALANINE_BACKBONE_ATOM_IDX].reshape(data_num, -1)
             mlcv = self.model(backbone_atom)
             
         elif self.model_name == "gnncv":
+            data_num = current_position.shape[0]
             from torch_geometric.data import Data
             current_position_data = Data(
                 batch = torch.tensor([0], dtype=torch.int64, device=self.device),

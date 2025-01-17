@@ -23,7 +23,10 @@ def kabsch(P, Q):
 
 
 
-def kabsch_rmsd(P, Q):
+def kabsch_rmsd(
+    P: torch.Tensor,
+    Q: torch.Tensor
+):
     centroid_P = torch.mean(P, dim=-2, keepdims=True)
     centroid_Q = torch.mean(Q, dim=-2, keepdims=True)
     p = P - centroid_P
@@ -41,7 +44,7 @@ def kabsch_rmsd(P, Q):
     t = centroid_Q - torch.matmul(centroid_P, R.transpose(-2, -1))
 
     # Calculate RMSD
-    P = torch.matmul(P, R.transpose(-2, -1)) + t
-    rmsd = (P - Q).square().sum(-1).mean(-1).sqrt()
+    P_aligned = torch.matmul(P, R.transpose(-2, -1)) + t
+    rmsd = (P_aligned - Q).square().sum(-1).mean(-1).sqrt()
     
     return rmsd
