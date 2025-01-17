@@ -1,5 +1,5 @@
 defaults:
-- model: cvmlp-one
+- model: cvmlp-test
 - data: alanine-cl-10n
 - training: cl-triplet
 - logging: debug-log

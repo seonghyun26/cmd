@@ -8,7 +8,7 @@ sample_num: 64
 save: True
 simulation:
   steered: True
-  k: 100
+  k: 300
   time_horizon: 1000
   force_type: deeptda
   force_version: v2

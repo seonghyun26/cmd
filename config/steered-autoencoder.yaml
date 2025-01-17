@@ -1,0 +1,6 @@
+defaults:
+- model: autoencoder
+- data: alanine
+- training: autoencoder-pretrained
+- logging: baseline
+- job: steered-aldp-autoencoder

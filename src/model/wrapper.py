@@ -6,8 +6,8 @@ import numpy as np
 from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA
 from mlcolvar.cvs import AutoEncoderCV, VariationalAutoEncoderCV
 
-
 from . import *
+from ..utils import *
 
 model_dict = {
     "mlp": MLP,
@@ -21,33 +21,14 @@ model_dict = {
     "deeplda": DeepLDA,
     "deeptda": DeepTDA,
     "deeptica": DeepTICA,
-    "aecv": AutoEncoderCV,
-    "vaecv": VariationalAutoEncoderCV,
+    "autoencoder": AutoEncoderCV,
+    "vautoencoder": VariationalAutoEncoderCV,
     "betavae": VariationalAutoEncoderCVBeta,
     "rmsd": CVMLP,
     "torsion": CVMLP,
 }
 
-MLCOLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]
-ALANINE_HEAVY_ATOM_IDX = [
-    1, 4, 5, 6, 8, 10, 14, 15, 16, 18
-]
-ALANINE_HEAVY_ATOM_EDGE_INDEX = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9],
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0]
-]
-ALANINE_HEAVY_ATOM_ATTRS =[
-    [1., 0., 0.],
-    [1., 0., 0.],
-    [0., 0., 1.],
-    [0., 1., 0.],
-    [1., 0., 0.],
-    [1., 0., 0.],
-    [1., 0., 0.],
-    [0., 0., 1.],
-    [0., 1., 0.],
-    [1., 0., 0.]
-]
+
 class ModelWrapper(nn.Module):
     def __init__(self, cfg, device):
         super(ModelWrapper, self).__init__()
@@ -151,3 +132,47 @@ class ModelWrapper(nn.Module):
         #         result_dict[key] = result_dict[key] * cfg.model.output_scale
 
         return result_dict
+    
+    def compute_cv(
+        self,
+        current_position: torch.Tensor,
+        temperature: torch.Tensor = None,
+    ):
+        if self.model_name in CLCV_METHODS:
+            if self.cfg.model.input == "distance":
+                from mlcolvar.core import Normalization
+                preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
+                current_position = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
+            mlcv = self.model(torch.cat([current_position, temperature], dim=0).reshape(1, -1))
+        
+        elif self.model_name in ["deeplda", "deeptda"]:
+            from mlcolvar.core import Normalization
+            preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
+            heavy_atom_distance = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
+            mlcv = self.model(heavy_atom_distance)
+        
+        elif self.model_name == "autoencoder":
+            if self.cfg.job.molecule == "alanine":
+                current_position = current_position.reshape(-1, 3)
+            backbone_atom = current_position[ALANINE_BACKBONE_ATOM_IDX]
+            backbone_atom = backbone_atom.reshape(-1)
+            mlcv = self.model(backbone_atom)
+            
+        elif self.model_name == "gnncv":
+            from torch_geometric.data import Data
+            current_position_data = Data(
+                batch = torch.tensor([0], dtype=torch.int64, device=self.device),
+                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
+                positions = current_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
+                edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
+                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
+            )
+            mlcv = self.model(current_position_data)
+        
+        else:
+            raise ValueError(f"Model {self.model_name} not found")
+
+        if "output_scale" in self.cfg.model:
+            mlcv = mlcv * self.cfg.model.output_scale
+
+        return mlcv

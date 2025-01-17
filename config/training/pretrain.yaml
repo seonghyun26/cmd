@@ -1,5 +1,5 @@
 train: False
-ckpt_file: aecv-v1
+ckpt_file: autoencoder-v1
 batch_size: 8192
 shuffle: True
 epoch: 0

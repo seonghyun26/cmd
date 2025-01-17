@@ -30,7 +30,7 @@
         "program": "main.py",
         "args": [
           "--config-name",
-          "deeptda",
+          "autoencoder",
         ],
         "console": "integratedTerminal"
     },
@@ -45,9 +45,10 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-deeptda",
+        "steered-autoencoder",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
+        "++job.simulation.force_version=v1"
         // "++job.simulation.platform=OpenCL",
         // "++job.sample_num=10",
         // "++job.simulation.time_horizon=500",

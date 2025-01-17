@@ -1,5 +1,5 @@
 train: False
-ckpt_file: vaecv-beta-v2
+ckpt_file: vautoencoder-beta-v2
 epoch: 0
 loader:
   batch_size: 8192

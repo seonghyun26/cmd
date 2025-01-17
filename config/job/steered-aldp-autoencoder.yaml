@@ -10,7 +10,7 @@ simulation:
   steered: True
   k: 200
   time_horizon: 1000
-  force_type: aecv
+  force_type: autoencoder
   force_version: v2
   friction: 0.001
   timestep: 1

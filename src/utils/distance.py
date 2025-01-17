@@ -1,13 +1,17 @@
 import torch
 
-
-ALANINE_HEAVY_ATOM_IDX = [
-    1, 4, 5, 6, 8, 10, 14, 15, 16, 18
-]
-
+from .constant import ALANINE_HEAVY_ATOM_IDX
 
 def coordinate2distance(molecule, position):
-
+    '''
+        Calculates distance between heavy atoms for Deep LDA
+        input
+            - molecule (str)
+            - coordinates (torch.Tensor)
+        output
+            - distance (torch.Tensor)
+    '''
+    
     if molecule == "alanine":
         position = position.reshape(-1, 3)
         heavy_atom_position = position[ALANINE_HEAVY_ATOM_IDX]
@@ -17,6 +21,10 @@ def coordinate2distance(molecule, position):
             for j in range(i+1, num_heavy_atoms):
                 distance.append(torch.norm(heavy_atom_position[i] - heavy_atom_position[j]))
         distance = torch.stack(distance)
+    
+    elif molecule == "chignolin":
+        raise NotImplementedError("Will be implemented later")
+    
     else:
         raise ValueError(f"Heavy atom distance for molecule {molecule} not supported")
     

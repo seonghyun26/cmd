@@ -1,6 +1,0 @@
-defaults:
-- model: cvmlp
-- data: alanine-distance
-- training: contrastive-nce
-- logging: basic
-- job: steered-aldp-cvmlp

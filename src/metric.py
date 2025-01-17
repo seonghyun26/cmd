@@ -320,7 +320,7 @@ def compute_projection(cfg, model_wrapper, epoch):
                 temperature = torch.tensor(cfg.job.simulation.temperature).repeat(heavy_atom_distance.shape[0], 1).to(device)
                 projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1))
             
-            elif cfg.model.name in ["deeplda", "deeptda", "deeptica", "aecv", "vaecv", "beta-vae"]:
+            elif cfg.model.name in ["deeplda", "deeptda", "deeptica", "autoencoder", "vautoencoder", "beta-vae"]:
                 projected_cv = model_wrapper.model(heavy_atom_distance)
                 if "output_scale" in cfg.model:
                     projected_cv = projected_cv * cfg.model.output_scale

@@ -1,6 +1,0 @@
-defaults:
-- model: cvmlp-one
-- data: alanine-cl
-- training: cl-triplet
-- logging: basic
-- job: steered-aldp-cvmlp

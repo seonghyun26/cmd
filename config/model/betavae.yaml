@@ -1,4 +1,4 @@
-name: vaecv
+name: vautoencoder
 input: distance
 params: {
   n_cvs: 1,

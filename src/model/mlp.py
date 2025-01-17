@@ -165,13 +165,15 @@ class CVMLPTEST(nn.Module):
             self.layers.append(nn.ReLU())
         self.layers.append(nn.Linear(self.params["hidden_dim"][-1], self.output_dim))
         # self.layers.append(nn.LayerNorm(self.output_dim))
-
         
-        if self.params["normalized"]:
-            class CVNormalization(nn.Module):
-                def forward(self, x):
-                    return F.normalize(x, p=2, dim=1)
-            self.layers.append(CVNormalization())
+        if self.params["tanh"]:
+            self.layers.append(nn.Tanh())
+        
+        # if self.params["normalized"]:
+        #     class CVNormalization(nn.Module):
+        #         def forward(self, x):
+        #             return F.normalize(x, p=2, dim=1)
+        #     self.layers.append(CVNormalization())
     
     def forward(
         self,
@@ -180,7 +182,7 @@ class CVMLPTEST(nn.Module):
         z = x
         
         for idx, layer in enumerate(self.layers):
-            if self.residual and idx % 2 == 0 and idx > 2:
+            if self.residual and idx % 2 == 0 and idx > 2 and idx < 6:
                 z_input = z
                 z = layer(z)
                 z = z + z_input

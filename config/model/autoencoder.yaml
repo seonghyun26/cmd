@@ -1,13 +1,13 @@
-name: aecv
+name: autoencoder
 input: distance
 params: {
-  encoder_layers: [45, 10, 10, 4],
+  encoder_layers: [24, 40, 2],
   options: {
     encoder: {
-      activation: "relu"
+      activation: "tanh"
     },
     decoder: {
-      activation: "relu"
+      activation: "tanh"
     },
     norm_in: {
     }

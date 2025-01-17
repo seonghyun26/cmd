@@ -1,4 +1,4 @@
-name: aecv
+name: autoencoder
 params: {
   encoder_layers: [45, 10, 10, 1],
   options: {

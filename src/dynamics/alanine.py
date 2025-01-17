@@ -7,59 +7,10 @@ import openmm.unit as unit
 
 from openmm import app
 from openmmtools.integrators import VVVRIntegrator
-# from openmmtorch import TorchForce
-
 
 from .base import BaseDynamics
-from ..utils import kabsch_rmsd
-from ..utils import compute_dihedral, compute_dihedral_torch
+from ..utils import *
 from ..simulation import load_forcefield, load_system
-
-
-MLCOLVAR_METHODS = ["deeplda", "deeptda", "deeptica", "aecv"]
-ALANINE_HEAVY_ATOM_IDX = [
-    1, 4, 5, 6, 8, 10, 14, 15, 16, 18
-]
-ALANINE_HEAVY_ATOM_EDGE_INDEX = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9],
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0]
-]
-ALANINE_HEAVY_ATOM_ATTRS =[
-    [1., 0., 0.],
-    [1., 0., 0.],
-    [0., 0., 1.],
-    [0., 1., 0.],
-    [1., 0., 0.],
-    [1., 0., 0.],
-    [1., 0., 0.],
-    [0., 0., 1.],
-    [0., 1., 0.],
-    [1., 0., 0.]
-]
-
-def coordinate2distance(molecule, position):
-    '''
-        Calculates distance between heavy atoms for Deep LDA
-        input
-            - molecule (str)
-            - coordinates (torch.Tensor)
-        output
-            - distance (torch.Tensor)
-    '''
-    
-    if molecule == "alanine":
-        position = position.reshape(-1, 3)
-        heavy_atom_position = position[ALANINE_HEAVY_ATOM_IDX]
-        num_heavy_atoms = len(heavy_atom_position)
-        distance = []
-        for i in range(num_heavy_atoms):
-            for j in range(i+1, num_heavy_atoms):
-                distance.append(torch.norm(heavy_atom_position[i] - heavy_atom_position[j]))
-        distance = torch.stack(distance)
-    else:
-        raise ValueError(f"Heavy atom distance for molecule {molecule} not supported")
-    
-    return distance
 
 
 class Alanine(BaseDynamics):
@@ -128,10 +79,6 @@ class SteeredAlanine:
         self.molecule = cfg.job.molecule
         self.time_horizon = cfg.job.simulation.time_horizon
         self.force_type = cfg.job.simulation.force_type
-
-        if self.force_type in MLCOLVAR_METHODS or self.force_type == "cvmlp":
-            from mlcolvar.core import Normalization
-            self.preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
         
         # Load pdb files
         start_pdb = app.PDBFile(f"./data/{self.molecule}/{cfg.job.start_state}.pdb")
@@ -167,80 +114,39 @@ class SteeredAlanine:
         self.simulation.minimizeEnergy()
     
     def step(self, time, mlcv=None, position=None):
+        # Set & get simulation information
         self.simulation.context.setParameter("time", time)
+        temperature = torch.tensor(
+            self.temperature.value_in_unit(unit.kelvin),
+            device=self.device
+        ).unsqueeze(0)
+        current_position = torch.tensor(
+            [list(p) for p in self.simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
+            dtype=torch.float32, device = self.device
+        ).reshape(-1)
+        current_position.requires_grad = True
+        
+        # Compute mlcv
+        current_mlcv = self.model_wrapper.compute_cv(
+            current_position = current_position,
+            temperature = temperature
+        )
+        start_mlcv = self.start_mlcv
+        goal_mlcv = self.goal_mlcv
+        
         if self.force_type in ["rmsd", "torsion"]:
             pass
         
-        elif self.force_type in MLCOLVAR_METHODS:
-            # Get position
-            current_position = torch.tensor(
-                [list(p) for p in self.simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
-                dtype=torch.float32, device = self.device
-            ).reshape(-1)
-            current_position.requires_grad = True
-            heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
-            current_mlcv = self.model(heavy_atom_distance)
-            if "output_scale" in self.cfg.model:
-                current_mlcv = current_mlcv * self.cfg.model.output_scale
-            start_mlcv = self.start_mlcv
-            goal_mlcv = self.goal_mlcv             
-            
-            # Set external forces
+        elif self.force_type in MLCOLVAR_METHODS or CLCV_METHODS:
             if self.cfg.job.simulation.force_version == "v1":
                 mlcv_difference = torch.linalg.norm(goal_mlcv - current_mlcv, ord=2)
             elif self.cfg.job.simulation.force_version == "v2":
                 current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
                 mlcv_difference = 0.5 * self.k * torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
-            bias_force = torch.autograd.grad(mlcv_difference, current_position)[0].reshape(-1, 3)
-            external_force = self.simulation.system.getForce(5)
-            for i in range(bias_force.shape[0]):
-                external_force.setParticleParameters(i, i, bias_force[i])
-            external_force.updateParametersInContext(self.simulation.context)
-            
-        elif self.force_type == "gnncv":
-            # Get position
-            current_position = torch.tensor(
-                [list(p) for p in self.simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
-                dtype=torch.float32, device = self.device
-            ).reshape(-1)
-            current_position.requires_grad = True
-            from torch_geometric.data import Data
-            current_position_data = Data(
-                batch = torch.tensor([0], dtype=torch.int64, device=self.device),
-                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
-                positions = current_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
-                edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
-                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
-            )
-            current_mlcv = self.model(current_position_data)
-            start_mlcv = self.start_mlcv
-            goal_mlcv = self.goal_mlcv             
-            
-            # Set external forces
-            current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
-            mlcv_difference = 0.5 * self.k * torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
-            bias_force = torch.autograd.grad(mlcv_difference, current_position)[0].reshape(-1, 3)
-            external_force = self.simulation.system.getForce(5)
-            for i in range(bias_force.shape[0]):
-                external_force.setParticleParameters(i, i, bias_force[i])
-            external_force.updateParametersInContext(self.simulation.context)
-        
-        elif self.force_type == "cvmlp":
-            # Compute CV for states
-            start_mlcv = self.start_mlcv
-            goal_mlcv = self.goal_mlcv
-            temperature = torch.tensor(self.temperature.value_in_unit(unit.kelvin), device=self.device).unsqueeze(0)
-            current_mlcv, current_position = self._get_current_mlcv(temperature)
-            # NOTE: parallel computation for model?
-            # current_position = position
-            # current_mlcv = mlcv
-            
-            # Set external forces
-            if self.cfg.job.simulation.force_version == "v1":
-                mlcv_difference = torch.linalg.norm(goal_mlcv - current_mlcv, ord=2)
-            elif self.cfg.job.simulation.force_version == "v2":
+            elif self.cfg.job.simulation.force_version == "v3":
                 current_target_mlcv = start_mlcv + (goal_mlcv - start_mlcv) * (time / self.time_horizon).value_in_unit(unit.femtosecond)
-                mlcv_difference = 0.5 * self.k * torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
+                mlcv_difference = torch.linalg.norm(current_target_mlcv - current_mlcv, ord=2)
+            
             bias_force = torch.autograd.grad(mlcv_difference, current_position)[0].reshape(-1, 3)
             external_force = self.simulation.system.getForce(5)
             for i in range(bias_force.shape[0]):
@@ -298,36 +204,37 @@ class SteeredAlanine:
             dtype=torch.float32, device = self.device
         ).reshape(-1)
         start_position.requires_grad = True
+        self.start_mlcv = self.model_wrapper.compute_cv(start_position, temperature)
         
-        if self.force_type in MLCOLVAR_METHODS:
-            start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
-            self.start_mlcv = self.model(start_heavy_atom_distance) 
-            if "output_scale" in self.cfg.model:
-                self.start_mlcv = self.start_mlcv * self.cfg.model.output_scale
+        # if self.force_type in MLCOLVAR_METHODS:
+        #     start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
+        #     self.start_mlcv = self.model_wrapper.compute_cv(start_heavy_atom_distance) 
+        #     if "output_scale" in self.cfg.model:
+        #         self.start_mlcv = self.start_mlcv * self.cfg.model.output_scale
         
-        elif self.force_type == "gnncv":
-            from torch_geometric.data import Data
-            start_position_data = Data(
-                batch = torch.tensor([0], dtype=torch.int64, device=self.device),
-                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
-                positions = start_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
-                edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
-                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
-            )
-            self.start_mlcv = self.model(start_position_data) 
+        # elif self.force_type == "gnncv":
+        #     from torch_geometric.data import Data
+        #     start_position_data = Data(
+        #         batch = torch.tensor([0], dtype=torch.int64, device=self.device),
+        #         node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
+        #         positions = start_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
+        #         edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
+        #         shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
+        #     )
+        #     self.start_mlcv = self.model_wrapper.compute_cv(start_position_data) 
         
-        elif self.force_type == "cvmlp":
-            if self.cfg.model.input == "distance":
-                start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
-                self.start_mlcv = self.model(torch.cat([start_heavy_atom_distance, temperature], dim=0).reshape(1, -1))
-            else:
-                self.start_mlcv = self.model(torch.cat([start_position, temperature], dim=0).reshape(1, -1))
+        # elif self.force_type == "cvmlp":
+        #     if self.cfg.model.input == "distance":
+        #         start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
+        #         self.start_mlcv = self.model_wrapper.compute_cv(torch.cat([start_heavy_atom_distance, temperature], dim=0).reshape(1, -1))
+        #     else:
+        #         self.start_mlcv = self.model_wrapper.compute_cv(torch.cat([start_position, temperature], dim=0).reshape(1, -1))
         
-        elif self.force_type in ["rmsd", "torsion"]:
-            pass
+        # elif self.force_type in ["rmsd", "torsion"]:
+        #     pass
         
-        else:
-            raise ValueError(f"Force type {self.force_type} not found")
+        # else:
+        #     raise ValueError(f"Force type {self.force_type} not found")
         
     def _set_goal_position(self, pdb, system):
         # Set goal position
@@ -357,36 +264,38 @@ class SteeredAlanine:
             dtype=torch.float32, device = self.device
         ).reshape(-1)
         goal_position.requires_grad = True
+        self.goal_mlcv = self.model_wrapper.compute_cv(goal_position, temperature)
         
-        if self.force_type in MLCOLVAR_METHODS:
-            goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
-            self.goal_mlcv = self.model(goal_heavy_atom_distance) 
-            if "output_scale" in self.cfg.model:
-                self.goal_mlcv = self.goal_mlcv * self.cfg.model.output_scale
         
-        elif self.force_type == "gnncv":
-            from torch_geometric.data import Data
-            goal_position_data = Data(
-                batch = torch.tensor([0], dtype=torch.int64, device=self.device),
-                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
-                positions = goal_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
-                edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
-                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
-            )
-            self.goal_mlcv = self.model(goal_position_data) 
+        # if self.force_type in MLCOLVAR_METHODS:
+        #     goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
+        #     self.goal_mlcv = self.model_wrapper.compute_cv(goal_heavy_atom_distance) 
+        #     if "output_scale" in self.cfg.model:
+        #         self.goal_mlcv = self.goal_mlcv * self.cfg.model.output_scale
         
-        elif self.force_type == "cvmlp":  
-            if self.cfg.model.input == "distance":
-                goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
-                self.goal_mlcv = self.model(torch.cat([goal_heavy_atom_distance, temperature], dim=0).reshape(1, -1))
-            else:
-                self.goal_mlcv = self.model(torch.cat([goal_position, temperature], dim=0).reshape(1, -1))
+        # elif self.force_type == "gnncv":
+        #     from torch_geometric.data import Data
+        #     goal_position_data = Data(
+        #         batch = torch.tensor([0], dtype=torch.int64, device=self.device),
+        #         node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
+        #         positions = goal_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
+        #         edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
+        #         shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
+        #     )
+        #     self.goal_mlcv = self.model_wrapper.compute_cv(goal_position_data) 
         
-        elif self.force_type in ["rmsd", "torsion"]:
-            pass
+        # elif self.force_type == "cvmlp":  
+        #     if self.cfg.model.input == "distance":
+        #         goal_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, goal_position))
+        #         self.goal_mlcv = self.model_wrapper.compute_cv(torch.cat([goal_heavy_atom_distance, temperature], dim=0).reshape(1, -1))
+        #     else:
+        #         self.goal_mlcv = self.model_wrapper.compute_cv(torch.cat([goal_position, temperature], dim=0).reshape(1, -1))
         
-        else:
-            raise ValueError(f"Force type {self.force_type} not found")
+        # elif self.force_type in ["rmsd", "torsion"]:
+        #     pass
+        
+        # else:
+        #     raise ValueError(f"Force type {self.force_type} not found")
           
     def _set_custom_force(self):        
         if self.force_type == "torsion":
@@ -444,6 +353,9 @@ class SteeredAlanine:
                 external_force.addGlobalParameter("k", self.k)
             elif self.cfg.job.simulation.force_version == "v2":
                 external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
+            elif self.cfg.job.simulation.force_version == "v3":
+                external_force = mm.CustomExternalForce(" 0.5 * k * (fx*x + fy*y + fz*z) ")
+                external_force.addGlobalParameter("k", self.k)
             else:
                 raise ValueError(f"Force version {self.cfg.job.simulation.force_version} not found")
             
@@ -456,7 +368,7 @@ class SteeredAlanine:
                 external_force.addParticle(i, [0, 0, 0])
             self.system.addForce(external_force)          
         
-        elif self.force_type in ["cvmlp"]:
+        elif self.force_type in CLCV_METHODS:
             if self.cfg.job.simulation.force_version == "v1":
                 external_force = mm.CustomExternalForce(" 0.5 * k * (fx*x + fy*y + fz*z) * (time / total_time) ")
                 external_force.addGlobalParameter("k", self.k)
@@ -465,8 +377,6 @@ class SteeredAlanine:
             else:
                 raise ValueError(f"Force version {self.cfg.job.simulation.force_version} not found")
             
-            external_force.addGlobalParameter("time", 0)
-            external_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             external_force.addGlobalParameter("time", 0)
             external_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             external_force.addPerParticleParameter("fx")
@@ -480,18 +390,4 @@ class SteeredAlanine:
             raise ValueError(f"Force type {self.force_type} not found")
         
         return
-    
-    def _get_current_mlcv(self, temperature):
-        current_position = torch.tensor(
-            [list(p) for p in self.simulation.context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)],
-            dtype=torch.float32, device = self.device
-        ).reshape(-1)
-        current_position.requires_grad = True
-        if self.cfg.model.input == "distance":
-            heavy_atom_distance = coordinate2distance(self.cfg.job.molecule, current_position)
-            current_mlcv = self.model(torch.cat([heavy_atom_distance, temperature], dim=0).reshape(1, -1))
-        else:
-            current_mlcv = self.model(torch.cat([current_position, temperature], dim=0).reshape(1, -1))
-        
-        return current_mlcv, current_position
     
