@@ -25,12 +25,11 @@ cd ../../
 #     sleep 2
 # done
 
-k_list=(360 400 440 480 520 560 600)
+k_list=(180 160 140 120 100 300 320 340 360)
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-deeplda \
-        ++job.simulation.k=${k_list[$i]} \
-        ++data.version=250n-v1
+        ++job.simulation.k=${k_list[$i]} 
     sleep 2
 done
 

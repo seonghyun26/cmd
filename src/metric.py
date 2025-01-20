@@ -223,6 +223,10 @@ def compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch):
 def compute_projection(cfg, model_wrapper, epoch):
     molecule = cfg.job.molecule
     device = model_wrapper.device
+    if cfg.model.name in CLCV_METHODS:
+        cv_dim = cfg.model["params"].output_dim
+    else:
+        cv_dim = 1
     
     if molecule == "alanine":
         data_dir = f"{cfg.data.dir}/projection/{cfg.job.molecule}/{cfg.job.metrics.projection.version}"
@@ -236,9 +240,6 @@ def compute_projection(cfg, model_wrapper, epoch):
                 preprocessed_file = heavy_atom_distance_file,
                 temperature = temperature,
             )
-            # if cfg.model.name in ["cvmlp", "cvmlp-bn", "cvmlp-test"]:
-            #     projected_cv = model_wrapper.model(torch.cat([heavy_atom_distance, temperature], dim=1))
-            
             # elif cfg.model.name in ["deeplda", "deeptda", "deeptica", "autoencoder", "vautoencoder", "beta-vae"]:
             #     projected_cv = model_wrapper.model(heavy_atom_distance)
             #     if "output_scale" in cfg.model:
@@ -289,7 +290,7 @@ def compute_projection(cfg, model_wrapper, epoch):
             phi = phis,
             psi = psis,
             cv = projected_cv.cpu().detach().numpy(),
-            cv_dim = cfg.model["params"].output_dim,
+            cv_dim = cv_dim,
             epoch = epoch,
             start_dihedral = (phi_start, psi_start),
             goal_dihedral = (phi_goal, psi_goal),

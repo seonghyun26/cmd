@@ -30,7 +30,7 @@ metrics:
     use: True
   projection:
     use: True
-    version: rdkit
+    version: simulation
     gridsize: 100
     cmap: viridis
     bound_use: True

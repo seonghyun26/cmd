@@ -10,6 +10,8 @@ from torch.optim import Adam, AdamW, SGD
 from torch.optim.lr_scheduler import LambdaLR, MultiplicativeLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, _LRScheduler
 from torch.utils.data import DataLoader, random_split
 
+from mlcolvar.core.transform import Normalization
+
 from .data import *
 from .model import ModelWrapper
 from .md import MDSimulation, SteeredMDSimulation
@@ -124,6 +126,8 @@ scheduler_dict = {
 def load_data(cfg):   
     data_path = f"{cfg.data.dir}/dataset/{cfg.data.molecule}/{cfg.data.temperature}/{cfg.data.version}/{cfg.data.name}.pt"
     dataset = torch.load(f"{data_path}")
+    total_data_mean = None
+    total_data_std = None
     
     if cfg.data.molecule == "double-well":
         train_loader = DataLoader(
@@ -150,6 +154,18 @@ def load_data(cfg):
                 num_workers=cfg.training.loader.num_workers
             )
         else:
+            if cfg.data.normalize:
+                total_data = torch.cat([dataset.x, dataset.x_augmented, dataset.x_augmented_hard], dim=0)
+                total_data_mean = total_data.mean(dim=0)
+                total_data_std = total_data.std(dim=0)
+                normalization = Normalization(
+                    in_features=total_data.shape[1],
+                    mean=total_data_mean,
+                    range=total_data_std
+                )
+                dataset.x = normalization(dataset.x)
+                dataset.x_augmented = normalization(dataset.x_augmented)
+                dataset.x_augmented_hard = normalization(dataset.x_augmented_hard)
             train_loader = DataLoader(
                 dataset=dataset,
                 batch_size=cfg.training.loader.batch_size,
@@ -164,7 +180,7 @@ def load_data(cfg):
     else:
         raise ValueError(f"Molecule {cfg.data.molecule} not found")
     
-    return train_loader, test_loader
+    return train_loader, test_loader, total_data_mean, total_data_std
        
 
 def load_model_wrapper(cfg, device):

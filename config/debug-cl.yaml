@@ -4,4 +4,4 @@ defaults:
 - training: cl-loss-test
 - logging: debug-log
 # - job: cv-aldp-cvmlp
-- job: cv-aldp-cvmlp
+- job: steered-aldp-cvmlp

@@ -35,7 +35,7 @@ class TripletLoss(BaseLoss):
         self.margin = cfg.training.loss.margin
         self.temperature = cfg.training.loss.temperature
         self.reduction = torch.mean if self.cfg.training.loss.reduction == "mean" else torch.sum
-
+    
     def __call__(
         self,
         result_dict
@@ -87,6 +87,7 @@ class TripletLossNegative(BaseLoss):
     @property
     def loss_types(self):
         return ["positive", "negative", "total"]
+
 
 class TripletTorchLoss(BaseLoss):
     def __init__(self, cfg):

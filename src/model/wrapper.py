@@ -3,28 +3,25 @@ import torch.nn as nn
 
 import numpy as np
 
+from mlcolvar.core import Normalization
 from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA
-from mlcolvar.cvs import AutoEncoderCV, VariationalAutoEncoderCV
+# from mlcolvar.cvs import AutoEncoderCV, VariationalAutoEncoderCV
 
 from . import *
 from ..utils import *
 
 model_dict = {
     "mlp": MLP,
-    "egnn": EGNN,
-    "sdenet": SDENet,
-    "lsde": LSDE,
-    "lnsde": LNSDE,
     "cvmlp": CVMLP,
     # "cvmlp-bn": CVMLPBN,
     "cvmlp-test": CVMLPTEST,
     "deeplda": DeepLDA,
     "deeptda": DeepTDA,
     "deeptica": DeepTICA,
-    "autoencoder": AutoEncoderCV,
-    "timelag-autoencoder": AutoEncoderCV,
-    "vautoencoder": VariationalAutoEncoderCV,
-    "betavae": VariationalAutoEncoderCVBeta,
+    # "autoencoder": AutoEncoderCV,
+    # "timelag-autoencoder": AutoEncoderCV,
+    # "vautoencoder": VariationalAutoEncoderCV,
+    # "betavae": VariationalAutoEncoderCVBeta,
     "rmsd": CVMLP,
     "torsion": CVMLP,
 }
@@ -36,7 +33,6 @@ class ModelWrapper(nn.Module):
         
         self.cfg = cfg
         self.device = device
-        self.scale = self.cfg.data.scale
         self.model = self.load_model(cfg).to(device)
     
     def _set_input_dim(self, cfg, data_dim):
@@ -97,6 +93,13 @@ class ModelWrapper(nn.Module):
     def load_from_checkpoint(self, path):
         self.model.load_state_dict(torch.load(f"{path}"))
     
+    def set_normalization(self, mean, std):
+        self.normalization = Normalization(
+            in_features=mean.shape[0],
+            mean=mean,
+            range=std
+        ).to(self.device)
+    
     def forward(self,
         current_state: torch.Tensor,
         positive_sample: torch.Tensor,
@@ -107,17 +110,17 @@ class ModelWrapper(nn.Module):
         
         # Process input
         current_state_conditions = torch.cat([
-            current_state.reshape(batch_size, -1) * self.scale,
+            current_state.reshape(batch_size, -1),
             temperature.reshape(batch_size, -1)
         ], dim=1)
         current_state_representation = self.model(current_state_conditions)
         positive_sample_conditions = torch.cat([
-            positive_sample.reshape(batch_size, -1) * self.scale,
+            positive_sample.reshape(batch_size, -1),
             temperature.reshape(batch_size, -1)
         ], dim=1)
         positive_sample_representation = self.model(positive_sample_conditions)
         negative_sample_conditions = torch.cat([
-            negative_sample.reshape(batch_size, -1) * self.scale,
+            negative_sample.reshape(batch_size, -1),
             temperature.reshape(batch_size, -1)
         ], dim=1)
         negative_sample_representation = self.model(negative_sample_conditions)
@@ -137,33 +140,28 @@ class ModelWrapper(nn.Module):
         temperature: torch.Tensor = None,
         preprocessed_file: str = None,
     ):  
-        
-        
         if self.model_name in CLCV_METHODS:
             if self.cfg.model.input == "distance":
                 if preprocessed_file is None:
-                    from mlcolvar.core import Normalization
                     data_num = current_position.shape[0]
-                    preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
-                    current_position = preprocess(coordinate2distance(self.cfg.job.molecule, current_position)).reshape(data_num, -1)
+                    current_position = coordinate2distance(self.cfg.job.molecule, current_position).reshape(data_num, -1)
                 else:
                     current_position = torch.load(preprocessed_file).to(self.device)
+                current_position = self.normalization(current_position)
+            
             else:
                 raise ValueError(f"Input type {self.cfg.model.input} not found for {self.model_name}")
             
-            current_position = current_position * self.scale
+            current_position = current_position
             mlcv = self.model(torch.cat([current_position, temperature], dim=1))
         
         elif self.model_name in ["deeplda", "deeptda"]:
-            from mlcolvar.core import Normalization
-            preprocess = Normalization(in_features=45, mode="mean_std").to(self.device)
-            
             if preprocessed_file is None:
-                heavy_atom_distance = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
+                data_num = current_position.shape[0]
+                heavy_atom_distance = coordinate2distance(self.cfg.job.molecule, current_position).reshape(data_num, -1)
             else:
                 heavy_atom_distance = torch.load(preprocessed_file).to(self.device)
             
-            heavy_atom_distance = heavy_atom_distance * self.scale
             mlcv = self.model(heavy_atom_distance)
         
         elif self.model_name == "autoencoder":
@@ -174,7 +172,7 @@ class ModelWrapper(nn.Module):
             current_position = current_position.reshape(data_num, -1, 3)
             backbone_atom_position = current_position[:, ALANINE_BACKBONE_ATOM_IDX].reshape(data_num, -1)
             
-            backbone_atom_position = backbone_atom_position * self.scale
+            backbone_atom_position = backbone_atom_position
             mlcv = self.model(backbone_atom_position)
             
         elif self.model_name == "gnncv":
@@ -182,10 +180,10 @@ class ModelWrapper(nn.Module):
             from torch_geometric.data import Data
             current_position_data = Data(
                 batch = torch.tensor([0], dtype=torch.int64, device=self.device),
-                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
-                positions = current_position.reshape(data_num, -1, 3)[ALANINE_HEAVY_ATOM_IDX],
                 edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
-                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
+                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device),
+                positions = current_position.reshape(data_num, -1, 3)[0, ALANINE_HEAVY_ATOM_IDX],
+                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
             )
             mlcv = self.model(current_position_data)
         

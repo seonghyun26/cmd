@@ -5,3 +5,4 @@ version: 10n-v4
 name: cl-distance
 atom: 22
 scale: 1
+normalize: True

@@ -135,7 +135,7 @@ class SteeredAlanine:
         if self.force_type in ["rmsd", "torsion"]:
             pass
         
-        elif self.force_type in MLCOLVAR_METHODS or CLCV_METHODS:
+        elif self.force_type in MLCOLVAR_METHODS or ["gnncv"] or CLCV_METHODS:
             if self.cfg.job.simulation.force_version == "v1":
                 mlcv_difference = torch.linalg.norm(goal_mlcv - current_mlcv, ord=2)
             elif self.cfg.job.simulation.force_version == "v2":

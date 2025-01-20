@@ -32,7 +32,7 @@
         "program": "main.py",
         "args": [
           "--config-name",
-          "timelag-autoencoder",
+          "deeplda",
         ],
         "console": "integratedTerminal"
     },
@@ -41,7 +41,8 @@
       "type": "debugpy",
       "request": "launch",
       "env": {
-        "CUDA_VISIBLE_DEVICES": "1"
+        "CUDA_VISIBLE_DEVICES": "1",
+        "PYTHONPATH": "/home/shpark/.conda/envs/gnncv2/bin"
       },
       "cwd": "/home/shpark/prj-cmd/cmd/",
       "program": "main.py",
@@ -50,7 +51,9 @@
         "steered-deeplda",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        "++data.version=250n-v1",
+        "++job.simulation.k=100",
+        "++job.sample_num=10",
+        "++job.simulation.time_horizon=10",
       ],
       "console": "integratedTerminal"
     },
