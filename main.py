@@ -43,10 +43,11 @@ def main(cfg):
     # Train or load model from checkpoint
     if cfg.training.train:
         # Load dataset
-        logger.info(">> Loading dataset...")
         train_loader, test_loader = load_data(cfg)
         criteria, loss_type = load_loss(cfg)
         loss_dict = { f"loss/{name}": 0 for name in loss_type }
+        loss_dict["loss/total"] = 0
+        logger.info(f">> Loading dataset...")
         logger.info(f">> Dataset size: {len(train_loader.dataset)}")
         
         # Train model
@@ -80,15 +81,11 @@ def main(cfg):
                     temperature=temperature
                 )
                 
-                # Copmpute loss
+                # Compute loss
                 loss_dict_batch = criteria(result_dict)
                 for name in loss_dict_batch.keys():
                     loss_dict[f"loss/{name}"] += loss_dict_batch[name]
-                loss = 0
-                for values in loss_dict_batch.values():
-                    loss += values
-                loss_dict["loss/total"] += loss.item()
-                
+                loss = loss_dict_batch["total"]
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()

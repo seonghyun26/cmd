@@ -89,8 +89,6 @@ class SteeredAlanine:
         self.system = load_system(cfg, self.molecule, start_pdb, self.forcefield)
         self._set_start_position(start_pdb, self.system)
         self._set_goal_position(goal_pdb, self.system)
-        
-        # Set cv force
         self._set_custom_force()
         
         # Set simulation
@@ -299,8 +297,6 @@ class SteeredAlanine:
           
     def _set_custom_force(self):        
         if self.force_type == "torsion":
-            ALSP_PSI_ANGLE = [6, 8, 14, 16]
-            ALDP_PHI_ANGLE = [4, 6, 8, 14]
             start_position = np.array(
                 [list(p) for p in self.start_position.value_in_unit(unit.nanometer)],
                 dtype=np.float32,
@@ -309,19 +305,19 @@ class SteeredAlanine:
                 [list(p) for p in self.goal_position.value_in_unit(unit.nanometer)],
                 dtype=np.float32,
             )
-            start_psi = compute_dihedral(start_position[ALSP_PSI_ANGLE])
+            start_psi = compute_dihedral(start_position[ALDP_PSI_ANGLE])
             start_phi = compute_dihedral(start_position[ALDP_PHI_ANGLE])
-            goal_psi = compute_dihedral(goal_position[ALSP_PSI_ANGLE])
+            goal_psi = compute_dihedral(goal_position[ALDP_PSI_ANGLE])
             goal_phi = compute_dihedral(goal_position[ALDP_PHI_ANGLE])
 
             # Create CustomTorsionForce for phi and psi angles
             custom_cv_force = mm.CustomTorsionForce(
                 "0.5 * k * (theta - (theta_start + (theta_goal - theta_start) * (time / total_time)))^2"
             )
+            custom_cv_force.addTorsion(*ALDP_PSI_ANGLE, [start_psi, goal_psi])
+            custom_cv_force.addTorsion(*ALDP_PHI_ANGLE, [start_phi, goal_phi])
             custom_cv_force.addPerTorsionParameter("theta_start")
             custom_cv_force.addPerTorsionParameter("theta_goal")
-            custom_cv_force.addTorsion(*ALSP_PSI_ANGLE, [start_psi, goal_psi])
-            custom_cv_force.addTorsion(*ALDP_PHI_ANGLE, [start_phi, goal_phi])
             custom_cv_force.addGlobalParameter("k", self.k)
             custom_cv_force.addGlobalParameter("time", 0)
             custom_cv_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
@@ -347,7 +343,7 @@ class SteeredAlanine:
             custom_cv_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             self.system.addForce(custom_cv_force)
         
-        elif self.force_type in MLCOLVAR_METHODS + ["gnncv"]:
+        elif self.force_type in MLCOLVAR_METHODS or ["gnncv"] or CLCV_METHODS:
             if self.cfg.job.simulation.force_version == "v1":
                 external_force = mm.CustomExternalForce(" 0.5 * k * (fx*x + fy*y + fz*z) * (time / total_time) ")
                 external_force.addGlobalParameter("k", self.k)
@@ -366,25 +362,7 @@ class SteeredAlanine:
             external_force.addPerParticleParameter("fz")
             for i in range(22):
                 external_force.addParticle(i, [0, 0, 0])
-            self.system.addForce(external_force)          
-        
-        elif self.force_type in CLCV_METHODS:
-            if self.cfg.job.simulation.force_version == "v1":
-                external_force = mm.CustomExternalForce(" 0.5 * k * (fx*x + fy*y + fz*z) * (time / total_time) ")
-                external_force.addGlobalParameter("k", self.k)
-            elif self.cfg.job.simulation.force_version == "v2":
-                external_force = mm.CustomExternalForce(" (fx*x + fy*y + fz*z) ")
-            else:
-                raise ValueError(f"Force version {self.cfg.job.simulation.force_version} not found")
-            
-            external_force.addGlobalParameter("time", 0)
-            external_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
-            external_force.addPerParticleParameter("fx")
-            external_force.addPerParticleParameter("fy")
-            external_force.addPerParticleParameter("fz")
-            for i in range(22):
-                external_force.addParticle(i, [0, 0, 0])
-            self.system.addForce(external_force)          
+            self.system.addForce(external_force)              
 
         else:
             raise ValueError(f"Force type {self.force_type} not found")

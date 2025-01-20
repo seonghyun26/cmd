@@ -8,7 +8,7 @@ import numpy as np
 import mdtraj as md
 
 from tqdm import tqdm
-from .load import load_state_file, load_steered_simulation
+from .load import load_steered_simulation
 
 
 def generate(cfg, model_wrapper, epoch, device, logger):
@@ -18,8 +18,6 @@ def generate(cfg, model_wrapper, epoch, device, logger):
     time_horizon = cfg.job.simulation.time_horizon
     
     if task == "tps":
-        inital_state = load_state_file(cfg, cfg.job.start_state, device)
-        goal_state = load_state_file(cfg, cfg.job.goal_state, device)
         steered_simulation_list = load_steered_simulation(
             cfg = cfg,
             sample_num = cfg.job.sample_num,

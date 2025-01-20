@@ -5,4 +5,4 @@ project: clcv
 entity: eddy26
 device: cuda
 checkpoint: True
-ckpt_freq: 100
+ckpt_freq: 500

@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from matplotlib import colors
+
 
 class AlaninePotential():
     def __init__(self, landscape_path):
@@ -264,12 +266,12 @@ def plot_ad_cv(
     phi: np.ndarray,
     psi: np.ndarray,
     cv: np.ndarray,
+    cv_dim: int,
     epoch: int,
     start_dihedral,
     goal_dihedral,
     cfg_plot
 ):
-    cv_dim = cv.shape[1]
     df = pd.DataFrame({
         **{f'CV{i}': cv[:, i] for i in range(cv_dim)},
         'psi': psi,
@@ -279,15 +281,21 @@ def plot_ad_cv(
     # Plot the projection of CVs
     fig, axs = plt.subplots(2, 2, figsize = ( 15, 12 ) )
     axs = axs.ravel()
+    norm = colors.Normalize(
+        vmin=min(df[f'CV{i}'].min() for i in range(min(cv_dim, 9))),
+        vmax=max(df[f'CV{i}'].max() for i in range(min(cv_dim, 9)))
+    )
     for i in range(min(cv_dim, 9)):
         ax = axs[i]
         df.plot.hexbin(
             'phi','psi', C=f"CV{i}",
             cmap=cfg_plot.cmap, ax=ax,
-            gridsize=cfg_plot.gridsize
+            gridsize=cfg_plot.gridsize,
+            norm=norm
         )
         ax.scatter(start_dihedral[0], start_dihedral[1], edgecolors="black", c="w", zorder=101, s=100)
         ax.scatter(goal_dihedral[0], goal_dihedral[1], edgecolors="black", c="w", zorder=101, s=300, marker="*")
+    
     save_plot(
         dir = hydra.core.hydra_config.HydraConfig.get().run.dir,
         name = f"{epoch}-ad-cv.png",

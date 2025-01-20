@@ -1,3 +1,4 @@
+import math
 import wandb
 import torch
 import random
@@ -5,24 +6,118 @@ import random
 import mdtraj as md
 import torch.nn as nn
 
-from torch.optim import Adam, SGD
-from torch.optim.lr_scheduler import LambdaLR, MultiplicativeLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, CosineAnnealingWarmRestarts
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.optim import Adam, AdamW, SGD
+from torch.optim.lr_scheduler import LambdaLR, MultiplicativeLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, _LRScheduler
+from torch.utils.data import DataLoader, random_split
 
 from .data import *
 from .model import ModelWrapper
 from .md import MDSimulation, SteeredMDSimulation
+from .loss import (
+    TripletLoss,
+    TripletTorchLoss,
+    TripletLossNegative,
+    InfoNCELoss,
+)
 
+
+class CosineAnnealingWarmupRestarts(_LRScheduler):
+    """
+        https://github.com/katsura-jp/pytorch-cosine-annealing-with-warmup/blob/master/cosine_annealing_warmup/scheduler.py
+        optimizer (Optimizer): Wrapped optimizer.
+        first_cycle_steps (int): First cycle step size.
+        cycle_mult(float): Cycle steps magnification. Default: -1.
+        max_lr(float): First cycle's max learning rate. Default: 0.1.
+        min_lr(float): Min learning rate. Default: 0.001.
+        warmup_steps(int): Linear warmup step size. Default: 0.
+        gamma(float): Decrease rate of max learning rate by cycle. Default: 1.
+        last_epoch (int): The index of last epoch. Default: -1.
+    """
+    
+    def __init__(
+        self,
+        optimizer : torch.optim.Optimizer,
+        first_cycle_steps : int,
+        cycle_mult : float = 1.,
+        max_lr : float = 0.1,
+        min_lr : float = 0.001,
+        warmup_steps : int = 0,
+        gamma : float = 1.,
+        last_epoch : int = -1
+    ):
+        assert warmup_steps < first_cycle_steps
+        
+        self.first_cycle_steps = first_cycle_steps # first cycle step size
+        self.cycle_mult = cycle_mult # cycle steps magnification
+        self.base_max_lr = max_lr # first max learning rate
+        self.max_lr = max_lr # max learning rate in the current cycle
+        self.min_lr = min_lr # min learning rate
+        self.warmup_steps = warmup_steps # warmup step size
+        self.gamma = gamma # decrease rate of max learning rate by cycle
+        
+        self.cur_cycle_steps = first_cycle_steps # first cycle step size
+        self.cycle = 0 # cycle count
+        self.step_in_cycle = last_epoch # step size of the current cycle
+        
+        super(CosineAnnealingWarmupRestarts, self).__init__(optimizer, last_epoch)
+        
+        # set learning rate min_lr
+        self.init_lr()
+    
+    def init_lr(self):
+        self.base_lrs = []
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = self.min_lr
+            self.base_lrs.append(self.min_lr)
+    
+    def get_lr(self):
+        if self.step_in_cycle == -1:
+            return self.base_lrs
+        elif self.step_in_cycle < self.warmup_steps:
+            return [(self.max_lr - base_lr)*self.step_in_cycle / self.warmup_steps + base_lr for base_lr in self.base_lrs]
+        else:
+            return [base_lr + (self.max_lr - base_lr) \
+                    * (1 + math.cos(math.pi * (self.step_in_cycle-self.warmup_steps) \
+                                    / (self.cur_cycle_steps - self.warmup_steps))) / 2
+                    for base_lr in self.base_lrs]
+
+    def step(self, epoch=None):
+        if epoch is None:
+            epoch = self.last_epoch + 1
+            self.step_in_cycle = self.step_in_cycle + 1
+            if self.step_in_cycle >= self.cur_cycle_steps:
+                self.cycle += 1
+                self.step_in_cycle = self.step_in_cycle - self.cur_cycle_steps
+                self.cur_cycle_steps = int((self.cur_cycle_steps - self.warmup_steps) * self.cycle_mult) + self.warmup_steps
+        else:
+            if epoch >= self.first_cycle_steps:
+                if self.cycle_mult == 1.:
+                    self.step_in_cycle = epoch % self.first_cycle_steps
+                    self.cycle = epoch // self.first_cycle_steps
+                else:
+                    n = int(math.log((epoch / self.first_cycle_steps * (self.cycle_mult - 1) + 1), self.cycle_mult))
+                    self.cycle = n
+                    self.step_in_cycle = epoch - int(self.first_cycle_steps * (self.cycle_mult ** n - 1) / (self.cycle_mult - 1))
+                    self.cur_cycle_steps = self.first_cycle_steps * self.cycle_mult ** (n)
+            else:
+                self.cur_cycle_steps = self.first_cycle_steps
+                self.step_in_cycle = epoch
+                
+        self.max_lr = self.base_max_lr * (self.gamma**self.cycle)
+        self.last_epoch = math.floor(epoch)
+        for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
+            param_group['lr'] = lr
+            
 
 scheduler_dict = {
     "None": None,
+    "StepLR": StepLR,
     "LambdaLR": LambdaLR,
     "MultiplicativeLR": MultiplicativeLR,
-    "StepLR": StepLR,
     "MultiStepLR": MultiStepLR,
     "ExponentialLR": ExponentialLR,
     "CosineAnnealingLR": CosineAnnealingLR,
-    "CosineAnnealingWarmRestarts": CosineAnnealingWarmRestarts,
+    "CosineAnnealingWarmupRestarts": CosineAnnealingWarmupRestarts,
 }
 
 
@@ -83,6 +178,7 @@ def load_model_wrapper(cfg, device):
 def load_optimizer(cfg, model_param):
     optimizer_dict = {
         "Adam": Adam,
+        "AdamW": AdamW,
         "SGD": SGD,
     }
     
@@ -100,178 +196,44 @@ def load_optimizer(cfg, model_param):
 def load_scheduler(cfg, optimizer):   
     if cfg.training.scheduler.name == "None":
         scheduler = None
+    
     elif cfg.training.scheduler.name == "LambdaLR":
         scheduler = LambdaLR(
             optimizer=optimizer,
             lr_lambda=lambda epoch: cfg.training.scheduler.lr_lambda ** epoch
         )
+    
     elif cfg.training.scheduler.name == "MultiplicativeLR":
         scheduler = MultiplicativeLR(
             optimizer=optimizer,
             lr_lambda=lambda epoch: 0.95 ** epoch
         )
+    
     elif cfg.training.scheduler.name in scheduler_dict.keys():
         scheduler = scheduler_dict[cfg.training.scheduler.name](
             optimizer,
             **cfg.training.scheduler.params
         )
+    
     else:
         raise ValueError(f"Scheduler {cfg.training.scheduler.name} not found")
     
     return scheduler
 
-def load_similarity(similarity_type):
-    
-    if similarity_type == "cosine":
-        similarity = nn.CosineSimilarity(dim=1)
-    else:
-        raise ValueError(f"Similarity {similarity_type} not found")
-
-    return similarity
-
-def load_loss(cfg):    
-    def mse_loss(result_dict):
-        loss_list = {
-            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(result_dict["pred"], result_dict["true"]),
-        }
-        
-        return loss_list
-
-    def mse_reg_loss(result_dict):
-        loss_list = {
-            "mse": nn.MSELoss(reduction=cfg.training.loss.reduction)(result_dict["pred"], result_dict["true"]),
-            "reg": torch.square(result_dict["log_var"]).mean()
-        }
-        
-        return loss_list
-    
-    def mae_loss(result_dict):
-        loss_list = {
-            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(result_dict["pred"], result_dict["true"])
-        }
-        
-        return loss_list
-    
-    def mae_reg_loss(result_dict):
-        loss_list = {
-            "mae": nn.L1Loss(reduction=cfg.training.loss.reduction)(result_dict["pred"], result_dict["true"]),
-            "reg": torch.square(result_dict["log_var"]).mean(),
-            "mu": -torch.square(result_dict["mu"]).mean(),
-        }
-        
-        return loss_list
-    
-    def cl_loss(result_dict):
-        current_state_rep = result_dict["current_state_rep"]
-        next_state_rep = result_dict["next_state_rep"]
-        
-        positive_pairs = torch.sum(current_state_rep * next_state_rep, dim=-1)
-        negative_pairs = torch.sum(current_state_rep * torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0), dim=-1)
-        contrastive_loss = -torch.log(torch.exp(positive_pairs) / (torch.exp(positive_pairs) + torch.exp(negative_pairs)))
-        contrastive_loss = contrastive_loss.mean()
-        
-        loss_list = {
-            "CL": contrastive_loss
-        }
-        
-        return loss_list
-    
-    def triplet_loss(result_dict):
-        margin = cfg.training.loss.margin
-        anchor = result_dict["current_state_rep"]
-        positive = result_dict["positive_sample_rep"]
-        negative = result_dict["negative_sample_rep"]
-        
-        distance_positive = torch.nn.functional.pairwise_distance(anchor, positive, p=2)
-        distance_negative = torch.nn.functional.pairwise_distance(anchor, negative, p=2)
-        triplet_loss = torch.nn.functional.relu(distance_positive - distance_negative + margin)
-        
-        loss_list = {
-            "CL": triplet_loss.mean() if cfg.training.loss.reduction == "mean" else triplet_loss.sum()
-        }
-        
-        return loss_list
-    
-    def nce_loss(result_dict):
-        current_state_rep = result_dict["current_state_rep"]
-        next_state_rep = result_dict["next_state_rep"]
-        batch_size = current_state_rep.shape[0]
-        similarity = load_similarity(cfg.training.loss.similarity)
-        
-        positive_pairs = torch.sigmoid(similarity(current_state_rep, next_state_rep))
-        negative_pairs = 1 - torch.sigmoid(similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0)))
-        contrastive_loss = - torch.log(positive_pairs * negative_pairs)
-        
-        loss_list = {
-            "CL": contrastive_loss.mean()
-        }
-        
-        return loss_list
-    
-    def infonce_loss(result_dict):
-        # current_state_rep = result_dict["current_state_rep"]
-        # next_state_rep = result_dict["next_state_rep"]
-        # batch_size = current_state_rep.shape[0]
-        # n = cfg.training.loss.n
-        # similarity = load_similarity(cfg.training.loss.similarity)
-        # positive_pairs = similarity(current_state_rep, next_state_rep)
-        # negative_pairs = similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0))
-        # for i in range(n-1):
-        #     negative_pairs += similarity(current_state_rep, torch.roll(next_state_rep, shifts=random.randint(1, batch_size), dims=0))
-        # contrastive_loss = - torch.log(positive_pairs / negative_pairs)
-        
-        current_state_rep = result_dict["current_state_rep"]
-        positive_sample_rep = result_dict["positive_sample_rep"]
-        negative_sample_rep = result_dict["negative_sample_rep"]
-        batch_size = current_state_rep.shape[0]
-        n = cfg.training.loss.n
-        similarity = load_similarity(cfg.training.loss.similarity)
-        
-        positive_pairs = similarity(current_state_rep, positive_sample_rep)
-        negative_pairs = similarity(current_state_rep, negative_sample_rep)
-        contrastive_loss = - torch.log(positive_pairs / negative_pairs)
-        
-        loss_list = {
-            "CL": contrastive_loss.mean()
-        }
-        
-        return loss_list
-    
-    loss_func_list = {
-        "mse": mse_loss,
-        "mse+reg": mse_reg_loss,
-        "mae": mae_loss,
-        "mae+reg": mae_reg_loss,
-        "cl": cl_loss,
-        "triplet": triplet_loss,
-        "nce": nce_loss,
-        "infonce": infonce_loss,
-    }
-    
-    loss_type_list = {
-        "mse": ["mse"],
-        "mse+reg": ["mse", "reg"],
-        "mae": ["mae"],
-        "mae+reg": ["mae", "reg"],
-        "cl": ["CL"],
-        "nce": ["CL"],
-        "infonce": ["CL"],
-        "triplet": ["CL"],
+def load_loss(cfg):
+    loss_dict = {
+        "triplet": TripletLoss,
+        "triplet-torch": TripletTorchLoss,
+        "triplet-negative": TripletLossNegative,
+        "infonce": InfoNCELoss,
     }
     
     loss_name = cfg.training.loss.name.lower()
-    if loss_name in loss_func_list.keys():
-        loss_func = loss_func_list[loss_name]
-    else:
+    if loss_name not in loss_dict:
         raise ValueError(f"Loss {loss_name} not found")
+    loss_instance = loss_dict[loss_name](cfg)
     
-    if loss_name in loss_type_list.keys():
-        loss_type = loss_type_list[loss_name]
-        loss_type.append("total")
-    else:
-        raise ValueError(f"Loss type {loss_name} not found")
-    
-    return loss_func, loss_type
+    return loss_instance, loss_instance.loss_types
 
 
 def load_state_file(cfg, state, device):
@@ -280,6 +242,7 @@ def load_state_file(cfg, state, device):
         state = md.load(state_dir).xyz
         state = torch.tensor(state).to(device)
         states = state.repeat(cfg.job.sample_num, 1, 1)
+    
     elif cfg.job.molecule == "double-well":
         if state == "left":
             state = torch.tensor([-1.118, 0], dtype=torch.float32).to(device)
@@ -288,11 +251,14 @@ def load_state_file(cfg, state, device):
         else:
             raise ValueError(f"State {state} not found")
         states = state.repeat(cfg.job.sample_num, 1)
+    
+    elif cfg.job.molecule == "chignolin":
+        raise NotImplementedError("Chignolin state TBA")
+    
     else:
         raise ValueError(f"Molecule {cfg.job.molecule} not found")
     
     return states
-
 
 def load_simulation(cfg, sample_num, device):
     simulation_list = MDSimulation(cfg, sample_num, device)
@@ -303,3 +269,4 @@ def load_steered_simulation(cfg, sample_num, model_wrapper):
     simulation_list = SteeredMDSimulation(cfg, sample_num, model_wrapper)
 
     return simulation_list
+

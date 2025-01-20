@@ -16,7 +16,7 @@ model_dict = {
     "lsde": LSDE,
     "lnsde": LNSDE,
     "cvmlp": CVMLP,
-    "cvmlp-bn": CVMLPBN,
+    # "cvmlp-bn": CVMLPBN,
     "cvmlp-test": CVMLPTEST,
     "deeplda": DeepLDA,
     "deeptda": DeepTDA,
@@ -36,6 +36,7 @@ class ModelWrapper(nn.Module):
         
         self.cfg = cfg
         self.device = device
+        self.scale = self.cfg.data.scale
         self.model = self.load_model(cfg).to(device)
     
     def _set_input_dim(self, cfg, data_dim):
@@ -106,17 +107,17 @@ class ModelWrapper(nn.Module):
         
         # Process input
         current_state_conditions = torch.cat([
-            current_state.reshape(batch_size, -1),
+            current_state.reshape(batch_size, -1) * self.scale,
             temperature.reshape(batch_size, -1)
         ], dim=1)
         current_state_representation = self.model(current_state_conditions)
         positive_sample_conditions = torch.cat([
-            positive_sample.reshape(batch_size, -1),
+            positive_sample.reshape(batch_size, -1) * self.scale,
             temperature.reshape(batch_size, -1)
         ], dim=1)
         positive_sample_representation = self.model(positive_sample_conditions)
         negative_sample_conditions = torch.cat([
-            negative_sample.reshape(batch_size, -1),
+            negative_sample.reshape(batch_size, -1) * self.scale,
             temperature.reshape(batch_size, -1)
         ], dim=1)
         negative_sample_representation = self.model(negative_sample_conditions)
@@ -137,6 +138,7 @@ class ModelWrapper(nn.Module):
         preprocessed_file: str = None,
     ):  
         
+        
         if self.model_name in CLCV_METHODS:
             if self.cfg.model.input == "distance":
                 if preprocessed_file is None:
@@ -148,7 +150,8 @@ class ModelWrapper(nn.Module):
                     current_position = torch.load(preprocessed_file).to(self.device)
             else:
                 raise ValueError(f"Input type {self.cfg.model.input} not found for {self.model_name}")
-                
+            
+            current_position = current_position * self.scale
             mlcv = self.model(torch.cat([current_position, temperature], dim=1))
         
         elif self.model_name in ["deeplda", "deeptda"]:
@@ -159,6 +162,8 @@ class ModelWrapper(nn.Module):
                 heavy_atom_distance = preprocess(coordinate2distance(self.cfg.job.molecule, current_position))
             else:
                 heavy_atom_distance = torch.load(preprocessed_file).to(self.device)
+            
+            heavy_atom_distance = heavy_atom_distance * self.scale
             mlcv = self.model(heavy_atom_distance)
         
         elif self.model_name == "autoencoder":
@@ -167,8 +172,10 @@ class ModelWrapper(nn.Module):
             
             data_num = current_position.shape[0]
             current_position = current_position.reshape(data_num, -1, 3)
-            backbone_atom = current_position[:, ALANINE_BACKBONE_ATOM_IDX].reshape(data_num, -1)
-            mlcv = self.model(backbone_atom)
+            backbone_atom_position = current_position[:, ALANINE_BACKBONE_ATOM_IDX].reshape(data_num, -1)
+            
+            backbone_atom_position = backbone_atom_position * self.scale
+            mlcv = self.model(backbone_atom_position)
             
         elif self.model_name == "gnncv":
             data_num = current_position.shape[0]

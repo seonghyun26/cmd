@@ -26,7 +26,7 @@ def kabsch(P, Q):
 def kabsch_rmsd(
     P: torch.Tensor,
     Q: torch.Tensor
-):
+) -> torch.Tensor:
     centroid_P = torch.mean(P, dim=-2, keepdims=True)
     centroid_Q = torch.mean(Q, dim=-2, keepdims=True)
     p = P - centroid_P

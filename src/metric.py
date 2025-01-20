@@ -80,9 +80,10 @@ def compute_thp(
         hit_rate /= sample_num
         hit_mask = torch.tensor(hit_mask, dtype=torch.bool, device=device)
         hit_index = torch.tensor(hit_index, dtype=torch.int32, device=device)
-    elif molecule == "double-well":
-        hit = (np.abs(last_state[:, 0] - goal_state[:, 0]) < cv_bound) & (np.abs(last_state[:, 1] - goal_state[:, 1]) < cv_bound)
-        hit_rate = torch.all(hit) / hit.shape[0]
+
+    elif molecule == "chignolin":
+        raise NotImplementedError(f"THP for molecule {molecule} to be implemented")
+    
     else:
         raise ValueError(f"THP for molecule {molecule} TBA")
     
@@ -113,6 +114,7 @@ def compute_epd(cfg, trajectory_list, goal_state, hit_mask, hit_index):
         pairwise_distance(hit_state_list, hit_state_list) - pairwise_distance(goal_state, goal_state)
     ).sum((1, 2)))
     epd = torch.mean(matrix_f_norm / (atom_num ** 2) * unit_scale_factor)
+    rmsd = torch.tensor(rmsd)
     rmsd = torch.mean(rmsd)
     
     return epd, rmsd
@@ -223,13 +225,13 @@ def compute_projection(cfg, model_wrapper, epoch):
     device = model_wrapper.device
     
     if molecule == "alanine":
-        data_dir = f"{cfg.data.dir}/projection"
-        phis = np.load(f"{data_dir}/alanine_phi_list.npy")
-        psis = np.load(f"{data_dir}/alanine_psi_list.npy")   
+        data_dir = f"{cfg.data.dir}/projection/{cfg.job.molecule}/{cfg.job.metrics.projection.version}"
+        phis = np.load(f"{data_dir}/phi.npy")
+        psis = np.load(f"{data_dir}/psi.npy")   
         temperature = torch.tensor(cfg.job.simulation.temperature).repeat(phis.shape[0], 1).to(device)
         
         if cfg.model.input == "distance":
-            heavy_atom_distance_file = f"{data_dir}/alanine_heavy_atom_distance.pt"
+            heavy_atom_distance_file = f"{data_dir}/heavy_atom_distance.pt"
             projected_cv = model_wrapper.compute_cv(
                 preprocessed_file = heavy_atom_distance_file,
                 temperature = temperature,
@@ -245,7 +247,7 @@ def compute_projection(cfg, model_wrapper, epoch):
             #     raise ValueError(f"Model {cfg.model.name} not found")
         
         elif cfg.model.input == "coordinate":
-            coordinate_file = f"{data_dir}/alanine_coordinate.pt"
+            coordinate_file = f"{data_dir}/coordinate.pt"
             projected_cv = model_wrapper.compute_cv(
                 preprocessed_file = coordinate_file,
                 temperature = temperature,
@@ -287,6 +289,7 @@ def compute_projection(cfg, model_wrapper, epoch):
             phi = phis,
             psi = psis,
             cv = projected_cv.cpu().detach().numpy(),
+            cv_dim = cfg.model["params"].output_dim,
             epoch = epoch,
             start_dihedral = (phi_start, psi_start),
             goal_dihedral = (phi_goal, psi_goal),

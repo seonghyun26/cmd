@@ -15,7 +15,9 @@
           "debug-cl",
           "hydra.run.dir=outputs/debug",
           "++logging.wandb=False",
-          "++job.simulation.time_horizon=100"
+          "++job.sample_num=10",
+          "++job.simulation.time_horizon=100",
+          "++job.metrics.projection.version=simulation"
         ],
         "console": "integratedTerminal"
     },
@@ -45,12 +47,10 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-autoencoder",
+        "steered-deeplda",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        "++job.simulation.force_version=v1",
-        "++job.sample_num=10",
-        "++job.simulation.time_horizon=100",
+        "++data.version=250n-v1",
       ],
       "console": "integratedTerminal"
     },
@@ -87,14 +87,14 @@
     "program": "main.py",
     "args": [
       "--config-name",
-      "contrastive-triplet",
-      "hydra.run.dir=outputs/debug",
-      "++logging.wandb=False",
-      "++logging.tags=['debug']",
+      "test-cl",
+      // "hydra.run.dir=outputs/debug",
+      // "++logging.wandb=False",
+      // "++logging.tags=['debug']",
       "++training.train=False",
-      "++training.ckpt_file=1230-024411",
-      "++job.generate=False",
-      "++job.traj_dir=/home/shpark/prj-cmd/cmd/outputs/2025-01-07/07-30-00/tps/0"
+      "++training.ckpt_file=250120-2215",
+      // "++job.generate=False",
+      // "++job.traj_dir=/home/shpark/prj-cmd/cmd/outputs/2025-01-07/07-30-00/tps/0"
     ],
     "console": "integratedTerminal"
   },

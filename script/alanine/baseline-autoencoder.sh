@@ -12,7 +12,7 @@ cd ../../
 #     done
 # done
 
-k_list=(300 400 500 600 800 1000)
+k_list=(1200 1400 1600 1800 2000)
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-autoencoder \

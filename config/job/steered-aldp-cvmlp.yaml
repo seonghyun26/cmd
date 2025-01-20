@@ -8,7 +8,7 @@ sample_num: 64
 save: True
 simulation:
   steered: True
-  k: 800000
+  k: 10
   time_horizon: 1000
   force_type: cvmlp
   force_version: v2
@@ -30,6 +30,7 @@ metrics:
     use: True
   projection:
     use: True
+    version: simulation
     gridsize: 100
     cmap: viridis
     bound_use: True

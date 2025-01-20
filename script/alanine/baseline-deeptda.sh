@@ -27,7 +27,8 @@ k_list=(180 160 140 120 100 300 320 340 360)
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-deeptda \
-        ++job.simulation.k=${k_list[$i]}
+        ++job.simulation.k=${k_list[$i]} \
+        ++data.version=250n-v1
     sleep 2
 done
 
@@ -42,12 +43,12 @@ done
 #     sleep 2
 # done
 
-k_list=(100 120 140 160 180 200)
-for i in "${!k_list[@]}"; do
-    CUDA_VISIBLE_DEVICES=$1 python main.py \
-        --config-name steered-deeptda \
-        ++job.simulation.k=${k_list[$i]} \
-        ++job.simulation.time_horizon=500 \
-        ++training.ckpt_file=deeptda-v2
-    sleep 2
-done
+# k_list=(100 120 140 160 180 200)
+# for i in "${!k_list[@]}"; do
+#     CUDA_VISIBLE_DEVICES=$1 python main.py \
+#         --config-name steered-deeptda \
+#         ++job.simulation.k=${k_list[$i]} \
+#         ++job.simulation.time_horizon=500 \
+#         ++training.ckpt_file=deeptda-v2
+#     sleep 2
+# done

@@ -7,10 +7,9 @@ loader:
   test: False
 loss:
   name: triplet
-  similarity: cosine
-  temperature: 1
+  temperature: 0.1
   reduction: mean
-  margin: 1e-12
+  margin: 1.0
 optimizer:
   name: Adam
   params: {
