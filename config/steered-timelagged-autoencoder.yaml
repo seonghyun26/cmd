@@ -1,0 +1,6 @@
+defaults:
+- model: timelagged-autoencoder
+- data: alanine-cl-10n
+- training: timelagged-autoencoder-pretrained
+- logging: baseline
+- job: steered-aldp-timelagged-autoencoder

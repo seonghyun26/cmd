@@ -4,7 +4,7 @@ params: {
   hidden_dim: [32, 32, 32, 32],
   output_dim: 4,
   residual: False,
-  normalized: False,
+  normalized: True,
   layernorm: False,
   tanh: False
 }

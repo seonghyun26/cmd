@@ -8,9 +8,9 @@ sample_num: 64
 save: True
 simulation:
   steered: True
-  k: 200
+  k: 1000
   time_horizon: 1000
-  force_type: autoencoder
+  force_type: timelagged-autoencoder
   force_version: v2
   friction: 0.001
   timestep: 1

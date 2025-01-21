@@ -2,7 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import mdtraj as md
+
 from abc import ABC, abstractmethod
+
+from .utils.distance import coordinate2distance
 
 
 def load_similarity(similarity_type):
@@ -16,9 +20,10 @@ def load_similarity(similarity_type):
 
 
 class BaseLoss(ABC):
-    def __init__(self, cfg):
+    def __init__(self, cfg, normalization = None):
         self.cfg = cfg
         self.reduction = cfg.training.loss.reduction
+        self.normalization = normalization
 
     @abstractmethod
     def __call__(self, result_dict):
@@ -30,12 +35,12 @@ class BaseLoss(ABC):
     
 
 class TripletLoss(BaseLoss):
-    def __init__(self, cfg):
-        super().__init__(cfg)
+    def __init__(self, cfg, normalization = None):
+        super().__init__(cfg, normalization)
         self.margin = cfg.training.loss.margin
         self.temperature = cfg.training.loss.temperature
         self.reduction = torch.mean if self.cfg.training.loss.reduction == "mean" else torch.sum
-    
+        self.normalization = normalization
     def __call__(
         self,
         result_dict
@@ -58,6 +63,35 @@ class TripletLoss(BaseLoss):
     def loss_types(self):
         return ["positive", "negative", "total"]
     
+
+class TripletLossTest(BaseLoss):
+    def __init__(self, cfg, normalization = None):
+        super().__init__(cfg, normalization)
+        self.margin = cfg.training.loss.margin
+        self.temperature = cfg.training.loss.temperature
+        self.reduction = torch.mean if self.cfg.training.loss.reduction == "mean" else torch.sum
+        
+    def __call__(
+        self,
+        result_dict
+    ):
+        anchor = result_dict["current_state_rep"] / self.temperature    
+        positive = result_dict["positive_sample_rep"] / self.temperature
+        negative = result_dict["negative_sample_rep"] / self.temperature
+        
+        distance_positive = F.pairwise_distance(anchor, positive, p=2) / self.temperature
+        distance_negative = F.pairwise_distance(anchor, negative, p=2) / self.temperature
+        triplet_loss = F.relu(distance_positive - distance_negative + self.margin)
+        
+        return {
+            "positive": self.reduction(distance_positive),
+            "negative": self.reduction(distance_negative),
+            "total": self.reduction(triplet_loss),
+        }
+
+    @property
+    def loss_types(self):
+        return ["positive", "negative", "total"]
 
 class TripletLossNegative(BaseLoss):
     def __init__(self, cfg):

@@ -4,6 +4,7 @@ MLCOLVAR_METHODS = [
     "deeptda",
     "deeptica",
     "autoencoder",
+    "timelagged-autoencoder"
 ]
 
 CLCV_METHODS = [

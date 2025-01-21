@@ -19,6 +19,7 @@ from .loss import (
     TripletLoss,
     TripletTorchLoss,
     TripletLossNegative,
+    TripletLossTest,
     InfoNCELoss,
 )
 
@@ -185,11 +186,14 @@ def load_data(cfg):
 
 def load_model_wrapper(cfg, device):
     model_wrapper = ModelWrapper(cfg, device)
-    optimizer = load_optimizer(cfg, model_wrapper.parameters())
-    scheduler = load_scheduler(cfg, optimizer)
+    if cfg.training.train:
+        optimizer = load_optimizer(cfg, model_wrapper.parameters())
+        scheduler = load_scheduler(cfg, optimizer)
+    else:
+        optimizer = None
+        scheduler = None
     
     return model_wrapper, optimizer, scheduler
-
 
 def load_optimizer(cfg, model_param):
     optimizer_dict = {
@@ -207,7 +211,6 @@ def load_optimizer(cfg, model_param):
         raise ValueError(f"Optimizer {cfg.training.optimizer} not found")
     
     return optimizer
-
 
 def load_scheduler(cfg, optimizer):   
     if cfg.training.scheduler.name == "None":
@@ -236,11 +239,12 @@ def load_scheduler(cfg, optimizer):
     
     return scheduler
 
-def load_loss(cfg):
+def load_loss(cfg, normalization = None):
     loss_dict = {
         "triplet": TripletLoss,
         "triplet-torch": TripletTorchLoss,
         "triplet-negative": TripletLossNegative,
+        "triplet-test": TripletLossTest,
         "infonce": InfoNCELoss,
     }
     
@@ -250,7 +254,6 @@ def load_loss(cfg):
     loss_instance = loss_dict[loss_name](cfg)
     
     return loss_instance, loss_instance.loss_types
-
 
 def load_state_file(cfg, state, device):
     if cfg.job.molecule == "alanine":

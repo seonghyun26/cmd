@@ -132,6 +132,7 @@ class SteeredAlanine:
         start_mlcv = self.start_mlcv
         goal_mlcv = self.goal_mlcv
         
+        # Set external force
         if self.force_type in ["rmsd", "torsion"]:
             pass
         

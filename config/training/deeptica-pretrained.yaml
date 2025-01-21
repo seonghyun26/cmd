@@ -1,5 +1,5 @@
 train: False
-ckpt_file: deeptica-v2
+ckpt_file: deeptica-10n-norm
 epoch: 0
 loader:
   batch_size: 8192

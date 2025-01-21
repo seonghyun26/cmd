@@ -3,7 +3,8 @@ cd ../../
 CUDA_VISIBLE_DEVICES=$1 python main.py \
     --config-name test-cl \
     ++training.train=False \
-    ++training.ckpt_file=250120-2215
+    ++training.ckpt_file=250121-0704 \
+    ++job.simulation.k=1000
 
 # k_list=(800000) 
 # for i in "${!k_list[@]}"; do

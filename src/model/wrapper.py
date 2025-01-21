@@ -5,7 +5,8 @@ import numpy as np
 
 from mlcolvar.core import Normalization
 from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA
-# from mlcolvar.cvs import AutoEncoderCV, VariationalAutoEncoderCV
+from mlcolvar.cvs import AutoEncoderCV
+# VariationalAutoEncoderCV
 
 from . import *
 from ..utils import *
@@ -17,9 +18,8 @@ model_dict = {
     "cvmlp-test": CVMLPTEST,
     "deeplda": DeepLDA,
     "deeptda": DeepTDA,
-    "deeptica": DeepTICA,
-    # "autoencoder": AutoEncoderCV,
-    # "timelag-autoencoder": AutoEncoderCV,
+    "autoencoder": AutoEncoderCV,
+    "timelagged-autoencoder": AutoEncoderCV,
     # "vautoencoder": VariationalAutoEncoderCV,
     # "betavae": VariationalAutoEncoderCVBeta,
     "rmsd": CVMLP,
@@ -60,7 +60,7 @@ class ModelWrapper(nn.Module):
             model = DeepTICA(
                 layers = cfg.model.params.layers,
                 n_cvs = cfg.model.params.n_cvs,
-                options = {'nn': {'activation': 'shifted_softplus'} }
+                options = {'nn': {'activation': 'tanh'} }
             )
             
         elif self.model_name in MLCOLVAR_METHODS:
@@ -155,7 +155,7 @@ class ModelWrapper(nn.Module):
             current_position = current_position
             mlcv = self.model(torch.cat([current_position, temperature], dim=1))
         
-        elif self.model_name in ["deeplda", "deeptda"]:
+        elif self.model_name in ["deeplda", "deeptda", "deeptica"]:
             if preprocessed_file is None:
                 data_num = current_position.shape[0]
                 heavy_atom_distance = coordinate2distance(self.cfg.job.molecule, current_position).reshape(data_num, -1)
@@ -172,7 +172,16 @@ class ModelWrapper(nn.Module):
             current_position = current_position.reshape(data_num, -1, 3)
             backbone_atom_position = current_position[:, ALANINE_BACKBONE_ATOM_IDX].reshape(data_num, -1)
             
-            backbone_atom_position = backbone_atom_position
+            mlcv = self.model(backbone_atom_position)
+            
+        elif self.model_name == "timelagged-autoencoder":
+            if preprocessed_file is not None:
+                current_position = torch.load(preprocessed_file).to(self.device)
+                
+            data_num = current_position.shape[0]
+            current_position = current_position.reshape(data_num, -1, 3)
+            backbone_atom_position = current_position[:, ALANINE_HEAVY_ATOM_IDX].reshape(data_num, -1)
+            
             mlcv = self.model(backbone_atom_position)
             
         elif self.model_name == "gnncv":

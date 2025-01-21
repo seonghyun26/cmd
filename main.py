@@ -42,13 +42,14 @@ def main(cfg):
         wandb.config.update({"Model Parameters": sum([p.numel() for p in model_wrapper.parameters() if p.requires_grad])})
     
     
+    train_loader, test_loader, total_data_mean, total_data_std = load_data(cfg)
+    model_wrapper.set_normalization(total_data_mean, total_data_std)
     if cfg.training.train:
-        # Load dataset
-        train_loader, test_loader, total_data_mean, total_data_std = load_data(cfg)
-        model_wrapper.set_normalization(total_data_mean, total_data_std)
-        criteria, loss_type = load_loss(cfg)
+        criteria, loss_type = load_loss(cfg, model_wrapper.normalization)
         loss_dict = { f"loss/{name}": 0 for name in loss_type }
         loss_dict["loss/total"] = 0
+        if cfg.training.loss.name == "triplet-test":
+            loss_dict["loss/state_normalization"] = 0
         logger.info(f">> Loading dataset...")
         logger.info(f">> Dataset size: {len(train_loader.dataset)}")
         
@@ -83,8 +84,21 @@ def main(cfg):
                     temperature=temperature
                 )
                 
+                
                 # Compute loss
                 loss_dict_batch = criteria(result_dict)
+                if cfg.training.loss.name == "triplet-test":
+                    start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
+                    goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz
+                    start_state_cv = model_wrapper.compute_cv(
+                        current_position=torch.from_numpy(start_state_xyz).to(device),
+                        temperature=temperature[0].reshape(1, -1),
+                    )
+                    goal_state_cv = model_wrapper.compute_cv(
+                        current_position=torch.from_numpy(goal_state_xyz).to(device),
+                        temperature=temperature[0].reshape(1, -1),
+                    )
+                    loss_dict["loss/state_normalization"] += - torch.linalg.norm((goal_state_cv - start_state_cv), ord=2)
                 for name in loss_dict_batch.keys():
                     loss_dict[f"loss/{name}"] += loss_dict_batch[name]
                 loss = loss_dict_batch["total"]

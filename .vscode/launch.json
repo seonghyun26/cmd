@@ -22,6 +22,33 @@
         "console": "integratedTerminal"
     },
     {
+      "name": "Dataset",
+      "type": "debugpy",
+      "request": "launch",
+      "env": {
+        "CUDA_VISIBLE_DEVICES": "0"
+      },
+      "cwd": "/home/shpark/prj-cmd/simulation/",
+      "program": "build_tae_dataset.py",
+      "args": [
+        "--molecule",
+        "alanine",
+        "--temperature",
+        "300.0",
+        "--dataset_size",
+        "10000",
+        "--dataset_version",
+        "tae-10n-v1",
+        "--negative_sample_augmentation",
+        "3000",
+        "--traj_dir",
+        "24-12-26/15:24",
+        "--traj_dir",
+        "24-12-26/17:52"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
         "name": "Baseline",
         "type": "debugpy",
         "request": "launch",
@@ -48,12 +75,13 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-deeplda",
+        "steered-deeptica",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        "++job.simulation.k=100",
-        "++job.sample_num=10",
-        "++job.simulation.time_horizon=10",
+        "++job.sample_num=4",
+        "++job.simulation.time_horizon=1000",
+        "++job.simulation.k=10000",
+        // "++job.name=cv",
       ],
       "console": "integratedTerminal"
     },

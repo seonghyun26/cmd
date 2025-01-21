@@ -23,7 +23,7 @@ cd ../../
 #     sleep 2
 # done
 
-k_list=(20 40 60 80 100)
+k_list=(400 600 800 1200 1400 1600 1800 2000)
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-deeptda \

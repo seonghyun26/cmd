@@ -1,0 +1,16 @@
+name: timelagged-autoencoder
+input: coordinate
+params: {
+  encoder_layers: [30, 100, 100, 2],
+  options: {
+    encoder: {
+      activation: "leakyrelu",
+      dropout: [0.5, 0.5, 0.5]
+    },
+    decoder: {
+      activation: "leakyrelu"
+    },
+    norm_in: {
+    }
+  }
+}

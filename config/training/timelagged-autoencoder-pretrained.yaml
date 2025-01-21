@@ -1,0 +1,3 @@
+train: False
+ckpt_file: timelagged-autoencoder-10n-dropout
+epoch: 0

@@ -231,51 +231,20 @@ def compute_projection(cfg, model_wrapper, epoch):
     if molecule == "alanine":
         data_dir = f"{cfg.data.dir}/projection/{cfg.job.molecule}/{cfg.job.metrics.projection.version}"
         phis = np.load(f"{data_dir}/phi.npy")
-        psis = np.load(f"{data_dir}/psi.npy")   
+        psis = np.load(f"{data_dir}/psi.npy")
         temperature = torch.tensor(cfg.job.simulation.temperature).repeat(phis.shape[0], 1).to(device)
         
         if cfg.model.input == "distance":
-            heavy_atom_distance_file = f"{data_dir}/heavy_atom_distance.pt"
-            projected_cv = model_wrapper.compute_cv(
-                preprocessed_file = heavy_atom_distance_file,
-                temperature = temperature,
-            )
-            # elif cfg.model.name in ["deeplda", "deeptda", "deeptica", "autoencoder", "vautoencoder", "beta-vae"]:
-            #     projected_cv = model_wrapper.model(heavy_atom_distance)
-            #     if "output_scale" in cfg.model:
-            #         projected_cv = projected_cv * cfg.model.output_scale
-            # else:
-            #     raise ValueError(f"Model {cfg.model.name} not found")
-        
+            projection_file = f"{data_dir}/heavy_atom_distance.pt"
         elif cfg.model.input == "coordinate":
-            coordinate_file = f"{data_dir}/coordinate.pt"
-            projected_cv = model_wrapper.compute_cv(
-                preprocessed_file = coordinate_file,
-                temperature = temperature,
-            )
-            # if cfg.model.name in ["gnncv"]:
-            #     # sparsity = 10
-            #     from torch_geometric.data import Data
-            #     coordinate = coordinate.reshape(coordinate.shape[0], -1)
-            #     projected_cv = []
-            #     for data in tqdm(coordinate):
-            #         projection_data = Data(
-            #             batch = torch.zeros(1, dtype=torch.int64, device=model_wrapper.device),
-            #             node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=model_wrapper.device),
-            #             positions = data.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
-            #             edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.int64, device=model_wrapper.device),
-            #             shifts = torch.zeros(90, 3, dtype=torch.float32, device=model_wrapper.device)
-            #         )
-            #         projected_cv.append(model_wrapper.model(projection_data))
-            #     projected_cv = torch.stack(projected_cv, dim=0).reshape(coordinate.shape[0], -1)
-            #     # phis = phis[::sparsity]
-            #     # psis = psis[::sparsity]
-            
-            # else:
-            #     raise ValueError(f"Model {cfg.model.name} not for coordinate found")
-        
+            projection_file = f"{data_dir}/coordinate.pt"
         else:
             raise ValueError(f"Input type {cfg.model.input} not found")
+        projected_cv = model_wrapper.compute_cv(
+            preprocessed_file = projection_file,
+            temperature = temperature,
+        )
+        
 
         start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
         goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz
