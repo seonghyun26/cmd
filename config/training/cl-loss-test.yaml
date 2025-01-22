@@ -13,7 +13,7 @@ loader:
 #   reduction: mean
 #   temperature: 10
 loss:
-  name: triplet
+  name: ntxent
   lambda_pos: 30
   similarity: cosine
   temperature: 0.1

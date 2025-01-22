@@ -63,6 +63,49 @@ class TripletLoss(BaseLoss):
     def loss_types(self):
         return ["positive", "negative", "total"]
     
+    
+class NTXent(BaseLoss):
+    def __init__(self, cfg, normalization = None):
+        super().__init__(cfg, normalization)
+        self.margin = cfg.training.loss.margin
+        self.temperature = cfg.training.loss.temperature
+        self.similarity = load_similarity(cfg.training.loss.similarity)
+        self.reduction = torch.mean if self.cfg.training.loss.reduction == "mean" else torch.sum
+        
+    def __call__(
+        self,
+        result_dict
+    ):
+        anchor = result_dict["current_state_rep"] / self.temperature    
+        positive = result_dict["positive_sample_rep"] / self.temperature
+        negative = result_dict["negative_sample_rep"] / self.temperature
+        
+        batch_size = anchor.shape[0]
+        anchor = F.normalize(anchor, dim=1)
+        positive = F.normalize(positive, dim=1)
+        pos_sim = torch.exp(self.similarity(anchor, positive).sum(dim=1) / self.temperature)
+        
+        negative = F.normalize(negative, dim=1)
+        all_samples = torch.cat([positive, negative], dim=0)
+        all_sim = torch.exp(self.similarity(anchor, all_samples).sum(dim=1) / self.temperature)
+        
+        mask = torch.eye(batch_size, device=anchor.device)
+        mask = torch.cat([mask, torch.zeros_like(mask)], dim=1)
+        all_sim = all_sim * (1 - mask)
+        
+        denominator = all_sim.sum(dim=1)
+        losses = -torch.log(pos_sim / denominator)
+        
+        return {
+            "numerator": self.reduction(pos_sim),
+            "denominator": self.reduction(denominator),
+            "total": self.reduction(losses),
+        }
+        
+    @property
+    def loss_types(self):
+        return ["numerator", "denominator", "total"]
+    
 
 class TripletLossTest(BaseLoss):
     def __init__(self, cfg, normalization = None):

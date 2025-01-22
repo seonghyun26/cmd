@@ -1,0 +1,12 @@
+name: clcv
+input: distance
+params: {
+  encoder_layers: [45, 32, 32, 32, 2],
+  options: {
+    encoder: {
+      activation: "tanh"
+    },
+    norm_in: {
+    }
+  }
+}

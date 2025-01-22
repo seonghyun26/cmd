@@ -1,0 +1,6 @@
+defaults:
+- model: clcv
+- data: alanine-cl-10n
+- training: clcv-pretrained
+- logging: basic
+- job: steered-aldp-clcv

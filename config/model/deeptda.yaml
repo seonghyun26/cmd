@@ -1,6 +1,6 @@
 name: deeptda
 input: distance
-output_scale: 0.16
+output_scale: 7
 params: {
   n_states: 2,
   n_cvs: 1,

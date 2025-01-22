@@ -136,7 +136,7 @@ class SteeredAlanine:
         if self.force_type in ["rmsd", "torsion"]:
             pass
         
-        elif self.force_type in MLCOLVAR_METHODS or ["gnncv"] or CLCV_METHODS:
+        elif self.force_type in MLCOLVAR_METHODS or ["gnncv", "clcv"] or CLCV_METHODS:
             if self.cfg.job.simulation.force_version == "v1":
                 mlcv_difference = torch.linalg.norm(goal_mlcv - current_mlcv, ord=2)
             elif self.cfg.job.simulation.force_version == "v2":
@@ -344,7 +344,7 @@ class SteeredAlanine:
             custom_cv_force.addGlobalParameter("total_time", self.time_horizon * self.timestep)
             self.system.addForce(custom_cv_force)
         
-        elif self.force_type in MLCOLVAR_METHODS or ["gnncv"] or CLCV_METHODS:
+        elif self.force_type in MLCOLVAR_METHODS or ["gnncv", "clcv"] or CLCV_METHODS:
             if self.cfg.job.simulation.force_version == "v1":
                 external_force = mm.CustomExternalForce(" 0.5 * k * (fx*x + fy*y + fz*z) * (time / total_time) ")
                 external_force.addGlobalParameter("k", self.k)

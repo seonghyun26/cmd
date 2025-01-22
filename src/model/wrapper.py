@@ -14,16 +14,14 @@ from ..utils import *
 model_dict = {
     "mlp": MLP,
     "cvmlp": CVMLP,
-    # "cvmlp-bn": CVMLPBN,
     "cvmlp-test": CVMLPTEST,
     "deeplda": DeepLDA,
     "deeptda": DeepTDA,
     "autoencoder": AutoEncoderCV,
     "timelagged-autoencoder": AutoEncoderCV,
-    # "vautoencoder": VariationalAutoEncoderCV,
-    # "betavae": VariationalAutoEncoderCVBeta,
     "rmsd": CVMLP,
     "torsion": CVMLP,
+    "clcv": CLCV,
 }
 
 
@@ -63,7 +61,7 @@ class ModelWrapper(nn.Module):
                 options = {'nn': {'activation': 'tanh'} }
             )
             
-        elif self.model_name in MLCOLVAR_METHODS:
+        elif self.model_name in MLCOLVAR_METHODS or self.model_name == "clcv":
             model = model_dict[self.model_name](**cfg.model.params)
             
         elif self.model_name == "gnncv":
@@ -163,6 +161,8 @@ class ModelWrapper(nn.Module):
                 heavy_atom_distance = torch.load(preprocessed_file).to(self.device)
             
             mlcv = self.model(heavy_atom_distance)
+            if self.model_name == "deeptda":
+                mlcv = mlcv / self.cfg.model.output_scale
         
         elif self.model_name == "autoencoder":
             if preprocessed_file is not None:
@@ -183,7 +183,15 @@ class ModelWrapper(nn.Module):
             backbone_atom_position = current_position[:, ALANINE_HEAVY_ATOM_IDX].reshape(data_num, -1)
             
             mlcv = self.model(backbone_atom_position)
-            
+        
+        elif self.model_name == "clcv":
+            if preprocessed_file is None:
+                data_num = current_position.shape[0]
+                current_position = coordinate2distance(self.cfg.job.molecule, current_position).reshape(data_num, -1)
+            else:
+                current_position = torch.load(preprocessed_file).to(self.device)
+            mlcv = self.model.forward_cv(current_position)
+        
         elif self.model_name == "gnncv":
             data_num = current_position.shape[0]
             from torch_geometric.data import Data

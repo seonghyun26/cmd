@@ -126,24 +126,6 @@ def main(cfg):
                 output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
                 model_wrapper.save_model(output_dir, epoch)
                 logger.info(f"Epoch {epoch}, model weights saved at: {output_dir}")
-                model_wrapper.eval()
-                logger.info(">> Evaluating...")
-                trajectory_list = generate(
-                    cfg=cfg,
-                    model_wrapper=model_wrapper,
-                    epoch=epoch,
-                    device=device,
-                    logger=logger
-                )
-                evaluate(
-                    cfg=cfg, 
-                    model_wrapper=model_wrapper,
-                    trajectory_list=trajectory_list,
-                    logger=logger,
-                    epoch=epoch,
-                    device=device
-                )
-                model_wrapper.train()
     
         # Save model
         logger.info("Training complete")
@@ -152,7 +134,7 @@ def main(cfg):
             model_wrapper.save_model(output_dir, "final")
             logger.info(f"Final model weights saved at: {output_dir}")
     else:
-        # Load trainined model from checkpoint
+        # Load trainined model from checkpoint or load generated trajectories
         epoch = 0
         if cfg.job.generate:
             model_wrapper.load_from_checkpoint(f"./model/{cfg.job.molecule}/{cfg.model.name}/{cfg.training.ckpt_file}.pt")
@@ -160,7 +142,7 @@ def main(cfg):
         else:
             logger.info(f"Using generated trajectories from {cfg.job.traj_dir}")
 
-    # Test model on downstream task (generation)
+    # Test model on transition path
     if cfg.job.evaluate:
         logger.info("Evaluating...")
         if cfg.job.generate:

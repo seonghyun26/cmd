@@ -20,6 +20,7 @@ from .loss import (
     TripletTorchLoss,
     TripletLossNegative,
     TripletLossTest,
+    NTXent,
     InfoNCELoss,
 )
 
@@ -245,6 +246,7 @@ def load_loss(cfg, normalization = None):
         "triplet-torch": TripletTorchLoss,
         "triplet-negative": TripletLossNegative,
         "triplet-test": TripletLossTest,
+        "ntxent": NTXent,
         "infonce": InfoNCELoss,
     }
     
