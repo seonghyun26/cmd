@@ -30,7 +30,7 @@
         "CUDA_VISIBLE_DEVICES": "0"
       },
       "cwd": "/home/shpark/prj-cmd/simulation/",
-      "program": "build_tae_dataset.py",
+      "program": "build-dataset-timelag.py",
       "args": [
         "--molecule",
         "alanine",
@@ -39,13 +39,13 @@
         "--dataset_size",
         "10000",
         "--dataset_version",
-        "tae-10n-v1",
+        "timelag-1n-v1",
         "--negative_sample_augmentation",
         "3000",
         "--traj_dir",
-        "24-12-26/15:24",
+        "24-12-26/14:53",
         "--traj_dir",
-        "24-12-26/17:52"
+        "24-12-26/15:08"
       ],
       "console": "integratedTerminal"
     },
@@ -60,8 +60,9 @@
         "program": "main.py",
         "args": [
           "--config-name",
-          "deeptda",
-          "++data.version=da-250n-v1"
+          "timelagged-autoencoder",
+          "++trainer.logs.tags=['debug']",
+          "++data.version=timelag-1n-v1"
         ],
         "console": "integratedTerminal"
     },

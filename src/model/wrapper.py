@@ -3,6 +3,9 @@ import torch.nn as nn
 
 import numpy as np
 
+from collections import OrderedDict
+
+
 from mlcolvar.core import Normalization
 from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA
 from mlcolvar.cvs import AutoEncoderCV
@@ -58,9 +61,19 @@ class ModelWrapper(nn.Module):
             model = DeepTICA(
                 layers = cfg.model.params.layers,
                 n_cvs = cfg.model.params.n_cvs,
-                options = {'nn': {'activation': 'tanh'} }
+                options = dict(cfg.model.params["options"])
             )
-            
+        
+        elif self.model_name == "deeptda":
+            model = DeepTDA(
+                n_states = cfg.model.params["n_states"],
+                n_cvs = cfg.model.params["n_cvs"],
+                target_centers = cfg.model.params["target_centers"],
+                target_sigmas = cfg.model.params["target_sigmas"],
+                layers = cfg.model.params["layers"],
+                options = dict(cfg.model.params["options"])
+            )
+        
         elif self.model_name in MLCOLVAR_METHODS or self.model_name == "clcv":
             model = model_dict[self.model_name](**cfg.model.params)
             
@@ -89,7 +102,22 @@ class ModelWrapper(nn.Module):
         torch.save(self.model.state_dict(), f"{path}/model-{epoch}.pt")
         
     def load_from_checkpoint(self, path):
-        self.model.load_state_dict(torch.load(f"{path}"))
+        if self.model_name == "deeptda":
+            loaded_ckpt = torch.load(f"{path}")
+            prefix_dict = {
+                "norm_in": {},
+                "nn": {},
+            }
+            for key, value in loaded_ckpt.items():
+                for prefix in prefix_dict.keys():
+                    if key.startswith(prefix):
+                        prefix_dict[prefix][key[len(prefix)+1:]] = value
+            norm_in = OrderedDict(prefix_dict["norm_in"])
+            nn = OrderedDict(prefix_dict["nn"])
+            self.model.norm_in.load_state_dict(norm_in)
+            self.model.nn.load_state_dict(nn)
+        else:
+            self.model.load_state_dict(torch.load(f"{path}"))
     
     def set_normalization(self, mean, std):
         self.normalization = Normalization(
