@@ -4,6 +4,7 @@
 *Ala2Implicit1000Test*
 
 log/*
+output/*
 outputs/*
 output-cluster/*
 wandb/*

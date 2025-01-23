@@ -228,7 +228,7 @@ class ModelWrapper(nn.Module):
             backbone_atom_position = current_position[:, ALANINE_BACKBONE_ATOM_IDX].reshape(data_num, -1)
             
             mlcv = self.model(backbone_atom_position)
-            mlcv = map_range(mlcv, self.cfg.job.cv_min, self.cfg.job.cv_max)
+            mlcv = map_range(mlcv, self.cfg.simulation.cv_min, self.cfg.simulation.cv_max)
             
         elif self.model_name == "timelagged-autoencoder":
             if preprocessed_file is not None:
@@ -255,7 +255,7 @@ class ModelWrapper(nn.Module):
             
             z_mean, z_logvar = self.model.encode(dihedral_angle)
             mlcv = self.model.reparameterize(z_mean, z_logvar)
-            # mlcv = map_range(mlcv, self.cfg.job.cv_min, self.cfg.job.cv_max)
+            mlcv = map_range(mlcv, self.cfg.simulation.cv_min, self.cfg.simulation.cv_max)
         
         elif self.model_name == "vde":
             raise ValueError(f"Model {self.model_name} not found")

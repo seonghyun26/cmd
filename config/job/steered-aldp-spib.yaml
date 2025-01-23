@@ -18,7 +18,7 @@ simulation:
   temperature: 300
   platform: OpenCL
   precision: mixed
-  cv_min: -9.493328094482422
+  cv_min: -10.08098030090332
   cv_max: 7.421378135681152
 metrics:
   epd:
