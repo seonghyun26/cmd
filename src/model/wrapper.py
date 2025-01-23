@@ -12,10 +12,12 @@ from mlcolvar.cvs import AutoEncoderCV
 # VariationalAutoEncoderCV
 
 from . import *
+from .spib import SPIB
 from ..utils import *
 
 model_dict = {
     "mlp": MLP,
+    "clcv": CLCV,
     "cvmlp": CVMLP,
     "cvmlp-test": CVMLPTEST,
     "deeplda": DeepLDA,
@@ -24,7 +26,7 @@ model_dict = {
     "timelagged-autoencoder": AutoEncoderCV,
     "rmsd": CVMLP,
     "torsion": CVMLP,
-    "clcv": CLCV,
+    "spib": SPIB,
 }
 
 def map_range(x, in_min, in_max):
@@ -79,6 +81,9 @@ class ModelWrapper(nn.Module):
                 options = dict(cfg.model.params["options"])
             )
         
+        elif self.model_name == "spib":
+            model = SPIB(**cfg.model.params)
+        
         elif self.model_name in MLCOLVAR_METHODS or self.model_name == "clcv":
             model = model_dict[self.model_name](**cfg.model.params)
             
@@ -121,6 +126,23 @@ class ModelWrapper(nn.Module):
             nn = OrderedDict(prefix_dict["nn"])
             self.model.norm_in.load_state_dict(norm_in)
             self.model.nn.load_state_dict(nn)
+        
+        elif self.model_name == "spib":
+            ckpt_file = torch.load(f"{path}")["state_dict"]
+            prefix_dict = {
+                "representative_weights.": {},
+                "encoder.": {},
+                "encoder_mean.": {},
+                "encoder_logvar.": {},
+            }
+            for key, value in ckpt_file.items():
+                for prefix in prefix_dict.keys():
+                    if key.startswith(prefix):
+                        prefix_dict[prefix][key[len(prefix):]] = value
+            self.model.representative_weights.load_state_dict(prefix_dict["representative_weights."])
+            self.model.encoder.load_state_dict(prefix_dict["encoder."])
+            self.model.encoder_mean.load_state_dict(prefix_dict["encoder_mean."])
+            self.model.encoder_logvar.load_state_dict(prefix_dict["encoder_logvar."])
         else:
             self.model.load_state_dict(torch.load(f"{path}"))
     
@@ -211,12 +233,32 @@ class ModelWrapper(nn.Module):
         elif self.model_name == "timelagged-autoencoder":
             if preprocessed_file is not None:
                 current_position = torch.load(preprocessed_file).to(self.device)
-                
-            data_num = current_position.shape[0]
-            current_position = current_position.reshape(data_num, -1, 3)
-            backbone_atom_position = current_position[:, ALANINE_HEAVY_ATOM_IDX].reshape(data_num, -1)
+            else:
+                data_num = current_position.shape[0]
+                current_position = current_position.reshape(data_num, -1, 3)
+                backbone_atom_position = current_position[:, ALANINE_HEAVY_ATOM_IDX].reshape(data_num, -1)
             
             mlcv = self.model(backbone_atom_position)
+        
+        elif self.model_name == "spib":
+            if preprocessed_file is not None:
+                current_position = torch.load(preprocessed_file).to(self.device)
+                dihedral_angle = current_position
+            else:
+                data_num = current_position.shape[0]
+                current_position = current_position.reshape(data_num, -1, 3)
+                phi = compute_dihedral_torch(current_position[:, ALDP_PHI_ANGLE])
+                psi = compute_dihedral_torch(current_position[:, ALDP_PSI_ANGLE])
+                theta = compute_dihedral_torch(current_position[:, ALDP_THETA_ANGLE])
+                omega = compute_dihedral_torch(current_position[:, ALDP_OMEGA_ANGLE])
+                dihedral_angle = torch.stack([phi, psi, theta, omega], dim=1)
+            
+            z_mean, z_logvar = self.model.encode(dihedral_angle)
+            mlcv = self.model.reparameterize(z_mean, z_logvar)
+            # mlcv = map_range(mlcv, self.cfg.job.cv_min, self.cfg.job.cv_max)
+        
+        elif self.model_name == "vde":
+            raise ValueError(f"Model {self.model_name} not found")
         
         elif self.model_name == "gnncv":
             data_num = current_position.shape[0]

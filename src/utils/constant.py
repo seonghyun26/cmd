@@ -17,6 +17,8 @@ CLCV_METHODS = [
 # Alanine Dipeptide
 ALDP_PHI_ANGLE = [4, 6, 8, 14]
 ALDP_PSI_ANGLE = [6, 8, 14, 16]
+ALDP_THETA_ANGLE = [1, 4, 6, 8]
+ALDP_OMEGA_ANGLE = [8, 14, 16, 18]
 ALANINE_HEAVY_ATOM_IDX = [
     1, 4, 5, 6, 8, 10, 14, 15, 16, 18
 ]

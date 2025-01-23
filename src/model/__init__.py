@@ -1,7 +1,6 @@
 from .mlp import *
-# from .nsde import LSDE, LNSDE
 from .clcv import CLCV
-# from .egnn import EGNN
+from .spib import SPIB
 # from .vae import VariationalAutoEncoderCVBeta
 # from .dummy import Dummy
 

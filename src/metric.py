@@ -246,6 +246,9 @@ def compute_projection(cfg, model_wrapper, epoch):
         elif cfg.model.name in ["autoencoder", "timelagged-autoencoder", "gnncv"]:
             projection_file = f"{data_dir}/xyz-aligned.pt"
         
+        elif cfg.model.name == "spib":
+            projection_file = f"{data_dir}/four-dihedral.pt"
+            
         else:
             raise ValueError(f"Input type {cfg.model.input} not found")
         
@@ -253,7 +256,9 @@ def compute_projection(cfg, model_wrapper, epoch):
             preprocessed_file = projection_file,
             temperature = temperature,
         )
-        
+        cv_min = projected_cv.min()
+        cv_max = projected_cv.max()
+        print(f"CV min: {cv_min}, CV max: {cv_max}")
 
         start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
         goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz

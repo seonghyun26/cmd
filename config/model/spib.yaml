@@ -1,0 +1,12 @@
+name: spib
+input: dihedral
+params: {
+  encoder_type: Nonlinear,
+  z_dim: 2, 
+  output_dim: 2,
+  data_shape: 4,
+  device: "cuda:0",
+  UpdateLabel: True,
+  neuron_num1: 16,
+  neuron_num2: 16
+}

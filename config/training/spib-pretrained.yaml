@@ -1,0 +1,3 @@
+train: False
+ckpt_file: diehdral-1n-v1
+epoch: 0

@@ -1,0 +1,6 @@
+defaults:
+- model: spib
+- data: alanine-cl-10n
+- training: spib-pretrained
+- logging: baseline
+- job: steered-aldp-spib
