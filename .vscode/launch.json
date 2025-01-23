@@ -56,13 +56,13 @@
         "env": {
           "CUDA_VISIBLE_DEVICES": "0"
         },
-        "cwd": "/home/shpark/prj-cmd/base/mlcolvar-library",
+        "cwd": "/home/shpark/prj-cmd/base/mlcv",
         "program": "main.py",
         "args": [
           "--config-name",
-          "timelagged-autoencoder",
+          "vde",
           "++trainer.logs.tags=['debug']",
-          "++data.version=timelag-1n-v1"
+          "++data.version=timelag-250n-v1"
         ],
         "console": "integratedTerminal"
     },
@@ -77,14 +77,15 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-deeptda",
+        "steered-autoencoder",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
         "++training.ckpt_file=da-1n-v1",
         "++job.sample_num=4",
         "++job.simulation.time_horizon=1000",
         "++job.simulation.k=100",
-        // "++job.name=cv",
+        "++job.cv_min=-3.371861457824707",
+        "++job.cv_max=2.55740618705749"
       ],
       "console": "integratedTerminal"
     },

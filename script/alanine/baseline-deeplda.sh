@@ -6,7 +6,7 @@ cd ../../
 #     ++job.simulation.time_horizon=1000
 
 
-k_list=(400 500 600 700 800 900)
+k_list=(450 550)
 
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
@@ -23,6 +23,9 @@ for i in "${!k_list[@]}"; do
         ++job.simulation.k=${k_list[$i]} 
     sleep 2
 done
+
+
+k_list=(150 250 300 350 400)
 
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \

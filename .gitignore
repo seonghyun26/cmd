@@ -5,7 +5,10 @@
 
 log/*
 outputs/*
+output-cluster/*
 wandb/*
+script/cluster/*
+
 
 *.tgz
 *.png

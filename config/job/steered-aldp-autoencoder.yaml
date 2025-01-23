@@ -18,6 +18,8 @@ simulation:
   temperature: 300
   platform: OpenCL
   precision: mixed
+  cv_min: -1
+  cv_max: 1
 metrics:
   epd:
     use: True

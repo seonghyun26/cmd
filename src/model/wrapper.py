@@ -27,6 +27,11 @@ model_dict = {
     "clcv": CLCV,
 }
 
+def map_range(x, in_min, in_max):
+    out_max = 1
+    out_min = -1
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
 
 class ModelWrapper(nn.Module):
     def __init__(self, cfg, device):
@@ -182,11 +187,11 @@ class ModelWrapper(nn.Module):
             mlcv = self.model(torch.cat([current_position, temperature], dim=1))
         
         elif self.model_name in ["deeplda", "deeptda", "deeptica"]:
-            if preprocessed_file is None:
+            if preprocessed_file is not None:
+                heavy_atom_distance = torch.load(preprocessed_file).to(self.device)
+            else:
                 data_num = current_position.shape[0]
                 heavy_atom_distance = coordinate2distance(self.cfg.job.molecule, current_position).reshape(data_num, -1)
-            else:
-                heavy_atom_distance = torch.load(preprocessed_file).to(self.device)
             
             mlcv = self.model(heavy_atom_distance)
             if self.model_name == "deeptda":
@@ -195,12 +200,13 @@ class ModelWrapper(nn.Module):
         elif self.model_name == "autoencoder":
             if preprocessed_file is not None:
                 current_position = torch.load(preprocessed_file).to(self.device)
-            
+
             data_num = current_position.shape[0]
             current_position = current_position.reshape(data_num, -1, 3)
             backbone_atom_position = current_position[:, ALANINE_BACKBONE_ATOM_IDX].reshape(data_num, -1)
             
             mlcv = self.model(backbone_atom_position)
+            mlcv = map_range(mlcv, self.cfg.job.cv_min, self.cfg.job.cv_max)
             
         elif self.model_name == "timelagged-autoencoder":
             if preprocessed_file is not None:
@@ -211,14 +217,6 @@ class ModelWrapper(nn.Module):
             backbone_atom_position = current_position[:, ALANINE_HEAVY_ATOM_IDX].reshape(data_num, -1)
             
             mlcv = self.model(backbone_atom_position)
-        
-        elif self.model_name == "clcv":
-            if preprocessed_file is None:
-                data_num = current_position.shape[0]
-                current_position = coordinate2distance(self.cfg.job.molecule, current_position).reshape(data_num, -1)
-            else:
-                current_position = torch.load(preprocessed_file).to(self.device)
-            mlcv = self.model.forward_cv(current_position)
         
         elif self.model_name == "gnncv":
             data_num = current_position.shape[0]

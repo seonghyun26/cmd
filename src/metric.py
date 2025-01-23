@@ -234,12 +234,21 @@ def compute_projection(cfg, model_wrapper, epoch):
         psis = np.load(f"{data_dir}/psi.npy")
         temperature = torch.tensor(cfg.job.simulation.temperature).repeat(phis.shape[0], 1).to(device)
         
-        if cfg.model.input == "distance":
+        if cfg.model.name in CLCV_METHODS:
+            if cfg.model.input == "distance":
+                projection_file = f"{data_dir}/heavy_atom_distance.pt"
+            else:
+                raise ValueError(f"Input type {cfg.model.input} not found for CLCV_METHODS")
+        
+        elif cfg.model.name in ["deeplda", "deeptda", "deeptica"]:
             projection_file = f"{data_dir}/heavy_atom_distance.pt"
-        elif cfg.model.input == "coordinate":
-            projection_file = f"{data_dir}/coordinate.pt"
+        
+        elif cfg.model.name in ["autoencoder", "timelagged-autoencoder", "gnncv"]:
+            projection_file = f"{data_dir}/xyz-aligned.pt"
+        
         else:
             raise ValueError(f"Input type {cfg.model.input} not found")
+        
         projected_cv = model_wrapper.compute_cv(
             preprocessed_file = projection_file,
             temperature = temperature,

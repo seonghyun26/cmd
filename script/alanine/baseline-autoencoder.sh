@@ -3,59 +3,34 @@ cd ../../
 # CUDA_VISIBLE_DEVICES=$1 python main.py \
 #     --config-name steered-autoencoder
 
-# for k in 400 300 200 100; do
-#     for sim_length in 500 1000; do
-#         CUDA_VISIBLE_DEVICES=$1 python main.py \
-#             --config-name steered-autoencoder \
-#             ++job.simulation.k=$k \
-#             ++job.simulation.time_horizon=$sim_length
-#     done
-# done
+k_list=(300 400 500 600 700 800)
 
-k_list=(1200 1400 1600 1800 2000)
 for i in "${!k_list[@]}"; do
     CUDA_VISIBLE_DEVICES=$1 python main.py \
         --config-name steered-autoencoder \
-        ++job.simulation.k=${k_list[$i]}
+        ++training.ckpt_file=da-1n-v1 \
+        ++job.simulation.k=${k_list[$i]} \
+        ++job.cv_min=-3.371861457824707 \
+        ++job.cv_max=2.55740618705749
     sleep 2
 done
 
-# k_list=(200 250 300 350 400)
-# for i in "${!k_list[@]}"; do
-#     CUDA_VISIBLE_DEVICES=$1 python main.py \
-#         --config-name steered-ae \
-#         ++job.simulation.k=${k_list[$i]} \
-#         ++training.ckpt_file=autoencoder-v2
-#     sleep 2
-# done
+for i in "${!k_list[@]}"; do
+    CUDA_VISIBLE_DEVICES=$1 python main.py \
+        --config-name steered-autoencoder \
+        ++training.ckpt_file=da-10n-v1 \
+        ++job.simulation.k=${k_list[$i]} \
+        ++job.cv_min=3.0287108421325684 \
+        ++job.cv_max=2.723254919052124
+    sleep 2
+done
 
-# k_list=(100 150 200 250)
-# for i in "${!k_list[@]}"; do
-#     CUDA_VISIBLE_DEVICES=$1 python main.py \
-#         --config-name steered-ae \
-#         ++job.simulation.k=${k_list[$i]} \
-#         ++training.ckpt_file=autoencoder-v3 
-#     sleep 2
-# done
-
-
-# k_list=(300 400 500 600)
-# for i in "${!k_list[@]}"; do
-#     CUDA_VISIBLE_DEVICES=$1 python main.py \
-#         --config-name steered-ae \
-#         ++job.simulation.k=${k_list[$i]} \
-#         ++job.simulation.time_horizon=500 \
-#         ++training.ckpt_file=autoencoder-v2
-#     sleep 2
-# done
-
-
-# k_list=(20 40 60 80)
-# for i in "${!k_list[@]}"; do
-#     CUDA_VISIBLE_DEVICES=$1 python main.py \
-#         --config-name steered-ae \
-#         ++job.simulation.k=${k_list[$i]} \
-#         ++job.simulation.time_horizon=500 \
-#         ++training.ckpt_file=autoencoder-v3
-#     sleep 2
-# done
+for i in "${!k_list[@]}"; do
+    CUDA_VISIBLE_DEVICES=$1 python main.py \
+        --config-name steered-autoencoder \
+        ++training.ckpt_file=da-250n-v1 \
+        ++job.simulation.k=${k_list[$i]}  \
+        ++job.cv_min=-2.725149631500244 \
+        ++job.cv_max=2.7825794219970703
+    sleep 2
+done

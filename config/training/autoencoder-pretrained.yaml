@@ -1,5 +1,5 @@
 train: False
-ckpt_file: autoencoder-10n-v1
+ckpt_file: da-1n-v1
 epoch: 0
 loader:
   batch_size: 8192
