@@ -30,7 +30,7 @@
         "CUDA_VISIBLE_DEVICES": "0"
       },
       "cwd": "/home/shpark/prj-cmd/simulation/",
-      "program": "build-dataset-timelag.py",
+      "program": "build-dataset-gnncv.py",
       "args": [
         "--molecule",
         "alanine",
@@ -39,9 +39,7 @@
         "--dataset_size",
         "10000",
         "--dataset_version",
-        "timelag-1n-v1",
-        "--negative_sample_augmentation",
-        "3000",
+        "graph-1n-v1",
         "--traj_dir",
         "24-12-26/14:53",
         "--traj_dir",
@@ -77,16 +75,16 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-spib",
+        "steered-timelagged-autoencoder",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        "++training.ckpt_file=dihedral-1n-v1",
-        "++training.ckpt_file=IB_6112_cpt",
+        // "++training.ckpt_file=dihedral-1n-v1",
+        "++training.ckpt_file=timelag-1n-v1",
         "++job.sample_num=4",
         "++job.simulation.time_horizon=1000",
         "++job.simulation.k=100",
-        "++job.cv_min=-3.371861457824707",
-        "++job.cv_max=2.55740618705749"
+        // "++job.cv_min=-3.371861457824707",
+        // "++job.cv_max=2.55740618705749"
       ],
       "console": "integratedTerminal"
     },

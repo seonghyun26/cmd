@@ -29,7 +29,7 @@ model_dict = {
     "spib": SPIB,
 }
 
-def map_range(x, in_min, in_max):
+def map_range(x, in_min = -1, in_max = 1):
     out_max = 1
     out_min = -1
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
@@ -218,6 +218,8 @@ class ModelWrapper(nn.Module):
             mlcv = self.model(heavy_atom_distance)
             if self.model_name == "deeptda":
                 mlcv = mlcv / self.cfg.model.output_scale
+            elif self.model_name == "deeptica":
+                mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
         
         elif self.model_name == "autoencoder":
             if preprocessed_file is not None:
@@ -228,17 +230,19 @@ class ModelWrapper(nn.Module):
             backbone_atom_position = current_position[:, ALANINE_BACKBONE_ATOM_IDX].reshape(data_num, -1)
             
             mlcv = self.model(backbone_atom_position)
-            mlcv = map_range(mlcv, self.cfg.simulation.cv_min, self.cfg.simulation.cv_max)
+            mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
             
         elif self.model_name == "timelagged-autoencoder":
             if preprocessed_file is not None:
                 current_position = torch.load(preprocessed_file).to(self.device)
+                data_num = current_position.shape[0]
             else:
                 data_num = current_position.shape[0]
                 current_position = current_position.reshape(data_num, -1, 3)
-                backbone_atom_position = current_position[:, ALANINE_HEAVY_ATOM_IDX].reshape(data_num, -1)
             
+            backbone_atom_position = current_position[:, ALANINE_HEAVY_ATOM_IDX].reshape(data_num, -1)
             mlcv = self.model(backbone_atom_position)
+            mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
         
         elif self.model_name == "spib":
             if preprocessed_file is not None:
@@ -255,7 +259,7 @@ class ModelWrapper(nn.Module):
             
             z_mean, z_logvar = self.model.encode(dihedral_angle)
             mlcv = self.model.reparameterize(z_mean, z_logvar)
-            mlcv = map_range(mlcv, self.cfg.simulation.cv_min, self.cfg.simulation.cv_max)
+            mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
         
         elif self.model_name == "vde":
             raise ValueError(f"Model {self.model_name} not found")
