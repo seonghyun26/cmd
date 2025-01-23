@@ -77,10 +77,10 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-autoencoder",
+        "steered-deeptica",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        "++training.ckpt_file=da-1n-v1",
+        "++training.ckpt_file=timelag-1n-v1",
         "++job.sample_num=4",
         "++job.simulation.time_horizon=1000",
         "++job.simulation.k=100",

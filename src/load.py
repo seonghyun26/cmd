@@ -10,8 +10,7 @@ from torch.optim import Adam, AdamW, SGD
 from torch.optim.lr_scheduler import LambdaLR, MultiplicativeLR, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, _LRScheduler
 from torch.utils.data import DataLoader, random_split
 
-from mlcolvar.core.transform import Normalization
-
+from .utils.constant import CLCV_METHODS
 from .data import *
 from .model import ModelWrapper
 from .md import MDSimulation, SteeredMDSimulation
@@ -156,18 +155,10 @@ def load_data(cfg):
                 num_workers=cfg.training.loader.num_workers
             )
         else:
-            if cfg.data.normalize:
+            if cfg.data.normalize and cfg.model.name in CLCV_METHODS:
                 total_data = torch.cat([dataset.x, dataset.x_augmented, dataset.x_augmented_hard], dim=0)
                 total_data_mean = total_data.mean(dim=0)
                 total_data_std = total_data.std(dim=0)
-                normalization = Normalization(
-                    in_features=total_data.shape[1],
-                    mean=total_data_mean,
-                    range=total_data_std
-                )
-                dataset.x = normalization(dataset.x)
-                dataset.x_augmented = normalization(dataset.x_augmented)
-                dataset.x_augmented_hard = normalization(dataset.x_augmented_hard)
             train_loader = DataLoader(
                 dataset=dataset,
                 batch_size=cfg.training.loader.batch_size,

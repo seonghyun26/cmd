@@ -29,7 +29,6 @@ def main(cfg):
     logger.info(OmegaConf.to_yaml(cfg))
     model_wrapper, optimizer, scheduler = load_model_wrapper(cfg, device)
     
-    
     if cfg.logging.wandb:
         wandb.init(
             project=cfg.logging.project,
@@ -41,10 +40,11 @@ def main(cfg):
         )
         wandb.config.update({"Model Parameters": sum([p.numel() for p in model_wrapper.parameters() if p.requires_grad])})
     
-    
-    train_loader, test_loader, total_data_mean, total_data_std = load_data(cfg)
-    model_wrapper.set_normalization(total_data_mean, total_data_std)
     if cfg.training.train:
+        train_loader, test_loader, total_data_mean, total_data_std = load_data(cfg)
+        if cfg.model.name in CLCV_METHODS:
+            model_wrapper.set_normalization(total_data_mean, total_data_std)
+        
         criteria, loss_type = load_loss(cfg, model_wrapper.normalization)
         loss_dict = { f"loss/{name}": 0 for name in loss_type }
         loss_dict["loss/total"] = 0
