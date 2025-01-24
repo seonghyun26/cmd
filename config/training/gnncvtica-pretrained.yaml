@@ -1,5 +1,5 @@
 train: False
-ckpt_file: gnncv-given2
+ckpt_file: paper
 epoch: 0
 loader:
   batch_size: 8192

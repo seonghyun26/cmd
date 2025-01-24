@@ -1,4 +1,4 @@
-name: gnncv
+name: gnncvtica
 input: coordinate
 params: {
   n_cvs: 1,

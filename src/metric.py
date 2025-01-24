@@ -243,7 +243,7 @@ def compute_projection(cfg, model_wrapper, epoch):
         elif cfg.model.name in ["deeplda", "deeptda", "deeptica"]:
             projection_file = f"{data_dir}/heavy_atom_distance.pt"
         
-        elif cfg.model.name in ["autoencoder", "timelagged-autoencoder", "gnncv"]:
+        elif cfg.model.name in ["autoencoder", "timelagged-autoencoder", "gnncvtica"]:
             projection_file = f"{data_dir}/xyz-aligned.pt"
         
         elif cfg.model.name == "spib":

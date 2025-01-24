@@ -3,8 +3,8 @@ import torch.nn as nn
 
 import numpy as np
 
+from tqdm import tqdm
 from collections import OrderedDict
-
 
 from mlcolvar.core import Normalization
 from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA
@@ -87,7 +87,7 @@ class ModelWrapper(nn.Module):
         elif self.model_name in MLCOLVAR_METHODS or self.model_name == "clcv":
             model = model_dict[self.model_name](**cfg.model.params)
             
-        elif self.model_name == "gnncv":
+        elif self.model_name == "gnncvtica":
             import mlcolvar.graph as mg
             model = mg.cvs.GraphDeepTICA(
                 n_cvs = cfg.model.params["n_cvs"],
@@ -221,6 +221,51 @@ class ModelWrapper(nn.Module):
             elif self.model_name == "deeptica":
                 mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
         
+        elif self.model_name == "gnncvtica":
+            from torch_geometric.data import Data, Batch
+            if preprocessed_file is not None:
+                current_position = torch.load(preprocessed_file).to(self.device)
+            data_num = current_position.shape[0]
+            
+            if data_num == 1:
+                current_position_data = Data(
+                    batch = torch.tensor([0], dtype=torch.int64, device=self.device),
+                    edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
+                    shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device),
+                    positions = current_position.reshape(1, -1, 3)[0, ALANINE_HEAVY_ATOM_IDX],
+                    node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
+                )
+                mlcv = self.model(current_position_data)
+            else:
+                data_list = []
+                batch_size = 1000
+                mlcv_list = []
+                for i, position in tqdm(
+                    enumerate(current_position),
+                    desc="Computing CV values for gnncv",
+                ):
+                    current_position_data = Data(
+                        edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
+                        shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device),
+                        positions = position.reshape(1, -1, 3)[0, ALANINE_HEAVY_ATOM_IDX],
+                        node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
+                    )
+                data_list.append(current_position_data)
+                if (i + 1) % batch_size == 0:
+                    batched_data = Batch.from_data_list(data_list)
+                    mlcv = self.model(batched_data)
+                    mlcv_list.append(mlcv.detach().cpu())
+                    del batched_data
+                    del current_position_data
+                    del data_list
+                    data_list = []
+                    torch.cuda.empty_cache()
+                    import gc
+                    gc.collect()
+            
+            mlcv = torch.cat(mlcv_list, dim=0)
+            mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
+        
         elif self.model_name == "autoencoder":
             if preprocessed_file is not None:
                 current_position = torch.load(preprocessed_file).to(self.device)
@@ -264,18 +309,7 @@ class ModelWrapper(nn.Module):
         elif self.model_name == "vde":
             raise ValueError(f"Model {self.model_name} not found")
         
-        elif self.model_name == "gnncv":
-            data_num = current_position.shape[0]
-            from torch_geometric.data import Data
-            current_position_data = Data(
-                batch = torch.tensor([0], dtype=torch.int64, device=self.device),
-                edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
-                shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device),
-                positions = current_position.reshape(data_num, -1, 3)[0, ALANINE_HEAVY_ATOM_IDX],
-                node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
-            )
-            mlcv = self.model(current_position_data)
-        
+
         else:
             raise ValueError(f"Model {self.model_name} not found")
 

@@ -1,0 +1,6 @@
+defaults:
+- model: gnncvtica
+- data: alanine-graph
+- training: gnncvtica-pretrained
+- logging: baseline
+- job: steered-aldp-gnncvtica
