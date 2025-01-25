@@ -250,21 +250,21 @@ class ModelWrapper(nn.Module):
                         positions = position.reshape(1, -1, 3)[0, ALANINE_HEAVY_ATOM_IDX],
                         node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
                     )
-                data_list.append(current_position_data)
-                if (i + 1) % batch_size == 0:
-                    batched_data = Batch.from_data_list(data_list)
-                    mlcv = self.model(batched_data)
-                    mlcv_list.append(mlcv.detach().cpu())
-                    del batched_data
-                    del current_position_data
-                    del data_list
-                    data_list = []
-                    torch.cuda.empty_cache()
-                    import gc
-                    gc.collect()
+                    data_list.append(current_position_data)
+                    if (i + 1) % batch_size == 0:
+                        batched_data = Batch.from_data_list(data_list)
+                        mlcv = self.model(batched_data)
+                        mlcv_list.append(mlcv.detach().cpu())
+                        del batched_data
+                        del current_position_data
+                        del data_list
+                        data_list = []
+                        torch.cuda.empty_cache()
+                        import gc
+                        gc.collect()
             
-            mlcv = torch.cat(mlcv_list, dim=0)
-            mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
+                mlcv = torch.cat(mlcv_list, dim=0)
+            # mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
         
         elif self.model_name == "autoencoder":
             if preprocessed_file is not None:

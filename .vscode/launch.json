@@ -75,10 +75,10 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-spib",
+        "steered-gnncvtica",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        "++training.ckpt_file=dihedral-1n-v1",
+        "++training.ckpt_file=graph-1n-v1",
         // "++training.ckpt_file=timelag-1n-v1",
         // "++training.ckpt_file=paper",
         "++job.sample_num=4",
