@@ -1,5 +1,0 @@
-molecule: alanine
-atom: 22
-dir: /home/shpark/prj-cmd/simulation/dataset
-temperature: 273.0
-version: c5-random

@@ -1,6 +1,0 @@
-defaults:
-- model: betavae
-- data: alanine
-- training: betavae-pretrained
-- logging: debug-log
-- job: steered-aldp-betavae

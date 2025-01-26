@@ -240,7 +240,7 @@ def compute_projection(cfg, model_wrapper, epoch):
             else:
                 raise ValueError(f"Input type {cfg.model.input} not found for CLCV_METHODS")
         
-        elif cfg.model.name in ["deeplda", "deeptda", "deeptica"]:
+        elif cfg.model.name in ["deeplda", "deeptda", "deeptica", "vde"]:
             projection_file = f"{data_dir}/heavy_atom_distance.pt"
         
         elif cfg.model.name in ["autoencoder", "timelagged-autoencoder", "gnncvtica"]:

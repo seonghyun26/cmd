@@ -9,7 +9,6 @@ from collections import OrderedDict
 from mlcolvar.core import Normalization
 from mlcolvar.cvs import DeepLDA, DeepTDA, DeepTICA
 from mlcolvar.cvs import AutoEncoderCV
-# VariationalAutoEncoderCV
 
 from . import *
 from .spib import SPIB
@@ -24,6 +23,7 @@ model_dict = {
     "deeptda": DeepTDA,
     "autoencoder": AutoEncoderCV,
     "timelagged-autoencoder": AutoEncoderCV,
+    "vde": VariationalDynamicsEncoder,
     "rmsd": CVMLP,
     "torsion": CVMLP,
     "spib": SPIB,
@@ -81,10 +81,7 @@ class ModelWrapper(nn.Module):
                 options = dict(cfg.model.params["options"])
             )
         
-        elif self.model_name == "spib":
-            model = SPIB(**cfg.model.params)
-        
-        elif self.model_name in MLCOLVAR_METHODS or self.model_name == "clcv":
+        elif self.model_name in MLCOLVAR_METHODS + ["clcv", "spib", "vde"]:
             model = model_dict[self.model_name](**cfg.model.params)
             
         elif self.model_name == "gnncvtica":
@@ -143,6 +140,7 @@ class ModelWrapper(nn.Module):
             self.model.encoder.load_state_dict(prefix_dict["encoder."])
             self.model.encoder_mean.load_state_dict(prefix_dict["encoder_mean."])
             self.model.encoder_logvar.load_state_dict(prefix_dict["encoder_logvar."])
+        
         else:
             self.model.load_state_dict(torch.load(f"{path}"))
     
@@ -307,8 +305,13 @@ class ModelWrapper(nn.Module):
             mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
         
         elif self.model_name == "vde":
-            raise ValueError(f"Model {self.model_name} not found")
-        
+            if preprocessed_file is not None:
+                current_position = torch.load(preprocessed_file).to(self.device)
+            else:
+                current_position = coordinate2distance(self.cfg.job.molecule, current_position)
+            
+            mlcv = self.model(current_position)
+            mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
 
         else:
             raise ValueError(f"Model {self.model_name} not found")

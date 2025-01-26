@@ -1,0 +1,8 @@
+dir: /home/shpark/prj-cmd/data
+molecule: alanine
+temperature: 300.0
+version: timelag-1n-v1
+name: cl-distance-timelag
+atom: 22
+scale: 1
+normalize: True

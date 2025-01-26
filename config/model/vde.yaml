@@ -1,0 +1,19 @@
+name: vde
+input: distance
+params: {
+  n_cvs: 2,
+  encoder_layers: [45, 256, 256, 256],
+  options: {
+    encoder: {
+      activation: "swish",
+      dropout: [0.3, 0.3, 0.3],
+      last_layer_activation: {
+      }
+    },
+    decoder: {
+      activation: "swish"
+    },
+    norm_in: {
+    },
+  }
+}

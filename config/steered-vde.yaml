@@ -1,0 +1,6 @@
+defaults:
+- model: vde
+- data: alanine-timelag
+- training: vde-pretrained
+- logging: baseline
+- job: steered-aldp-vde
