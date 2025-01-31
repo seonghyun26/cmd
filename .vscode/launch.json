@@ -60,7 +60,8 @@
           "--config-name",
           "vde",
           "++trainer.logs.tags=['debug']",
-          "++data.version=timelag-250n-v1"
+          // "++data.version=da-10n-v1"
+          "++data.version=timelag-10n-v1"
         ],
         "console": "integratedTerminal"
     },
@@ -75,18 +76,16 @@
       "program": "main.py",
       "args": [
         "--config-name",
-        "steered-vde",
+        "steered-spib-250n",
         "hydra.run.dir=outputs/debug",
         "++logging.wandb=False",
-        // "++training.ckpt_file=timelag-250n-v1",
-        // "++training.ckpt_file=graph-1n-v1",
-        // "++training.ckpt_file=paper",
+        // "++training.ckpt_file=dihedral-10n-v1",
         "++job.sample_num=4",
         "++job.simulation.time_horizon=1000",
-        "++job.simulation.k=400",
+        "++job.simulation.k=80",
         "++job.name=tps"
         // "++job.cv_min=-3.371861457824707",
-        // "++job.cv_max=2.55740618705749"
+        // "++job.cv_max=2.55740618705749",
       ],
       "console": "integratedTerminal"
     },

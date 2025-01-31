@@ -3,8 +3,8 @@ input: dihedral
 params: {
   encoder_type: Nonlinear,
   z_dim: 2, 
-  output_dim: 2,
-  decoder_output_dim: 2,
+  output_dim: 8,
+  decoder_output_dim: 10,
   data_shape: 4,
   device: "cuda:0",
   UpdateLabel: True,

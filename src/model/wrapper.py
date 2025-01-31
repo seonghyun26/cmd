@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-import numpy as np
-
 from tqdm import tqdm
 from collections import OrderedDict
 
@@ -41,7 +39,7 @@ class ModelWrapper(nn.Module):
         
         self.cfg = cfg
         self.device = device
-        self.model = self.load_model(cfg).to(device)
+        self.model = self._load_model(cfg).to(device)
     
     def _set_input_dim(self, cfg, data_dim):
         if cfg.data.molecule == "alanine":
@@ -60,7 +58,7 @@ class ModelWrapper(nn.Module):
         
         return input_dim
     
-    def load_model(self, cfg):
+    def _load_model(self, cfg):
         self.data_dim = cfg.data.atom * 3
         self.model_name = cfg.model.name.lower() 
         
@@ -81,7 +79,7 @@ class ModelWrapper(nn.Module):
                 options = dict(cfg.model.params["options"])
             )
         
-        elif self.model_name in MLCOLVAR_METHODS + ["clcv", "spib", "vde"]:
+        elif self.model_name in MLCOLVAR_METHODS + ["spib", "vde", "clcv"]:
             model = model_dict[self.model_name](**cfg.model.params)
             
         elif self.model_name == "gnncvtica":
@@ -103,6 +101,7 @@ class ModelWrapper(nn.Module):
         else:
             raise ValueError(f"Model {self.model_name} not found")
         
+        print(model)
         return model
     
     def save_model(self, path, epoch):
@@ -131,6 +130,7 @@ class ModelWrapper(nn.Module):
                 "encoder.": {},
                 "encoder_mean.": {},
                 "encoder_logvar.": {},
+                "decoder.": {},
             }
             for key, value in ckpt_file.items():
                 for prefix in prefix_dict.keys():
@@ -140,9 +140,12 @@ class ModelWrapper(nn.Module):
             self.model.encoder.load_state_dict(prefix_dict["encoder."])
             self.model.encoder_mean.load_state_dict(prefix_dict["encoder_mean."])
             self.model.encoder_logvar.load_state_dict(prefix_dict["encoder_logvar."])
+            self.model.decoder.load_state_dict(prefix_dict["decoder."])
         
         else:
             self.model.load_state_dict(torch.load(f"{path}"))
+            
+        return
     
     def set_normalization(self, mean, std):
         self.normalization = Normalization(
@@ -198,12 +201,11 @@ class ModelWrapper(nn.Module):
                     current_position = coordinate2distance(self.cfg.job.molecule, current_position).reshape(data_num, -1)
                 else:
                     current_position = torch.load(preprocessed_file).to(self.device)
-                current_position = self.normalization(current_position)
+                    current_position = self.normalization(current_position)
             
             else:
                 raise ValueError(f"Input type {self.cfg.model.input} not found for {self.model_name}")
             
-            current_position = current_position
             mlcv = self.model(torch.cat([current_position, temperature], dim=1))
         
         elif self.model_name in ["deeplda", "deeptda", "deeptica"]:
@@ -287,6 +289,17 @@ class ModelWrapper(nn.Module):
             mlcv = self.model(backbone_atom_position)
             mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
         
+        elif self.model_name == "clcv":
+            if preprocessed_file is not None:
+                current_position = torch.load(preprocessed_file).to(self.device)
+                data_num = current_position.shape[0]
+            else:
+                data_num = current_position.shape[0]
+                heavy_atom_distance = coordinate2distance(self.cfg.job.molecule, current_position).reshape(data_num, -1)
+                current_position = heavy_atom_distance.reshape(data_num, -1)
+            
+            mlcv = self.model(current_position)
+        
         elif self.model_name == "spib":
             if preprocessed_file is not None:
                 current_position = torch.load(preprocessed_file).to(self.device)
@@ -300,9 +313,7 @@ class ModelWrapper(nn.Module):
                 omega = compute_dihedral_torch(current_position[:, ALDP_OMEGA_ANGLE])
                 dihedral_angle = torch.stack([phi, psi, theta, omega], dim=1)
             
-            z_mean, z_logvar = self.model.encode(dihedral_angle)
-            mlcv = self.model.reparameterize(z_mean, z_logvar)
-            mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
+            mlcv, z_sample, z_mean, z_logvar = self.model(dihedral_angle)
         
         elif self.model_name == "vde":
             if preprocessed_file is not None:

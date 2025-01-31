@@ -10,7 +10,7 @@ MLCOLVAR_METHODS = [
 CLCV_METHODS = [
     "cvmlp",
     "cvmlp-bn",
-    "cvmlp-test"
+    "cvmlp-test",
 ]
 
 

@@ -13,8 +13,18 @@ import torch.nn.functional as F
 
 class SPIB(nn.Module):
 
-    def __init__(self, encoder_type, z_dim, output_dim, data_shape, device, UpdateLabel= False, neuron_num1=128, 
-                 neuron_num2=128):
+    def __init__(
+        self,
+        encoder_type,
+        z_dim,
+        output_dim,
+        data_shape,
+        device,
+        UpdateLabel= False,
+        neuron_num1=128, 
+        neuron_num2=128,
+        decoder_output_dim=0,
+    ):
         
         super(SPIB, self).__init__()
         if encoder_type == 'Nonlinear':
@@ -24,19 +34,17 @@ class SPIB(nn.Module):
 
         self.z_dim = z_dim
         self.output_dim = output_dim
-        
+        if decoder_output_dim == 0:
+            self.decoder_output_dim = output_dim
+        else:
+            self.decoder_output_dim = decoder_output_dim
         self.neuron_num1 = neuron_num1
         self.neuron_num2 = neuron_num2
-        
         self.data_shape = data_shape
-        
         self.UpdateLabel = UpdateLabel
-        
         self.eps = 1e-10
         self.device = device
         
-        
-
         # representative-inputs
         self.representative_dim = output_dim
 
@@ -88,7 +96,7 @@ class SPIB(nn.Module):
             modules += [nn.Linear(self.neuron_num2, self.neuron_num2)]
             modules += [nn.ReLU()]
         
-        modules += [nn.Linear(self.neuron_num2, self.output_dim)]
+        modules += [nn.Linear(self.neuron_num2, self.decoder_output_dim)]
         modules += [nn.LogSoftmax(dim=1)]
         
         return nn.Sequential(*modules)

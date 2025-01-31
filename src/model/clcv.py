@@ -8,42 +8,30 @@ from mlcolvar.cvs import BaseCV
 from mlcolvar.core import FeedForward, Normalization
 
 
-__all__ = ["CLCV"]
-
 class CLCV(BaseCV, lightning.LightningModule):
     BLOCKS = ["norm_in", "encoder",]
-
 
     def __init__(
         self,
         encoder_layers: list,
+        loss_fn: str = "triplet",
         options: dict = None,
         **kwargs,
     ):
-        """
-        Parameters
-        ----------
-        encoder_layers : list
-            Number of neurons per layer of the encoder
-        options : dict[str,Any], optional
-            Options for the building blocks of the model, by default None.
-            Available blocks: ['norm_in', 'encoder','decoder'].
-            Set 'block_name' = None or False to turn off that block
-        """
-        super().__init__(
-            in_features=encoder_layers[0], out_features=encoder_layers[-1], **kwargs
-        )
-
-        # =======   LOSS  =======
-        # Reconstruction (MSE) loss
-        self.loss_fn = nn.TripletMarginLoss()
-
+        super().__init__(in_features=encoder_layers[0], out_features=encoder_layers[-1], **kwargs)
         # ======= OPTIONS =======
         # parse and sanitize
         options = self.parse_options(options)
+        self.cv_min = 0
+        self.cv_max = 1
 
+        # =======   LOSS  =======
+        if loss_fn == "triplet":
+            self.loss_fn = nn.TripletMarginLoss()
+        else:
+            raise ValueError(f"Loss function {loss_fn} not supported")
+        
         # ======= BLOCKS =======
-
         # initialize norm_in
         o = "norm_in"
         if (options[o] is not False) and (options[o] is not None):
@@ -53,23 +41,29 @@ class CLCV(BaseCV, lightning.LightningModule):
         o = "encoder"
         self.encoder = FeedForward(encoder_layers, **options[o])
 
-
-
     def forward_cv(self, x: torch.Tensor) -> torch.Tensor:
         """Evaluate the CV without pre or post/processing modules."""
         if self.norm_in is not None:
             x = self.norm_in(x)
         x = self.encoder(x)
+        if not self.training:
+            x = self.map_range(x)
         return x
 
+    def set_cv_range(self, cv_min, cv_max):
+        self.cv_min = cv_min
+        self.cv_max = cv_max
 
+    def map_range(self, x):
+        out_max = 1
+        out_min = -1
+        return (x - self.cv_min) * (out_max - out_min) / (self.cv_max - self.cv_min) + out_min
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         x = self.forward_cv(x)
-        # normalized_data = F.normalize(x, p=2, dim=1)
+        # normalized_x = F.normalize(x, p=2, dim=1)
+        
         return x
-
-
 
     def training_step(self, train_batch, batch_idx):
         """Compute and return the training loss and record metrics."""
@@ -90,6 +84,8 @@ class CLCV(BaseCV, lightning.LightningModule):
         name = "train" if self.training else "valid"
         self.log(f"{name}_loss", loss, on_epoch=True)
         return loss
+
+
 
 
 if __name__ == "__main__":

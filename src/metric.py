@@ -221,10 +221,17 @@ def compute_ram(cfg, trajectory_list, hit_mask, hit_index, epoch):
     return wandb.Image(ram_plot_img), wandb.Image(transition_path_plot_img)
 
 def compute_projection(cfg, model_wrapper, epoch):
+    def map_range(x, in_min, in_max):
+        out_max = 1
+        out_min = -1
+        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+    
     molecule = cfg.job.molecule
     device = model_wrapper.device
     if cfg.model.name in CLCV_METHODS:
         cv_dim = cfg.model["params"].output_dim
+    elif cfg.model.name == "clcv":
+        cv_dim = cfg.model.params.encoder_layers[-1]
     else:
         cv_dim = 1
     
@@ -234,7 +241,7 @@ def compute_projection(cfg, model_wrapper, epoch):
         psis = np.load(f"{data_dir}/psi.npy")
         temperature = torch.tensor(cfg.job.simulation.temperature).repeat(phis.shape[0], 1).to(device)
         
-        if cfg.model.name in CLCV_METHODS:
+        if cfg.model.name in CLCV_METHODS + ["clcv"]:
             if cfg.model.input == "distance":
                 projection_file = f"{data_dir}/heavy_atom_distance.pt"
             else:
@@ -256,9 +263,10 @@ def compute_projection(cfg, model_wrapper, epoch):
             preprocessed_file = projection_file,
             temperature = temperature,
         )
-        cv_min = projected_cv.min()
-        cv_max = projected_cv.max()
+        cv_min = projected_cv.min(dim=0)[0]
+        cv_max = projected_cv.max(dim=0)[0]
         print(f"CV min: {cv_min}, CV max: {cv_max}")
+        projected_cv = map_range(projected_cv, cv_min, cv_max)
 
         start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
         goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz

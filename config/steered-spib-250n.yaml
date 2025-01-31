@@ -1,0 +1,6 @@
+defaults:
+- model: spib-250n
+- data: alanine-dihedral
+- training: spib-250n-pretrained
+- logging: baseline
+- job: steered-aldp-spib
