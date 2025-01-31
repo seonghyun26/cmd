@@ -230,8 +230,10 @@ def compute_projection(cfg, model_wrapper, epoch):
     device = model_wrapper.device
     if cfg.model.name in CLCV_METHODS:
         cv_dim = cfg.model["params"].output_dim
-    elif cfg.model.name == "clcv":
+    elif cfg.model.name in ["clcv", "autoencoder"]:
         cv_dim = cfg.model.params.encoder_layers[-1]
+    elif cfg.model.name == "spib":
+        cv_dim = cfg.model.params.decoder_output_dim
     else:
         cv_dim = 1
     
@@ -266,7 +268,16 @@ def compute_projection(cfg, model_wrapper, epoch):
         cv_min = projected_cv.min(dim=0)[0]
         cv_max = projected_cv.max(dim=0)[0]
         print(f"CV min: {cv_min}, CV max: {cv_max}")
-        projected_cv = map_range(projected_cv, cv_min, cv_max)
+        # projected_cv = map_range(projected_cv, cv_min, cv_max)
+        # print(f"Normalized CV min: {projected_cv.min(dim=0)[0]}, CV max: {projected_cv.max(dim=0)[0]}")
+        if cfg.logging.wandb:
+            for i in range(cv_dim):
+                wandb.log({
+                    f"cv/cv{i}/min": projected_cv[:, i].min(),
+                    f"cv/cv{i}/max": projected_cv[:, i].max(),
+                    f"cv/cv{i}/std": projected_cv[:, i].std(),
+                })
+        
 
         start_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.start_state}.pdb").xyz
         goal_state_xyz = md.load(f"./data/{cfg.job.molecule}/{cfg.job.goal_state}.pdb").xyz

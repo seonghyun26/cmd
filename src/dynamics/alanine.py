@@ -204,24 +204,7 @@ class SteeredAlanine:
         ).reshape(1, -1)
         start_position.requires_grad = True
         self.start_mlcv = self.model_wrapper.compute_cv(start_position, temperature)
-        
-        # if self.force_type in MLCOLVAR_METHODS:
-        #     start_heavy_atom_distance = self.preprocess(coordinate2distance(self.cfg.job.molecule, start_position))
-        #     self.start_mlcv = self.model_wrapper.compute_cv(start_heavy_atom_distance) 
-        #     if "output_scale" in self.cfg.model:
-        #         self.start_mlcv = self.start_mlcv * self.cfg.model.output_scale
-        
-        # elif self.force_type == "gnncv":
-        #     from torch_geometric.data import Data
-        #     start_position_data = Data(
-        #         batch = torch.tensor([0], dtype=torch.int64, device=self.device),
-        #         node_attrs = torch.tensor(ALANINE_HEAVY_ATOM_ATTRS, dtype=torch.float32, device=self.device),
-        #         positions = start_position.reshape(-1, 3)[ALANINE_HEAVY_ATOM_IDX],
-        #         edge_index = torch.tensor(ALANINE_HEAVY_ATOM_EDGE_INDEX, dtype=torch.long, device=self.device),
-        #         shifts = torch.zeros(90, 3, dtype=torch.float32, device=self.device)
-        #     )
-        #     self.start_mlcv = self.model_wrapper.compute_cv(start_position_data) 
-        
+
     def _set_goal_position(self, pdb, system):
         # Set goal position
         integrator = self._new_integrator()

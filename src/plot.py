@@ -285,7 +285,7 @@ def plot_ad_cv(
         vmin=min(df[f'CV{i}'].min() for i in range(min(cv_dim, 9))),
         vmax=max(df[f'CV{i}'].max() for i in range(min(cv_dim, 9)))
     )
-    for i in range(min(cv_dim, 9)):
+    for i in range(min(cv_dim, 4)):
         ax = axs[i]
         df.plot.hexbin(
             'phi','psi', C=f"CV{i}",
@@ -306,7 +306,7 @@ def plot_ad_cv(
     # Plot the projection of CVs for meta-stable states
     fig, axs = plt.subplots(2, 2, figsize = ( 15, 12 ) )
     axs = axs.ravel()
-    for i in range(min(cv_dim, 9)):
+    for i in range(min(cv_dim, 4)):
         ax = axs[i]
         df_filtered = df[
             (

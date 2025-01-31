@@ -30,7 +30,13 @@ model_dict = {
 def map_range(x, in_min = -1, in_max = 1):
     out_max = 1
     out_min = -1
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+    if type(in_min) != torch.Tensor:
+        in_min = torch.tensor(in_min, dtype=torch.float32, device=x.device)
+    if type(in_max) != torch.Tensor:
+        in_max = torch.tensor(in_max, dtype=torch.float32, device=x.device)
+    
+    normalized_x = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+    return normalized_x
 
 
 class ModelWrapper(nn.Module):
@@ -79,8 +85,14 @@ class ModelWrapper(nn.Module):
                 options = dict(cfg.model.params["options"])
             )
         
-        elif self.model_name in MLCOLVAR_METHODS + ["spib", "vde", "clcv"]:
+        elif self.model_name in MLCOLVAR_METHODS + ["spib", "vde"]:
             model = model_dict[self.model_name](**cfg.model.params)
+        
+        elif self.model_name == "clcv":
+            model = CLCV(
+                cv=cfg.model.cv,
+                **cfg.model.params
+            )
             
         elif self.model_name == "gnncvtica":
             import mlcolvar.graph as mg
@@ -216,10 +228,7 @@ class ModelWrapper(nn.Module):
                 heavy_atom_distance = coordinate2distance(self.cfg.job.molecule, current_position).reshape(data_num, -1)
             
             mlcv = self.model(heavy_atom_distance)
-            if self.model_name == "deeptda":
-                mlcv = mlcv / self.cfg.model.output_scale
-            elif self.model_name == "deeptica":
-                mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
+            mlcv = map_range(mlcv, self.cfg.job.simulation.cv_min, self.cfg.job.simulation.cv_max)
         
         elif self.model_name == "gnncvtica":
             from torch_geometric.data import Data, Batch
@@ -269,7 +278,6 @@ class ModelWrapper(nn.Module):
         elif self.model_name == "autoencoder":
             if preprocessed_file is not None:
                 current_position = torch.load(preprocessed_file).to(self.device)
-
             data_num = current_position.shape[0]
             current_position = current_position.reshape(data_num, -1, 3)
             backbone_atom_position = current_position[:, ALANINE_BACKBONE_ATOM_IDX].reshape(data_num, -1)
@@ -280,10 +288,8 @@ class ModelWrapper(nn.Module):
         elif self.model_name == "timelagged-autoencoder":
             if preprocessed_file is not None:
                 current_position = torch.load(preprocessed_file).to(self.device)
-                data_num = current_position.shape[0]
-            else:
-                data_num = current_position.shape[0]
-                current_position = current_position.reshape(data_num, -1, 3)
+            data_num = current_position.shape[0]
+            current_position = current_position.reshape(data_num, -1, 3)
             
             backbone_atom_position = current_position[:, ALANINE_HEAVY_ATOM_IDX].reshape(data_num, -1)
             mlcv = self.model(backbone_atom_position)

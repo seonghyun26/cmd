@@ -13,6 +13,7 @@ class CLCV(BaseCV, lightning.LightningModule):
 
     def __init__(
         self,
+        cv: None,
         encoder_layers: list,
         loss_fn: str = "triplet",
         options: dict = None,
@@ -22,8 +23,15 @@ class CLCV(BaseCV, lightning.LightningModule):
         # ======= OPTIONS =======
         # parse and sanitize
         options = self.parse_options(options)
-        self.cv_min = 0
-        self.cv_max = 1
+        if cv is not None:
+            self.cv_normalize = True
+            self.cv_min = torch.Tensor(list(cv.min)).to(self.device)
+            self.cv_max = torch.Tensor(list(cv.max)).to(self.device)
+        else:
+            self.cv_normalize = False
+            self.cv_min = 0
+            self.cv_max = 1
+            
 
         # =======   LOSS  =======
         if loss_fn == "triplet":
@@ -46,17 +54,26 @@ class CLCV(BaseCV, lightning.LightningModule):
         if self.norm_in is not None:
             x = self.norm_in(x)
         x = self.encoder(x)
-        if not self.training:
-            x = self.map_range(x)
+        if self.cv_normalize:
+            x = self._map_range(x)
         return x
 
-    def set_cv_range(self, cv_min, cv_max):
+    def set_cv_range(self, cv_min, cv_max, cv_std):
+        self.cv_normalize = True
         self.cv_min = cv_min
         self.cv_max = cv_max
+        self.cv_std = cv_std
+        
+        if self.device != self.cv_min.device:
+            self.cv_min = self.cv_min.to(self.device)
+            self.cv_max = self.cv_max.to(self.device)
 
-    def map_range(self, x):
+    def _map_range(self, x):
         out_max = 1
         out_min = -1
+        if x.device != self.cv_min.device:
+            self.cv_min = self.cv_min.to(x.device)
+            self.cv_max = self.cv_max.to(x.device)
         return (x - self.cv_min) * (out_max - out_min) / (self.cv_max - self.cv_min) + out_min
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:

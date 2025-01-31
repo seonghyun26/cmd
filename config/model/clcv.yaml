@@ -1,12 +1,16 @@
 name: clcv
 input: distance
 params: {
-  encoder_layers: [45, 32, 32, 32, 2],
+  encoder_layers: [45, 40, 40, 2],
   options: {
     encoder: {
       activation: "tanh"
     },
     norm_in: {
     }
-  }
+  },
+}
+cv: {
+  min: [-15.1039, -15.7705],
+  max: [13.6470, 14.1741]
 }
